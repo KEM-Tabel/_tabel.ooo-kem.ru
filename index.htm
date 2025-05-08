@@ -1,0 +1,71 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Табель</title>
+<link href="/favicon.ico" rel="icon" type="image/x-icon"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Language" content="ru"/>
+<meta http-equiv="Expires" content="Sun, 01 Jan 2014 00:00:00 GMT"/>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta name="viewport" content="width=800"/>
+<link rel="stylesheet" media="all" href="css/index.css?1273455245" type="text/css">
+<link rel="stylesheet" media="all" href="css/datepicker.css?1273455245" type="text/css">
+<script type="text/javascript" language="Javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/library.js?1273455245"></script>
+<script type="text/javascript" language="Javascript" src="js/date.format.js"></script>
+<script type="text/javascript" language="Javascript" src="js/datepicker.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/index.js?1273455245"></script>
+</head>
+<script>
+
+var SID		= getCookie("SID");
+var UID		= getCookie("UID");
+var LABEL	= getCookie("LABEL");
+
+if(!SID || !UID){
+	document.location.href = "/auth.htm";
+}else{
+	document.location.href = "/report.htm";
+}
+
+$(document).ready(function () {
+
+	curDate 	= new Date();
+	var offset 	= -(curDate.getTimezoneOffset()) / 60;
+	
+	if(offset != 10){
+		curDate = new Date(curDate.getTime() + ((10-offset)*60*60*1000)); 
+	}
+	
+	$('#master-main').html(LABEL);
+	
+});
+
+</script>
+<body>
+
+<div id="wrap">
+<div id="warning">ВНИМАНИЕ! этот ресурс поддерживает только мобильную версию. Для этого откройте его на смартфоне.</div>
+	<div id="content">
+		
+		<div id="loader"><div id="loader_dv"></div></div>
+		
+		<div id="main">
+			<div id="main-head">
+				<div id="master-main"></div>
+			</div>
+			<div id="main-body">
+				<div class="item"><div id="link-notwork" onclick="toPage('notwork')"><p class="text">Отсутствия</p></div></div>
+				<div class="item"><div id="link-report" onclick="toPage('report')"><p class="text">Табель</p></div></div>
+				<div class="item"><div id="link-staffs" onclick="toPage('staffs')"><p class="text">Сотрудники</p></div></div>
+				<div class="item"><div id="link-exit"onclick="toPage('exit')"><p class="text">Выход</p></div></div>
+			</div>
+			<div id="desc-main"></div>
+		</div>
+		
+	</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Табель</title>
+<link href="/favicon.ico" rel="icon" type="image/x-icon"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Language" content="ru"/>
+<meta http-equiv="Expires" content="Sun, 01 Jan 2014 00:00:00 GMT"/>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta name="viewport" content="width=800"/>
+<link rel="stylesheet" media="all" href="css/notwork.css?1273455245" type="text/css">
+<link rel="stylesheet" media="all" href="css/datepicker.css?1273455245" type="text/css">
+<script type="text/javascript" language="Javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/library.js?1273455245"></script>
+<script type="text/javascript" language="Javascript" src="js/date.format.js"></script>
+<script type="text/javascript" language="Javascript" src="js/datepicker.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/notwork.js?1273455245"></script>
+</head>
+<script>
+
+var SID		= getCookie("SID");
+var UID		= getCookie("UID");
+var LABEL	= getCookie("LABEL");
+
+if(!SID || !UID){
+	document.location.href = "/auth.htm";
+}
+
+$(document).ready(function () {
+
+	curDate 	= new Date();
+	var offset 	= -(curDate.getTimezoneOffset()) / 60;
+	
+	if(offset != 10){
+		curDate = new Date(curDate.getTime() + ((10-offset)*60*60*1000)); 
+	}
+	
+	$('#datetime_ti').datepicker({
+		autoClose: true,
+		moveToOtherMonthsOnSelect: true,
+		minDate: new Date(0),
+		maxDate: curDate,
+		timepicker: false,
+		onSelect: function(formattedDate, date, inst) {
+			
+			curDate = !date ? curDate : date;
+			
+			$('#datetext-head').html(curDate.getDate()+" "+mFullDays[curDate.getMonth()]+" "+curDate.getFullYear()+"г., "+wShortDays[curDate.getDay()]);
+			
+			getWorkers(UID, curDate.format("yyyymmdd"));
+			
+		},
+		onHide: function(inst, animationCompleted) {
+			
+		},		
+		onShow: function(inst, animationCompleted) {
+
+		},
+		onRenderCell: function (date, cellType) {
+			if (cellType == 'day') {
+				var day = date.getDay(),
+				isDisabled = [].indexOf(day) != -1;
+
+				return {
+				
+				disabled: isDisabled
+				
+				}
+			}
+		}
+		
+	});
+	
+	$('#datetext-head').html(curDate.getDate()+" "+mFullDays[curDate.getMonth()]+" "+curDate.getFullYear()+"г., "+wShortDays[curDate.getDay()]);
+	
+	$('#master-head').html(LABEL);
+		
+	$('#datetime_ti').datepicker().data('datepicker').selectDate(curDate);
+	
+	getWorkers(UID, curDate.format("yyyymmdd"));
+	
+});
+
+var isCalendarVisible = false;
+function dShow(){
+	if(isCalendarVisible){
+		$('#datetime_ti').datepicker().data('datepicker').hide();
+		isCalendarVisible = false;
+	}else{
+		$('#datetime_ti').datepicker().data('datepicker').show();
+		isCalendarVisible = true;
+	}
+	
+}
+</script>
+<body>
+
+<div id="wrap">
+<div id="warning">ВНИМАНИЕ! этот ресурс поддерживает только мобильную версию. Для этого откройте его на смартфоне.</div>
+	<div id="content">
+		
+		<div id="loader"><div id="loader_dv"></div></div>
+		
+		<div id="main">
+			<div id="main-head">
+				<div id="link-back" onClick="toPage('menu')"></div>
+				<div id="link-send" onClick="sendData()"></div>	
+				<div id="label-head">ОТСУТСТВИЯ</div>
+				<div id="datetext-head" onClick="dShow()"></div>
+				<input id="datetime_ti" type="text" autoClose="false" class="datepicker-here" data-min-view="days"  style="width:90px;"/>
+				<div id="master-head"></div>						
+			</div>
+			<div id="main-body">
+				<div id="workers"></div>
+			</div>
+			<div id="desc-main"></div>
+		</div>
+		
+	</div>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,228 @@
+﻿<!DOCTYPE HTML>
+<html>
+<head>
+<title>Табель</title>
+<link href="/favicon.ico" rel="icon" type="image/x-icon"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Language" content="ru"/>
+<meta http-equiv="Expires" content="Sun, 01 Jan 2014 00:00:00 GMT"/>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta name="viewport" content="width=800"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" media="all" href="css/report.css?1273455245" type="text/css">
+<link rel="stylesheet" media="all" href="css/datepicker.css?1273455245" type="text/css">
+<script type="text/javascript" language="Javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/library.js?1273455245"></script>
+<script type="text/javascript" language="Javascript" src="js/date.format.js"></script>
+<script type="text/javascript" language="Javascript" src="js/datepicker.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/report.js?1273455245"></script>
+
+</head>
+<script>
+
+var SID			= getCookie("SID");
+var UID			= getCookie("UID");
+var LABEL		= getCookie("LABEL");
+
+if(!SID || !UID){
+	document.location.href = "/auth.htm";
+}
+
+// запрещаем вызов стандартного контекстного меню
+document.oncontextmenu = function() {return false;};
+
+$(document).ready(function () {
+	
+	curDate 	= new Date();
+	curDate 	= new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
+
+	var offset 	= -(curDate.getTimezoneOffset()) / 60;
+	
+	if(offset != 10){
+		curDate = new Date(curDate.getTime() + ((10-offset)*60*60*1000)); 
+	}
+	
+	$('#datetime_ti').datepicker({
+		autoClose: true,
+		moveToOtherMonthsOnSelect: true,
+		minDate: new Date(0),
+		maxDate: curDate,
+		timepicker: false,
+		onSelect: function(formattedDate, date, inst) {
+			
+			curDate = !date ? curDate : date;
+			curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
+			
+			$('#datetext-head').html(mFullDays[curDate.getMonth()]+" "+curDate.getFullYear()+"г.");
+			
+			getDataTabel(true, false,  UID, curDate.format("yyyymmdd"), false);
+			
+		},
+		onHide: function(inst, animationCompleted) {
+			
+		},		
+		onShow: function(inst, animationCompleted) {
+
+		},
+		onRenderCell: function (date, cellType) {
+			if (cellType == 'day') {
+				var day = date.getDay(),
+				isDisabled = [].indexOf(day) != -1;
+
+				return {
+				
+				disabled: isDisabled
+				
+				}
+			}
+		}
+		
+	});
+	
+	$('#datetext-head').html(mFullDays[curDate.getMonth()]+" "+curDate.getFullYear()+"г.");
+	
+	$('#master-head').html(LABEL);
+	
+	$('#datetime_ti').datepicker().data('datepicker').view = 'months';
+	$('#datetime_ti').datepicker().data('datepicker').update();
+	$('#datetime_ti').datepicker().data('datepicker').selectDate(curDate);
+
+	const searchWorkers = debounce(() => {changeFilter('fio');}, 300);
+	const inputField = document.getElementById('fio-filter-in');
+	inputField.addEventListener('input', searchWorkers);
+	
+});
+
+var isCalendarVisible = false;
+function dShow(){
+	if(isCalendarVisible){
+		$('#datetime_ti').datepicker().data('datepicker').hide();
+		isCalendarVisible = false;
+	}else{
+		$('#datetime_ti').datepicker().data('datepicker').show();
+		isCalendarVisible = true;
+	}
+	
+}
+
+</script>
+<body>
+
+<div id="wrap">
+	<div id="warning">ВНИМАНИЕ! этот ресурс поддерживает только мобильную версию. Для этого откройте его на смартфоне.</div>
+	<div id="content">
+		
+		<div id="loader"><div id="loader_dv"></div><div id="loader_des"></div></div>		
+		
+		<div id="main">
+			<div id="main-head">
+				<div id="link-back" onClick="toPage('exit')"></div>
+				<div id="link-send" onClick="sendDataTabel()"></div>	
+				<div id="label-head">ТАБЕЛЬ</div>
+				<div id="master-head"></div>
+				<div id="datetext-head" onClick="dShow()"></div>
+				<input id="datetime_ti" type="text" autoClose="false" class="datepicker-here" data-min-view="months"  style="width:90px;"/>					
+			</div>
+		</div>
+		
+		<div id="sticky">
+			
+			<div id="head">	
+				<div id="head-workers">		
+					<div class="head-number">№</div>
+					<div class="head-fio"><div id="clear-input-bt" onClick="clearFio()" title="Очистить"></div><input id="fio-filter-in" type="text" placeholder="Поиск сотрудника..." /></div>
+					<!--<div class="head-filter-bt" onClick="showHideFilter()"></div>-->
+				</div>
+				
+				<div id="filter-dv">
+					
+				<!--
+					<div class="filter-label-sort-dv">Сортировка</div>
+					<div class="filter-sort-dv">
+						<div class="filter-sort-asc-bt"><span style="padding-left:40px">По возрастанию</span></div>
+						<div class="filter-sort-desc-bt"><span style="padding-left:40px">По убыванию</span></div>
+					</div>
+				-->
+					
+					<div class="filter-label-firm-dv">Организация</div>
+					<div id="filter-firms-dv"></div>
+					<div class="filter-label-location-dv">Участок</div>
+					<div id="filter-locations-dv"></div>
+					<div class="filter-label-post-dv">Должность</div>
+					<div id="filter-posts-dv"></div>
+					<div class="filter-sep-dv"></div>		
+					<div class="filter-act-dv">
+						<div class="filter-act-clear-bt"><span style="padding-left:40px" onClick="filterAction('clear')">Очистить</span></div>
+						<div class="filter-act-apply-bt"><span style="padding-left:40px" onClick="filterAction('apply')">Применить</span></div>
+					</div>
+				</div>
+				
+				<div id="menu-head">
+				<div id="menu-rollDown" onClick="rollAll('down')" >Развернуть все</div>
+				<div id="menu-rollUp" onClick="rollAll('up')" >Свернуть все</div>
+					<div id="menu-reports" class="menu-button" >Отчеты</div>
+					<div id="menu-help" class="menu-button" >Помощь</div>
+				</div>
+				
+				<div id="head-days"></div>
+				<div id="head-sum-days">Дни</div>
+				<div id="head-sum-hours">Часы</div>
+			</div>
+		</div>
+		
+		<div id="info-dv">
+			<div class="info-save-dv" title="Сохранить"></div>
+			<div class="info-fio-dv">ФИО:</div>
+			<div class="info-organization-dv">Организация:</div>
+			<div class="info-location-dv">Участок:</div>
+			<div class="info-master-dv">Мастер:</div>
+			<div class="info-post-dv">Должность:</div>
+			<div class="info-category-dv">Разряд:</div>
+			<div class="info-birthday-dv">Дата рождения:</div>
+		</div>
+		
+		<ul id="context-menu">
+			<li onClick="contextAction('comment')">Комментарий</li>
+			<!--<li onClick="contextAction('clear')">Очистить</li>-->
+			<li onClick="contextAction('history')">История изменений</li>
+		</ul>
+		
+		<ul id="cell-menu">
+			<li onClick="cellAction('Я')">&nbsp;&nbsp;<strong>Я</strong> : Явка / Рабочее время</li>
+			<li onClick="cellAction('Б')">&nbsp;&nbsp;<strong>Б</strong> : Больничный</li>
+			<li onClick="cellAction('НВ')"><strong>НВ</strong> : Невыход по уважительной причине</li>
+			<li onClick="cellAction('НН')"><strong>НН</strong> : Невыход без причины</li>
+			<li onClick="cellAction('ОТ')"><strong>ОТ</strong> : Отпуск основной</li>
+			<li onClick="cellAction('ОД')"><strong>ОД</strong> : Отпуск без сохранения заработной платы</li>
+			<li onClick="cellAction('У')">&nbsp;&nbsp;<strong>У</strong> : Отпуск учебный</li>
+			<li onClick="cellAction('Р')">&nbsp;&nbsp;<strong>Р</strong> : Отпуск по беременности и родам</li>
+			<li onClick="cellAction('ОЖ')"><strong>ОЖ</strong> : Отпуск по уходу за ребенком</li>
+			<li onClick="cellAction('МО')"><strong>МО</strong> : Медосмотр</li>
+			<li onClick="cellAction('ОБ')"><strong>ОБ</strong> : Обучение</li>
+			<li onClick="cellAction('ПК')"><strong>ПК</strong> : Перекомандировка</li>
+			<li onClick="cellAction('Д')">&nbsp;&nbsp;<strong>Д</strong> : Дорога</li>
+			<li onClick="cellAction('ДО')"><strong>ДО</strong> : Другой объект</li>			
+			<li onClick="cellAction('Г')">&nbsp;&nbsp;<strong>Г</strong> : Сдача крови, вызов в госорганы</li>
+			<li onClick="cellAction('УВ')">&nbsp;&nbsp;<strong>УВ</strong> : Уволен</li>		
+			<li onClick="cellAction('В')">&nbsp;&nbsp;<strong>В</strong> : Выходной</li>
+		</ul>
+		
+		<div id="table"></div>
+		
+		<div id="add-comment-dv">
+			<input id="add-comment-in" type="text" />
+			<div id="add-comment-bt" onClick="setComment()"><i class="fa-solid fa-check"></i></div>
+			
+		</div>
+		
+		<ul id="history-menu">
+			
+		</ul>
+			
+	</div>		
+	
+</div>
+
+</body>
+</html>

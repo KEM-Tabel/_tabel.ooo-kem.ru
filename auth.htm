@@ -1,0 +1,52 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+<title>Авторизация</title>
+<link href="/favicon.ico" rel="icon" type="image/x-icon"/>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta http-equiv="Content-Language" content="ru"/>
+<meta http-equiv="Expires" content="Sun, 01 Jan 2014 00:00:00 GMT"/>
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Cache-Control" content="no-cache" />
+<meta name="viewport" content="width=800"/>
+<link rel="stylesheet" media="all" href="css/auth.css?1273455245" type="text/css">
+<link rel="stylesheet" media="all" href="css/datepicker.css?1273455245" type="text/css">
+<script type="text/javascript" language="Javascript" src="js/jquery.min.js"></script>
+<script type="text/javascript" language="Javascript" src="js/library.js?1273455245"></script>
+<script type="text/javascript" language="Javascript" src="js/auth.js?1273455245"></script>
+</head>
+<script>
+
+var SID		= getCookie("SID");
+var UID		= getCookie("UID");
+var LABEL	= getCookie("LABEL");
+
+$(document).ready(function(){
+	
+});
+
+</script>
+<body>
+
+<div id="wrap">
+	
+	<div id="warning">внимание! этот ресурс поддерживает только мобильную версию. для этого откройте его на смартфоне.</div>
+	
+	<div id="content">
+		
+		<div id="loader"><div id="loader_dv"></div></div>
+		
+		<div id="auth">
+			<input id="login_in" name="login" type="text" value="kem" hidden="hidden" />							
+			<input id="pass_in" name="pass" type="password" value="" onKeyPress="authEnter(event)" />							
+			<div class="button" onClick="Login()">Вход</div>
+			<div class="forgot" ></div>
+			<div id="desc-auth"></div>
+		</div>
+		
+	</div>
+	
+</div>
+
+</body>
+</html>
