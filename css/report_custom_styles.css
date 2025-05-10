@@ -1,0 +1,42 @@
+/* Стили для тултипа */
+#master-tooltip {
+    display: none; /* Изначально скрыт */
+    position: absolute; /* Для позиционирования относительно документа */
+    z-index: 1050; /* Должен быть поверх других элементов */
+    font-size: 12px;
+    padding: 8px;
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    width: 360px; /* Ширина как в старом скрипте, можно настроить */
+    line-height: 1.4;
+}
+
+#master-tooltip table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 5px;
+}
+
+#master-tooltip td {
+    padding: 2px 4px;
+    font-size: 12px;
+}
+
+#master-tooltip .master-tooltip-content > table:first-child,
+#master-tooltip .master-tooltip-content > table:nth-child(2) {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+}
+
+#master-tooltip .master-tooltip-content > div[style*="display: flex"] {
+    border-bottom: 1px solid #ddd;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
+}
+
+#master-tooltip tr[style*="border-bottom: 1px dotted #eee;"] td {
+    border-bottom: 1px dotted #eee;
+}
+

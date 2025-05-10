@@ -1196,3 +1196,46 @@ body {
         white-space: normal !important;
     }
 }
+
+.cell-attendance-missing-hours {
+    box-shadow: 0 0 8px 2px #00000081 !important;
+    color: #c80000 !important;
+    font-weight: bold !important;
+    z-index: 1;
+    position: relative;
+    transition: transform 0.15s cubic-bezier(.4,2,.6,1), box-shadow 0.15s;
+    transform: scale(1.08); /* немного увеличиваем */
+}
+
+.cell-code-big {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    font-weight: normal;
+    width: 100%;
+    height: 100%;
+    letter-spacing: 1px;
+}
+.cell-code-small {
+    font-size: 10px;
+    font-weight: 500;
+    float: none;
+    margin-right: -2px;
+	margin-top: -13px;
+    max-width: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: inline-block;
+    vertical-align: middle;
+}
+.cell-hours-big {
+    font-size: 13px;
+    font-weight: bold;
+	color: #0044ff;
+    margin-left: 3px;
+    max-width: 40%;
+    display: inline-block;
+    vertical-align: middle;
+}
