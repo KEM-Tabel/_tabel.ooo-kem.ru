@@ -2635,3 +2635,5 @@ function updateInputIndicator() {
         $('#input-indicator').hide();
     }
 }
+
+// Фф
