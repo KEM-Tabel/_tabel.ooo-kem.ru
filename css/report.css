@@ -1001,8 +1001,19 @@ body {
     height:32px;
     display: flex;
     align-items: stretch;
-    gap: 1px;
+    gap: 0;
     background:#999;
+}
+
+.row-days-dv .days-work,
+.row-days-dv .days-weekend {
+    border-right: 1px solid #bbb;
+    border-bottom: 1px solid #bbb;
+    box-sizing: border-box;
+}
+.row-days-dv .days-work:last-child,
+.row-days-dv .days-weekend:last-child {
+    border-right: none;
 }
 
 .row-days-dv .days-work{

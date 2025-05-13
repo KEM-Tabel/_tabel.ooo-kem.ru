@@ -184,7 +184,7 @@ function dShow(){
 		
 		<ul id="context-menu">
 			<li onClick="contextAction('comment')">Комментарий</li>
-			<!--<li onClick="contextAction('clear')">Очистить</li>-->
+			<li onClick="contextAction('clear')">Очистить</li>
 			<li onClick="contextAction('history')">История изменений</li>
 		</ul>
 		
@@ -225,6 +225,14 @@ function dShow(){
 </div>
 
 <div id="master-tooltip" style="display:none; position:absolute; z-index:1050;"></div>
+
+<div id="confirm-clear-modal" style="display:none; position:fixed; z-index:2000; left:0; top:0; width:100vw; height:100vh; background:rgba(0,0,0,0.3);">
+  <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); background:#fff; border-radius:8px; box-shadow:0 2px 10px #0002; padding:24px 32px; min-width:260px; text-align:center;">
+    <div style="margin-bottom:18px; font-size:18px;">Удалить данные из ячейки?</div>
+    <button id="confirm-clear-yes" style="margin-right:16px; padding:6px 18px;">Да</button>
+    <button id="confirm-clear-no" style="padding:6px 18px;">Нет</button>
+  </div>
+</div>
 
 </body>
 </html>

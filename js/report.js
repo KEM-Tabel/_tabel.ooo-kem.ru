@@ -1129,8 +1129,10 @@ function contextAction(act){
 			settingComment = true;
 			break;
 		case "clear":
-			setCells("", false);
-			setCells("", true);
+			showConfirmClearModal(function() {
+				setCells("", false);
+				setCells("", true);
+			});
 			break;
 	}
 	 $("#context-menu").hide(50);
@@ -1677,11 +1679,13 @@ function setCellVal(e){
 				updateInputIndicator();
 				break;
 			case 8: case 32: case 46: //backspace space delete
-				setCells('', false, true);
-				unselectCells();
-				calcDays();
-				code = '';
-				updateInputIndicator();
+				showConfirmClearModal(function() {
+					setCells('', false, true);
+					unselectCells();
+					calcDays();
+					code = '';
+					updateInputIndicator();
+				});
 				break;
 			case 37: //left
 				if(code != '' && codesRu.includes(code)) setCells(code);
@@ -2634,6 +2638,18 @@ function updateInputIndicator() {
     } else {
         $('#input-indicator').hide();
     }
+}
+
+// Показываем модальное окно подтверждения удаления
+function showConfirmClearModal(onConfirm) {
+    $('#confirm-clear-modal').show();
+    $('#confirm-clear-yes').off('click').on('click', function() {
+        $('#confirm-clear-modal').hide();
+        if (typeof onConfirm === 'function') onConfirm();
+    });
+    $('#confirm-clear-no').off('click').on('click', function() {
+        $('#confirm-clear-modal').hide();
+    });
 }
 
 // Фф
