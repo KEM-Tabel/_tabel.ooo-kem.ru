@@ -160,6 +160,7 @@ function createHead(){
 	$('#head-days').html(headDays);
 	
 	$('#menu-head').width($('#head').innerWidth()-10);
+	// Удалена синхронизация ширины #head-days через JS
 
 }
 
@@ -392,6 +393,7 @@ function createTabel(){
 	html += '</div>';
 
 	$('#table').html(html);
+	// Удалена синхронизация ширины #head-days через JS
 
 	for(let w in WORKERS){
 		
@@ -595,86 +597,73 @@ function setCells(value, isComment=false, isFullClear=false){
 		
 		let matches = String(value).match(/(ПК|Б|ОТ|ОД|ДО|Р|УВ|ОЖ|У)/igu);
 		
-		if(Number(cell['col']) > TODAY && matches == null){
+		if(Number(cell['col']) > TODAY && matches == null && !isComment && !isFullClear){
+			continue; // Просто пропускаем, не трогаем ячейку
+		}
+		
+		if(isComment || isFullClear){
 			
-			
-			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').empty();
-			
-			TABEL[id][day] 				= {};
-			TABEL[id][day]['day'] 		= Number(cell['col']+1);
-			TABEL[id][day]['vt'] 		= "";
-			TABEL[id][day]['hours'] 	= 0;
-			TABEL[id][day]['comment'] 	= "";
-			
-			changed = true;
-			
-		}else{
-			
-			if(isComment || isFullClear){
-				
-				if(TABEL[id][day]['comment'] != value) {
-					changed = true;
-				}
-				
-				TABEL[id][day]['comment'] = value;			
-				
-				if(value != ""){
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
-				}else{
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
-				}
-				
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').attr('title', value);			
-				
+			if(TABEL[id][day]['comment'] != value) {
+				changed = true;
 			}
 			
-			if(!isComment || isFullClear){
-				
-				let htmlValue = '';
-				let dayHours = '';
-				let dayValue = String(TABEL[id][day]['vt']);
-				if(codesDi.includes(value)){
-					dayValue = dayValue == '' ? 'Я' : dayValue;
-					dayHours = dayValue != '' ?  Number(value) : 0;
-				}else{
-					dayValue = Number(value) != 0 || value == '' ? value : "Я";
-					dayHours = "";
-				}
-				if(TABEL[id][day]['vt'] != dayValue ||  Number(TABEL[id][day]['hours']) != Number(dayHours)) {
-					changed = true;
-				}
-				TABEL[id][day]['vt']  = dayValue;
-				TABEL[id][day]['hours'] = dayHours == "" ? 0 : dayHours;
-				// Формируем красивый html
-				let hoursNum = Number(dayHours);
-				if(dayValue && !hoursNum){
-					// Только буквенный код, без часов
-					htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
-				} else if(dayValue && hoursNum) {
-					// Есть и код, и часы
-					htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
-				} else {
-					htmlValue = '';
-				}
-				htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
-				if(hoursNum == 0) {
-					htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
-				}
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+			TABEL[id][day]['comment'] = value;			
+			
+			if(value != ""){
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
+			}else{
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
+			}
+			
+			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').attr('title', value);			
+			
+		}
+		
+		if(!isComment || isFullClear){
+			
+			let htmlValue = '';
+			let dayHours = '';
+			let dayValue = String(TABEL[id][day]['vt']);
+			if(codesDi.includes(value)){
+				dayValue = dayValue == '' ? 'Я' : dayValue;
+				dayHours = dayValue != '' ?  Number(value) : 0;
+			}else{
+				dayValue = Number(value) != 0 || value == '' ? value : "Я";
+				dayHours = "";
+			}
+			if(TABEL[id][day]['vt'] != dayValue ||  Number(TABEL[id][day]['hours']) != Number(dayHours)) {
+				changed = true;
+			}
+			TABEL[id][day]['vt']  = dayValue;
+			TABEL[id][day]['hours'] = dayHours == "" ? 0 : dayHours;
+			// Формируем красивый html
+			let hoursNum = Number(dayHours);
+			if(dayValue && !hoursNum){
+				// Только буквенный код, без часов
+				htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+			} else if(dayValue && hoursNum) {
+				// Есть и код, и часы
+				htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+			} else {
+				htmlValue = '';
+			}
+			htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+			if(hoursNum == 0) {
+				htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+			}
+			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
 
-				if(dayValue === "Я" && (!dayHours || dayHours == 0)){
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
-				}else{
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
-				}
-				
-				if(TABEL[id][day]['comment'] != ''){
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
-				}else{
-					$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
-				}
+			if(dayValue === "Я" && (!dayHours || dayHours == 0)){
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
+			}else{
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
 			}
 			
+			if(TABEL[id][day]['comment'] != ''){
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
+			}else{
+				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
+			}
 		}
 		
 		if(changed){
@@ -2015,14 +2004,14 @@ function createHistory(data){
     // Логируем полученные данные истории
     console.log('История редактирования (ответ сервера):', JSON.stringify(data, null, 2));
     $('#history-menu').empty().hide();
-    // Оставляем только записи, где есть vt или hours > 0
-    const filtered = data.filter(item => (item.vt && item.vt.trim() !== '') || (item.hours && Number(item.hours) > 0));
-    if(filtered.length == 0) {
-        return; // Не показываем меню, если нет данных
+    // Больше не фильтруем по vt/hours, показываем все записи
+    if(!data || data.length === 0) {
+        $('#history-menu').html('<li style="color:#888;">Нет изменений</li>').show();
+        return;
     }
     let html = '';
-    for(let i in filtered){
-        let item = filtered[i];
+    for(let i in data){
+        let item = data[i];
         html += '<li>';
         html += item.datetime+' <strong>['+(item.vt == null || item.vt == '' ?  ' ' : item.vt)+(item.hours > 0 ? '<sub>'+item.hours+'</sub>' : '')+']</strong> '+item.user;
         html += '</li>';

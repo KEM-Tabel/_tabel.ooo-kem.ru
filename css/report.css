@@ -1001,7 +1001,7 @@ body {
     height:32px;
     display: flex;
     align-items: stretch;
-    gap: 0;
+    gap: 1px;
     background:#999;
 }
 
