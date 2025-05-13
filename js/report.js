@@ -669,6 +669,8 @@ function setCells(value, isComment=false, isFullClear=false){
 		if(changed){
 			if (!changedCells[id]) changedCells[id] = {};
 			changedCells[id][day] = TABEL[id][day];
+			// Смещаем таймер активности на 10 секунд вперёд, если пользователь работает
+			TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
 		}
 		
 		let col = Number(cell['col'])+1;
