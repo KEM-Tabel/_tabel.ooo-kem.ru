@@ -92,6 +92,10 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			createHead();
 			createTabel();
 			
+			// Обновляем глобальные переменные для тултипов
+			window.SAVED_DATA = DATA;
+			window.SAVED_TODAY = TODAY;
+			
 			scrollTo(pageX, pageY);
 			
 			// Вызываем initTooltips ПОСЛЕ того, как данные загружены и таблица создана
