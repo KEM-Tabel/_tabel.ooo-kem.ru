@@ -28,7 +28,7 @@ let unselectedBgd	= '#f6f7f6';
 let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
-let VER 			= "18";
+let VER 			= "19";
 
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
