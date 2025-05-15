@@ -308,9 +308,9 @@ function createTabel(){
 					
 					html += '<div id="'+worker_id+'-row" class="worker-row">';
 					html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
-					html += '<div id="'+worker_id+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
+					html += '<div id="'+worker_id+'" class="worker_lb">';
 					html += '<span id="'+worker_id+'-sp">'+worker['fio']+'</span>';
-					html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, '+"'"+worker_id+"'"+')" class="info-row"></div>';
+					html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, \''+worker_id+'\')" class="info-row"></div>';
 					html += '</div>';
 					html += '</div>';
 					
