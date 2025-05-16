@@ -671,6 +671,24 @@ function setCells(value, isComment=false, isFullClear=false){
 			changedCells[id][day] = TABEL[id][day];
 			// Смещаем таймер активности на 10 секунд вперёд, если пользователь работает
 			TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+			// Логирование изменения ячейки
+			if (typeof sendActionToServer === 'function') {
+				sendActionToServer({
+					type: 'cell_change',
+					row: cell['row'],
+					col: cell['col'],
+					oldValue: {
+						vt: TABEL[id][day]['vt'],
+						hours: TABEL[id][day]['hours'],
+						comment: TABEL[id][day]['comment']
+					},
+					newValue: {
+						vt: TABEL[id][day]['vt'],
+						hours: TABEL[id][day]['hours'],
+						comment: TABEL[id][day]['comment']
+					}
+				});
+			}
 		}
 		
 		let col = Number(cell['col'])+1;
@@ -721,13 +739,23 @@ function setComment(clear=false){
 	
 	if(clear){
 		setCells("", true);
+		// Логирование удаления комментария
+		if(selectedCells.length > 0) {
+			let cell = selectedCells[0];
+			logComment('delete', cell.row, cell.col, '');
+		}
 	}else{
 		setCells($('#add-comment-in').val(), true);
+		// Логирование добавления/редактирования комментария
+		if(selectedCells.length > 0) {
+			let cell = selectedCells[0];
+			logComment('edit', cell.row, cell.col, $('#add-comment-in').val());
+		}
 	}
 	
 	$('#add-comment-in').val("");
 	$('#add-comment-dv').removeClass('show');
-	
+	logModal('close', 'add-comment-dv');
 	settingComment = false;
 	
 }
@@ -1118,6 +1146,7 @@ function contextAction(act){
 			$('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
 			$('#add-comment-in').focus();
 			settingComment = true;
+			logModal('open', 'add-comment-dv');
 			break;
 		case "clear":
 			showConfirmClearModal(function() {
@@ -1299,6 +1328,11 @@ function changeFilter(type){
 		
 	}
 	
+	// Логирование применения фильтра
+	logFilterApply({
+		fio: $('#fio-filter-in').val(),
+		// Можно добавить другие параметры фильтра при необходимости
+	});
 }
 
 function changeChief(worker_id){
@@ -2643,4 +2677,90 @@ function showConfirmClearModal(onConfirm) {
     });
 }
 
-// Фф
+// Логирование клика по ячейке
+$(document).on('click', '[id$="-day-dv"]', function(e) {
+    var id = $(this).attr('id');
+    var match = id.match(/^(\d+)-(\d+)-day-dv$/);
+    if (match) {
+        var row = parseInt(match[1], 10) - 1;
+        var col = parseInt(match[2], 10) - 1;
+        if (typeof sendActionToServer === 'function') {
+            sendActionToServer({
+                type: 'cell_click',
+                row: row,
+                col: col
+            });
+        }
+    }
+});
+
+// Логирование перехода между страницами
+function logPageNavigation(page) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'navigate', page: page });
+    }
+}
+
+// Логирование применения фильтра
+function logFilterApply(filter) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'filter_apply', filter: filter });
+    }
+}
+
+// Логирование открытия/закрытия модального окна
+function logModal(action, modalId) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'modal', action: action, modal: modalId });
+    }
+}
+
+// Логирование ошибок
+function logError(message, details) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'error', message: message, details: details });
+    }
+}
+
+// Логирование массового изменения
+function logMassEdit(cells, newValue) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'mass_edit', cells: cells, newValue: newValue });
+    }
+}
+
+// Логирование работы с комментариями
+function logComment(action, row, col, comment) {
+    if (typeof sendActionToServer === 'function') {
+        sendActionToServer({ type: 'comment', action: action, row: row, col: col, comment: comment });
+    }
+}
+
+// Пример использования:
+// 1. Навигация между страницами
+$(document).ready(function() {
+    var page = window.location.pathname.split('/').pop().replace('.htm', '');
+    logPageNavigation(page);
+});
+
+// 2. Применение фильтра (вызывайте logFilterApply в функции changeFilter или аналогичной)
+// Например, после применения фильтра:
+// logFilterApply({ fio: $('#fio-filter-in').val() });
+
+// 3. Открытие/закрытие модальных окон (например, комментарии)
+$('#add-comment-dv').on('show', function() { logModal('open', 'add-comment-dv'); });
+$('#add-comment-dv').on('hide', function() { logModal('close', 'add-comment-dv'); });
+
+// 4. Ошибки (например, при потере соединения)
+function showConnectionError(message = "Потеряно соединение с сервером! Изменения не сохранены.") {
+    logError(message, {});
+    // ... существующий код ...
+}
+
+// 5. Массовое изменение (например, при выделении диапазона и изменении значения)
+// logMassEdit([{row: 1, col: 2}, {row: 1, col: 3}], 'Я');
+
+// 6. Работа с комментариями (добавление, изменение, удаление)
+// logComment('add', row, col, comment);
+// logComment('edit', row, col, comment);
+// logComment('delete', row, col, '');
