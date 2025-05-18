@@ -1,6 +1,8 @@
 ﻿let TODAY			= -1;
-let DATATIME		= new Date().format("yyyymmddHHMMss");
+let DATATIME 		= (new Date()).format("yyyymmddHHMMss");
 let DATA			= [];
+let sessionIntervalId = null;
+let activityIntervalId = null;
 let DAYS			= [];
 let LOCATIONS		= [];
 let WORKERS			= [];
@@ -28,18 +30,91 @@ let unselectedBgd	= '#f6f7f6';
 let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
-let VER 			= "20";
+let VER 			= "19";
 
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
 
 let wasShift = false;
 
+window.AUTH_HEADER = 'Basic d2ViOkFTRHFhejEyMw==';
+
+
 document.addEventListener("mousedown", 	setMouseDownState);
 document.addEventListener("mousemove", 	setMouseDownState);
 document.addEventListener("mouseup", 	setMouseUpState);
 document.addEventListener('keydown', 	setCellVal);
 document.addEventListener('scroll', 	scrollDocument);
+
+$(document).ready(function() {
+    if (!sessionIntervalId) {
+        sessionIntervalId = setInterval(() => checkSession(), 60*1000);
+    }
+    if (!activityIntervalId) {
+        activityIntervalId = setInterval(() => checkActivity(), 1*1000);
+    }
+    checkTabelWindowSize();
+    $(window).on('resize', checkTabelWindowSize);
+
+    // === Модальное окно для отчетов ===
+    if ($('#reports-modal').length === 0) {
+      $('body').append(`
+        <div id="reports-modal" style="display:none;position:fixed;z-index:10001;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);" class="reports-modal-center">
+          <div id="reports-modal-content" style="background:#fff;padding:32px 36px 24px 36px;border-radius:12px;box-shadow:0 4px 24px #0002;min-width:320px;max-width:96vw;max-height:90vh;position:relative;">
+            <div style="font-size:22px;font-weight:bold;margin-bottom:18px;">Выберите тип отчета</div>
+            <div style="margin-bottom:18px;">
+              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="masters" checked> По мастерам</label>
+              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="firms"> По организациям</label>
+              <label style="display:block;"><input type="radio" name="report-groupby" value="locations"> По объектам</label>
+            </div>
+            <div style="display:flex;gap:18px;justify-content:center;margin-top:18px;">
+              <button id="report-pdf-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">PDF</button>
+              <button id="report-xlsx-btn" class="btn btn-secondary" style="padding:8px 24px;font-size:16px;">Excel</button>
+            </div>
+            <button id="reports-modal-close" style="position:absolute;top:8px;right:12px;font-size:22px;background:none;border:none;color:#888;cursor:pointer;">&times;</button>
+          </div>
+          <div id="reports-modal-spinner" style="display:none;position:absolute;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.5);z-index:10002;align-items:center;justify-content:center;">
+            <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;">
+              <div class="spinner" style="border:6px solid #eee;border-top:6px solid #0071c8;border-radius:50%;width:48px;height:48px;animation:spin 1s linear infinite;"></div>
+              <div style="margin-top:18px;font-size:18px;color:#0071c8;">Загрузка отчёта...</div>
+            </div>
+          </div>
+        </div>
+        <style>
+          .reports-modal-center {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+          @keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}
+        </style>
+      `);
+    }
+
+    $('#menu-reports').off('click.reportsModal').on('click.reportsModal', function(e) {
+      $('#reports-modal').fadeIn(120);
+      logUserAction('openReportsModal');
+    });
+
+    $(document).on('click', '#reports-modal-close', function() {
+      $('#reports-modal').fadeOut(120);
+      logUserAction('closeReportsModal');
+    });
+    // Клик вне окна — закрыть
+    $(document).on('mousedown', function(e) {
+      if ($('#reports-modal').is(':visible') && !$(e.target).closest('#reports-modal-content').length && !$(e.target).is('#menu-reports')) {
+        $('#reports-modal').fadeOut(120);
+      }
+    });
+
+    $(document).off('click.reportDownload').on('click.reportDownload', '#report-pdf-btn, #report-xlsx-btn', function() {
+      let groupby = $("input[name='report-groupby']:checked").val();
+      let type = $(this).attr('id') === 'report-pdf-btn' ? 'pdf' : 'xlsx';
+      downloadReportWithAuth(groupby, type);
+      $('#reports-modal').fadeOut(120);
+      logUserAction('downloadReport', { type: type });
+    });
+});
 
 
 // CREATE ===========================
@@ -52,21 +127,23 @@ function checkSession(){
 
 function checkActivity(){
 	if((Math.floor(Date.now() / 1000) - TIMESTAMP_ACTIVITY) > 10){
+        console.log('[Табель] Автообновление данных: ', new Date().toLocaleString());
 		getDataTabel(false, false, UID, DATATIME, true);
 	}
 }
 
 async function getDataTabel(loader=true, hideAfter=false, UID, date, update=false){
 
+    console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update});
+
 	if(!UID || !date) return;
 	
-	let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", [UID, date, update]);
+	let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", [UID, DATATIME, update]);
+
+	console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
 
 	TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 	TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
-	
-	setInterval(() => checkSession(), 60*1000);
-	setInterval(() => checkActivity(), 1*1000);
 	
 	if(data){
 
@@ -79,6 +156,11 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			DAYS 		= data.result.days;
 			LOCATIONS 	= data.result.locations;
 			DATA 		= data.result.data;
+			// --- ДОБАВЛЕНО: сохранять organizations только при первой инициализации ---
+			if(!window.organizations && data.result.organizations) {
+				window.organizations = data.result.organizations;
+				renderOrgFilter(window.organizations);
+			}
 				
 			$("#loader").hide();
 			
@@ -89,13 +171,22 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			let pageX = window.pageXOffset;
 			let pageY = window.pageYOffset;	
 			
+			saveSelection();
 			createHead();
 			createTabel();
+			restoreSelection();
+			updateOrgFilterSelected();
+			applyOrgFilter();
+			restoreLastCellOrScroll();
 			
-			scrollTo(pageX, pageY);
+			// Обновляем глобальные переменные для тултипов
+			window.SAVED_DATA = DATA;
 			
 			// Вызываем initTooltips ПОСЛЕ того, как данные загружены и таблица создана
 			initTooltips();
+			
+			// --- ДОБАВЛЕНО: применить фильтр после построения таблицы ---
+			if(window.organizations) applyOrgFilter();
 			
 		}else{
 			
@@ -106,7 +197,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			$('#loader_des').append(data.des);
 			$('#loader_des').show();
 			$('#loader').show();
-/*
+
 			SID = null;
 			UID = null;	
 			LABEL = null;
@@ -114,7 +205,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			delAllCookie();
 				
 			document.location.href="/auth.htm";
-*/
+
 			}
 			
 	}else{
@@ -160,11 +251,12 @@ function createHead(){
 	$('#head-days').html(headDays);
 	
 	$('#menu-head').width($('#head').innerWidth()-10);
-	// Удалена синхронизация ширины #head-days через JS
 
 }
 
 function createTabel(){
+    WORKERS = [];
+    TABEL = [];
 
 	$('#filter-firms-dv').empty();
 	$('#filter-posts-dv').empty();
@@ -329,7 +421,11 @@ function createTabel(){
 						}
 						
 						suffix = day['weekend'] ? 'weekend' : 'work';
-						opacity = '1';//day['enable'] ? '1' : '.5';
+						opacity = '1';
+						let isFixed = day && day.fixState;
+						let cellClass = 'days-' + suffix;
+						if (isFixed) cellClass += ' cell-fixed';
+						//day['enable'] ? '1' : '.5';
 					
 						// Формируем красивый html для ячейки
 						let hoursNum = Number(dayHours);
@@ -345,7 +441,7 @@ function createTabel(){
 						}
 						htmlCell += `<div id="${days_id}-day-comment" class="days-comment" style="display: ${day['comment'] != "" ? "block" : "none"};"></div>`;
 						
-						htmlDays += '<div id="'+days_id+'-day-dv" class="days-'+suffix+'" style="opacity:'+opacity+';" title="'+day['comment']+'" onMouseDown="startSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
+						htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+'"'+(isFixed ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';" title="'+day['comment']+'" onMouseDown="startSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
 						
 					}
 					
@@ -475,7 +571,7 @@ async function sendDataTabel(full=true){
     if(items.length == 0) return;
     let data;
     try {
-        data = await getData(full, !full, "ЗаписатьЗначенияТабеля", [UID, curDate.format("yyyymmdd"), items]);
+        data = await getData(full, !full, "ЗаписатьЗначенияТабеля", [UID, curDate.format("yyyymmddHHMMss"), items]);
     } catch (e) {
         showConnectionError("Ошибка соединения с сервером! Попробуйте позже.");
         return;
@@ -573,6 +669,57 @@ function toPage(chapter=""){
 
 let changedCells = {};
 function setCells(value, isComment=false, isFullClear=false){
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
+        // Если ячейка фиксирована, разрешаем только часы и комментарий
+        if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') {
+            if (!isComment && !isFullClear) {
+                // Разрешаем только изменение часов, если value — число или пусто (очистка)
+                if ((/^\d+$/.test(value) && value !== "") || value === "" || value === 0) {
+                    // Меняем только часы, не трогаем vt!
+                    let uid = WORKERS[Number(cell['row'])]['uid'];
+                    let day = Number(cell['col']);
+                    let no = Number(cell['row'])+1;
+                    let id = no+'_'+uid;
+                    let hoursVal = value === "" ? 0 : Number(value);
+                    TABEL[id][day]['hours'] = hoursVal;
+					// === ДОБАВЛЕНО: фиксируем изменение для отправки на сервер ===
+					if (!changedCells[id]) changedCells[id] = {};
+					changedCells[id][day] = TABEL[id][day];
+					TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                    // Обновляем отображение
+                    let htmlValue = '';
+                    let dayValue = TABEL[id][day]['vt'];
+                    let hoursNum = hoursVal;
+                    if(dayValue && !hoursNum){
+                        htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                    } else if(dayValue && hoursNum) {
+                        htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                    } else {
+                        htmlValue = '';
+                    }
+                    htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+                    if(hoursNum == 0) {
+                        htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+                    }
+                    $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+                    // Цвета и стили
+                    if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
+                        $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
+                    }else{
+                        $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
+                    }
+                    // Не трогаем vt!
+                    return;
+                } else {
+                    // Не часы и не пусто — ничего не делаем
+                    return;
+                }
+            }
+            // Комментарии разрешены ниже
+        }
+    }
 	
 	let uid = "";
 	let day = -1;
@@ -671,24 +818,6 @@ function setCells(value, isComment=false, isFullClear=false){
 			changedCells[id][day] = TABEL[id][day];
 			// Смещаем таймер активности на 10 секунд вперёд, если пользователь работает
 			TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-			// Логирование изменения ячейки
-			if (typeof sendActionToServer === 'function') {
-				sendActionToServer({
-					type: 'cell_change',
-					row: cell['row'],
-					col: cell['col'],
-					oldValue: {
-						vt: TABEL[id][day]['vt'],
-						hours: TABEL[id][day]['hours'],
-						comment: TABEL[id][day]['comment']
-					},
-					newValue: {
-						vt: TABEL[id][day]['vt'],
-						hours: TABEL[id][day]['hours'],
-						comment: TABEL[id][day]['comment']
-					}
-				});
-			}
 		}
 		
 		let col = Number(cell['col'])+1;
@@ -736,26 +865,23 @@ function getCellValue(indexRow, indexCol){
 }
 
 function setComment(clear=false){
-	
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
+        // Если ячейка фиксирована, разрешаем только комментарий
+        if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') {
+            // Разрешаем только комментарий
+        }
+    }
 	if(clear){
 		setCells("", true);
-		// Логирование удаления комментария
-		if(selectedCells.length > 0) {
-			let cell = selectedCells[0];
-			logComment('delete', cell.row, cell.col, '');
-		}
 	}else{
 		setCells($('#add-comment-in').val(), true);
-		// Логирование добавления/редактирования комментария
-		if(selectedCells.length > 0) {
-			let cell = selectedCells[0];
-			logComment('edit', cell.row, cell.col, $('#add-comment-in').val());
-		}
 	}
 	
 	$('#add-comment-in').val("");
 	$('#add-comment-dv').removeClass('show');
-	logModal('close', 'add-comment-dv');
+	
 	settingComment = false;
 	
 }
@@ -924,6 +1050,8 @@ function unselectCells(){
 	$("#context-menu").hide(50);
 	$("#cell-menu").hide(50);
 	$('#history-menu').hide(50);
+	saveScrollCellToCookie();
+	saveLastCellToStorage();
 }
 
 let curRow = -1;
@@ -982,11 +1110,15 @@ function selectCell(indexRow, indexCol, shiftSelection=false){
 	$('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv').css("color", selectedFnt);
 	$('#'+Number(indexRow+1)+'number-row').css("background", selectedBgd);
 	$('#0_'+Number(indexCol)+'-day-dv').css("background", selectedBgd);
+	saveScrollCellToCookie();
+	saveLastCellToStorage();
 }
 
 let startRow = -1;
 let startCol = -1;
 function startSelect(indexRow, indexCol, shiftSelection=false){
+    let $cell = $('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv');
+    if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') return;
     // Если Shift нажат и уже есть одна выделенная ячейка
     if ((window.event && window.event.shiftKey) && selectedCells.length === 1) {
         let start = selectedCells[0];
@@ -1050,44 +1182,59 @@ function endSelect(indexRow, indexCol){
 }
 
 function selectRow(indexRow){
-	
 	unselectCells();
-	
+	let hasVisible = false;
 	for(let j in DAYS){	
-		
 		let col_no = Number(j)+1;
-		
-		let cell 	= {};
+		let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
+		if ($cell.is(':visible')) {
+			hasVisible = true;
+			break;
+		}
+	}
+	if (!hasVisible) return; // Нет видимых ячеек — не выделяем
+
+	for(let j in DAYS){
+		let col_no = Number(j)+1;
+		let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
+		if (!$cell.is(':visible')) continue;
+		let cell  = {};
 		cell['row'] = indexRow;
 		cell['col'] = Number(j);
-		
 		selectedCells.push(cell);
-		
-		$('#'+Number(indexRow+1)+'-'+col_no+'-day-dv').css("background", selectedBgd);
-		$('#'+Number(indexRow+1)+'-'+col_no+'-day-dv').css("color", selectedFnt);
+		$cell.css("background", selectedBgd);
+		$cell.css("color", selectedFnt);
 	}
-	
+	saveScrollCellToCookie();
+	saveLastCellToStorage();
 }
 
 function selectCol(indexCol){
-	
 	unselectCells();
-	
+	let hasVisible = false;
 	for(let i in WORKERS){
-
 		let row_no = Number(i)+1;
-		
-		let cell 	= {};
+		let $cell = $('#'+row_no+'-'+Number(indexCol+1)+'-day-dv');
+		if ($cell.is(':visible')) {
+			hasVisible = true;
+			break;
+		}
+	}
+	if (!hasVisible) return; // Нет видимых ячеек — не выделяем
+
+	for(let i in WORKERS){
+		let row_no = Number(i)+1;
+		let $cell = $('#'+row_no+'-'+Number(indexCol+1)+'-day-dv');
+		if (!$cell.is(':visible')) continue;
+		let cell  = {};
 		cell['row'] = Number(i);
 		cell['col'] = indexCol;
-		
 		selectedCells.push(cell);
-		
-		$('#'+row_no+'-'+Number(indexCol+1)+'-day-dv').css("background", selectedBgd);
-		$('#'+row_no+'-'+Number(indexCol+1)+'-day-dv').css("color", selectedFnt);
-
+		$cell.css("background", selectedBgd);
+		$cell.css("color", selectedFnt);
 	}
-	
+	saveScrollCellToCookie();
+	saveLastCellToStorage();
 }
 
 function overCell(worker_no, indexRow, indexCol){
@@ -1146,7 +1293,6 @@ function contextAction(act){
 			$('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
 			$('#add-comment-in').focus();
 			settingComment = true;
-			logModal('open', 'add-comment-dv');
 			break;
 		case "clear":
 			showConfirmClearModal(function() {
@@ -1328,11 +1474,6 @@ function changeFilter(type){
 		
 	}
 	
-	// Логирование применения фильтра
-	logFilterApply({
-		fio: $('#fio-filter-in').val(),
-		// Можно добавить другие параметры фильтра при необходимости
-	});
 }
 
 function changeChief(worker_id){
@@ -1426,6 +1567,7 @@ function slideDiv(type, uid){
 		$canvas.slideUp(100);
 		$head.addClass('collapsed');
 		setCookie(type+'_'+uid, "hide", "/", null, null);
+        unselectCells(); // Снимаем выделение при сворачивании
 	}
 }
 
@@ -1645,10 +1787,14 @@ function setCellVal(e){
 			case 27: //esc
 				setComment(true);
 				break;
-		}
+			}
 		
 	}else{
-	
+		// === БЛОКИРОВКА ВВОДА ПРИ СОХРАНЕНИИ ===
+		if(window.tabelIsSaving) {
+			showSavingAlert();
+			return;
+		}
 		switch(keynum){
 			default:
 				let key = String(e.key).toLowerCase();
@@ -1762,7 +1908,7 @@ function setCellVal(e){
 					calcDays();
 					code = '';
 					updateInputIndicator();
-					let cellSelector = '#'+Number(curRow+1)+'-'+Number(curCol+1)+'-day-dv';
+					let cellSelector = '#'+Number(curRow+1)+'-'+Number(curRow+1)+'-day-dv';
 					scrollCellIntoViewWithHeader(cellSelector);
 				}
 				break;
@@ -1965,6 +2111,8 @@ function selectRectangle(startRow, startCol, endRow, endCol) {
             $('#0_'+Number(col)+'-day-dv').css('background', selectedBgd);
         }
     }
+    saveScrollCellToCookie();
+    saveLastCellToStorage();
 }
 
 // Универсальная функция позиционирования меню рядом с ячейкой
@@ -2105,18 +2253,11 @@ let tooltipTimeoutId = null; // Глобальная переменная для
 let tooltipHideTimeoutId = null; // Новая переменная для таймера скрытия тултипа
 
 function initTooltips() {
-    // Удалены все console.log для чистоты кода
     const tooltip = $('#master-tooltip');
-    
     if (!tooltip.length) {
-        console.warn('Элемент #master-tooltip не найден. Создаем новый элемент тултипа.');
-        // Создаем элемент тултипа и добавляем его в DOM с улучшенными стилями
         $('body').append('<div id="master-tooltip" class="tooltip-popup" style="position: absolute; z-index: 9999; background: white; border: 1px solid #788cad; box-shadow: 0 3px 8px rgba(0,0,0,0.3); border-radius: 5px; padding: 10px; display: none; max-width: 400px;"></div>');
-        // Получаем ссылку на созданный элемент
         return initTooltips();
     }
-    
-    // Обновляем стили тултипа для лучшего отображения
     tooltip.css({
         'z-index': 9999,
         'border': '1px solid #788cad',
@@ -2128,174 +2269,54 @@ function initTooltips() {
         'font-size': '12px',
         'line-height': '1.4'
     });
-
-    // НОВЫЙ КОД: Сохраняем ссылку на данные в глобальной переменной
     window.SAVED_DATA = DATA;
     window.SAVED_TODAY = TODAY;
-    
-    // Проверим первую локацию и её структуру
-    if (window.SAVED_DATA && window.SAVED_DATA.length > 0) {
-        const location = window.SAVED_DATA[0];
-        if (location.chiefs) {
-            for (let chiefKey in location.chiefs) {
-                const chief = location.chiefs[chiefKey];
-                break;
-            }
-        }
-    }
-
-    // Проверяем наличие данных перед настройкой тултипов
-    if (!DATA || DATA.length === 0) {
-        console.warn('Массив DATA пуст. Тултипы будут настроены, но данных для отображения нет.');
-    }
-
-    // Проверяем наличие элементов, на которые навешиваем обработчики
-    const masterHeads = $('.master-head');
-    const chiefHeads = $('.chief-head');
-    const locationHeads = $('.location-head');
-    
-    // Проверяем структуру DATA
-    if (typeof DATA !== 'undefined' && Array.isArray(DATA)) {
-        if (DATA.length > 0) {
-        }
-    }
-
-    // Проверяем наличие data-атрибутов на заголовках
-    if (masterHeads.length > 0) {
-        const firstMasterHead = masterHeads.first();
-    }
-
-    // Снимаем предыдущие обработчики, если они были
+    // Снимаем предыдущие обработчики
     $(document).off('mouseenter.genericTooltip mouseleave.genericTooltip');
-
-    const $window = $(window);
-
-    // Добавляем проверку на успешное назначение обработчика
-    $(document).on('mouseenter.genericTooltip', '.master-head, .chief-head, .location-head', function(e){
+    // Навешиваем только на строку "Пустых"
+    $(document).on('mouseenter.genericTooltip', '[id$="-empty-sp"]', function(e){
         const $hoveredElement = $(this);
-        
         if (tooltipTimeoutId) {
             clearTimeout(tooltipTimeoutId);
         }
-
-        // Гарантируем, что глобальные переменные доступны
-        if (!window.SAVED_DATA || !Array.isArray(window.SAVED_DATA) || window.SAVED_DATA.length === 0) {
-            return;
-        }
-
-        // Обновляем данные о TODAY
-        let today = window.SAVED_TODAY;
-        if (today === -1 || today >= DAYS.length) {
-            // Попробуем найти сегодняшнюю дату сами
+        // Определяем тип head по родителю
+        let $head = $hoveredElement.closest('.master-head, .chief-head, .location-head');
+        let elementType = '';
+        if ($head.hasClass('master-head')) elementType = 'master';
+        else if ($head.hasClass('chief-head')) elementType = 'chief';
+        else if ($head.hasClass('location-head')) elementType = 'location';
+        // Индексы для поиска
+        const locationIdx = $head.data('location-idx');
+        const chiefIdx = $head.data('chief-idx');
+        const masterIdx = $head.data('master-idx');
+        tooltipTimeoutId = setTimeout(() => {
+            let workersForTooltip = [];
+            let todayIndex = window.SAVED_TODAY;
+            if (todayIndex === -1 || todayIndex >= DAYS.length) {
             for (let i = 0; i < DAYS?.length || 0; i++) {
                 if (DAYS[i]?.today) {
-                    today = i;
+                        todayIndex = i;
                     break;
                 }
             }
-            if (today === -1) {
-                today = 0;
+                if (todayIndex === -1) todayIndex = 0;
             }
-        }
-
-        tooltipTimeoutId = setTimeout(() => {
-            let workersForTooltip = [];
-            let elementType = '';
-
-            // Запоминаем значение today от внешней области видимости
-            let todayIndex = today;
-
-            if ($hoveredElement.hasClass('master-head')) { elementType = 'master'; }
-            else if ($hoveredElement.hasClass('chief-head')) { elementType = 'chief'; }
-            else if ($hoveredElement.hasClass('location-head')) { elementType = 'location'; }
-
-            // Получаем индексы из data-атрибутов
-            const locationIdx = $hoveredElement.data('location-idx');
-            const chiefIdx = $hoveredElement.data('chief-idx');
-            const masterIdx = $hoveredElement.data('master-idx');
-            
-            // Проверяем, есть ли данные в DATA
-            if (!window.SAVED_DATA || typeof window.SAVED_DATA !== 'object' || !window.SAVED_DATA.length) {
-                tooltip.hide();
-                return;
-            }
-            
-            // Используем сохраненные данные вместо DATA
             const savedData = window.SAVED_DATA;
-            
-            // Проверка значений индексов перед использованием
-            if (elementType === 'master' && locationIdx !== undefined && chiefIdx !== undefined && masterIdx !== undefined) {
-            }
-            
-            // Используем глобальную переменную DATA
-            if (elementType === 'master') {
-                try {
-                    // Получаем UID мастера из ID элемента
-                    const masterId = $hoveredElement.attr('id').split('-')[0];
-                    
-                    // Проверяем прямой доступ через индексы
-                    if (typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && 
-                        typeof masterIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
+            if (elementType === 'master' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && typeof masterIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
                         const location = savedData[locationIdx];
-                        
                         if (location && location.chiefs && chiefIdx in location.chiefs) {
                             const chief = location.chiefs[chiefIdx];
-                            
                             if (chief && chief.masters && masterIdx in chief.masters) {
                                 const master = chief.masters[masterIdx];
-                                
                                 if (master && master.workers) {
                                     workersForTooltip = [...master.workers];
-                                } else {
-                                }
-                            } else {
-                            }
-                        } else {
                         }
-                    } else {
-                        // Перебираем всю структуру DATA в поисках нужного мастера
-                        let found = false;
-                        for (let locIdx = 0; locIdx < savedData.length && !found; locIdx++) {
-                            const location = savedData[locIdx];
-                            if (!location || !location.chiefs) continue;
-                            
-                            for (let chiefKey in location.chiefs) {
-                                const chief = location.chiefs[chiefKey];
-                                if (!chief || !chief.masters) continue;
-                                
-                                for (let masterKey in chief.masters) {
-                                    const master = chief.masters[masterKey];
-                                    
-                                    // Проверяем ID мастера в UID элемента
-                                    if (master && master.uid && masterId.includes(master.uid)) {
-                                        if (master.workers) {
-                                            workersForTooltip = [...master.workers];
-                                            found = true;
-                                            break;
-                                        } else {
-                                        }
-                                    }
                                 }
-                                if (found) break;
                             }
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error searching for master workers:', e);
-                }
-            } else if (elementType === 'chief') {
-                try {
-                    // Получаем UID начальника из ID элемента
-                    const chiefId = $hoveredElement.attr('id').split('-')[0];
-                    
-                    // Проверяем прямой доступ через индексы
-                    if (typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && 
-                        locationIdx >= 0 && locationIdx < savedData.length) {
+            } else if (elementType === 'chief' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
                         const location = savedData[locationIdx];
-                        
                         if (location && location.chiefs && chiefIdx in location.chiefs) {
                             const chief = location.chiefs[chiefIdx];
-                            
                             if (chief && chief.masters) {
                                 for (let m_key in chief.masters) {
                                     const master = chief.masters[m_key];
@@ -2303,132 +2324,27 @@ function initTooltips() {
                                         workersForTooltip.push(...master.workers);
                                     }
                                 }
-                            } else {
-                            }
-                        } else {
-                        }
-                    } else {
-                        // Перебираем всю структуру DATA в поисках нужного начальника
-                        let found = false;
-                        for (let locIdx = 0; locIdx < savedData.length && !found; locIdx++) {
-                            const location = savedData[locIdx];
-                            if (!location || !location.chiefs) continue;
-                            
-                            for (let chiefKey in location.chiefs) {
-                                const chief = location.chiefs[chiefKey];
-                                
-                                // Проверяем ID начальника в UID элемента
-                                if (chief && chief.uid && chiefId.includes(chief.uid)) {
-                                    if (chief.masters) {
-                                        for (let masterKey in chief.masters) {
-                                            const master = chief.masters[masterKey];
-                                            if (master && master.workers) {
-                                                workersForTooltip.push(...master.workers);
-                                            }
-                                        }
-                                    } else {
-                                    }
-                                } else {
-                                }
-                            }
-                        }
                     }
-                } catch (e) {
-                    console.error('Error searching for chief workers:', e);
-                }
-            } else if (elementType === 'location') {
-                try {
-                    // Получаем UID локации из ID элемента
-                    const locationId = $hoveredElement.attr('id').split('-')[0];
-                    
-                    // Ищем соответствующие данные через индекс
-                    if (typeof locationIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
+                            }
+            } else if (elementType === 'location' && typeof locationIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
                         const location = savedData[locationIdx];
-                        
                         if (location && location.chiefs) {
-                            const chiefs = location.chiefs;
-                            
-                            for (let c_key in chiefs) {
-                                if (chiefs[c_key]?.masters) {
-                                    const masters = chiefs[c_key].masters;
-                                    for (let m_key in masters) {
-                                        if (masters[m_key]?.workers) {
-                                            workersForTooltip.push(...masters[m_key].workers);
-                                        }
-                                    }
-                                }
-                            }
-                        } else {
-                        }
-                    } else {
-                        // Если прямой доступ не сработал, ищем по ID
-                        console.log('Direct access failed or not available, searching by ID:', locationId);
-                        
-                        // Перебираем всю структуру DATA в поисках нужной локации
-                        for (let locIdx = 0; locIdx < savedData.length; locIdx++) {
-                            const location = savedData[locIdx];
-                            
-                            // Выводим отладочную информацию о текущей локации
-                            if (location) {
-                                console.log('Checking location', locIdx, 'UID:', location.uid);
-                            }
-                            
-                            // Проверяем, совпадает ли ID локации с частью ID элемента
-                            if (location && locationId.includes(location.uid)) {
-                                console.log('Found matching location by UID:', location.uid);
-                                
-                                if (location.chiefs) {
-                                    const chiefCount = Object.keys(location.chiefs).length;
-                                    console.log('Location has chiefs:', chiefCount);
-                                    
-                                    for (let chiefKey in location.chiefs) {
-                                        const chief = location.chiefs[chiefKey];
+                    for (let c_key in location.chiefs) {
+                        const chief = location.chiefs[c_key];
                                         if (chief.masters) {
-                                            const masterCount = Object.keys(chief.masters).length;
-                                            console.log('Chief', chiefKey, 'has masters:', masterCount);
-                                            
-                                            for (let masterKey in chief.masters) {
-                                                const master = chief.masters[masterKey];
+                            for (let m_key in chief.masters) {
+                                const master = chief.masters[m_key];
                                                 if (master.workers) {
-                                                    console.log('Master', masterKey, 'has workers:', master.workers.length);
                                                     workersForTooltip.push(...master.workers);
                                                 }
                                             }
                                         }
                                     }
                                 }
-                                console.log('Found workers for location (by ID):', workersForTooltip.length);
-                                break;
-                            }
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error searching for location workers:', e);
-                }
             }
-
-            if (workersForTooltip.length === 0) {
-                console.log('No workers found for tooltip, hiding tooltip');
-                tooltip.hide();
-                return;
-            }
-
-            console.log('Found workers for tooltip:', workersForTooltip.length);
-            
-            // Восстанавливаем полную версию HTML для тултипа
+            // ... формирование statsTableHtml как раньше ...
             let statsTableHtml = '';
-            
-            // Проверяем валидность today и DAYS
-            console.log('TODAY global value:', TODAY);
-            console.log('Using todayIndex value:', todayIndex);
-            console.log('DAYS exists:', typeof DAYS !== 'undefined' && Array.isArray(DAYS));
-            if (typeof DAYS !== 'undefined' && Array.isArray(DAYS)) {
-                console.log('DAYS length:', DAYS.length);
-            }
-            
             if (typeof DAYS !== 'undefined' && Array.isArray(DAYS) && DAYS.length > 0) {
-                console.log('TODAY is valid and within DAYS range');
-                // Фильтруем только реальных сотрудников
                 const filteredWorkers = workersForTooltip.filter(
                     w => w && w.uid && w.fio && typeof w.fio === 'string' && !/^[<‹]/.test(w.fio.trim())
                 );
@@ -2438,21 +2354,13 @@ function initTooltips() {
                 let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
                 let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'ДО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0};
                 let totalWorkers = 0;
-                let vtDebugArr = [];
                 for(let w_idx in filteredWorkers){
                     let worker = filteredWorkers[w_idx];
                     let vt = '';
-                    if (
-                        !worker.days ||
-                        !Array.isArray(worker.days) ||
-                        worker.days.length <= todayIndex ||
-                        !worker.days[todayIndex] ||
-                        typeof worker.days[todayIndex] !== 'object'
-                    ) {
+                    if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
                         continue;
                     }
                     vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
-                    vtDebugArr.push({fio: worker.fio, vt: vt});
                     totalWorkers++;
                     if (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') {
                         countEmpty++;
@@ -2471,13 +2379,11 @@ function initTooltips() {
                         countEmpty++;
                     }
                 }
-                console.log('DEBUG VT LIST:', vtDebugArr);
                 let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
                 let sumAbsent = 0;
                 for (const code in detailedAbsentCounts) {
                     sumAbsent += detailedAbsentCounts[code];
                 }
-                // 'На объекте' — это totalWorkers - sumAbsent
                 statsTableHtml = `
                 <div class="master-tooltip-content">
                     <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
@@ -2529,21 +2435,15 @@ function initTooltips() {
                 </div>
                 `;
             } else {
-                console.log('TODAY is not valid or not within DAYS range');
                 statsTableHtml = '<div style="color:#888; padding: 5px;">Нет данных на сегодня</div>';
             }
-
             if (!statsTableHtml) { 
-                console.log('statsTableHtml is empty, hiding tooltip');
                 tooltip.hide();
                 return;
             }
-            
-            console.log('HTML created for tooltip');
             tooltip.html(statsTableHtml);
-
-            // Позиционирование тултипа с учетом размеров окна
-            let $anchor = $hoveredElement; // всегда сам элемент!
+            // Позиционирование тултипа относительно строки "Пустых"
+            let $anchor = $hoveredElement;
             let offset = $anchor.offset();
             let anchorWidth = $anchor.outerWidth();
             let anchorHeight = $anchor.outerHeight();
@@ -2553,8 +2453,6 @@ function initTooltips() {
             let windowHeight = $(window).height();
             let scrollTop = $(window).scrollTop();
             let margin = 10;
-
-            // По правому краю элемента
             let left = offset.left + anchorWidth - menuWidth;
             if (left < margin) {
                 left = margin;
@@ -2562,7 +2460,6 @@ function initTooltips() {
             if (left + menuWidth > windowWidth - margin) {
                 left = windowWidth - menuWidth - margin;
             }
-
             let top = offset.top + anchorHeight + 5;
             if (top + menuHeight > windowHeight + scrollTop - margin) {
                 top = offset.top - menuHeight - 5;
@@ -2570,35 +2467,24 @@ function initTooltips() {
                     top = Math.max((windowHeight - menuHeight) / 2 + scrollTop, scrollTop + margin);
                 }
             }
-
             tooltip.css({
                 opacity: 0,
                 top: top + 'px',
                 left: left + 'px'
             }).show().animate({opacity: 1}, 150);
-
         }, 1000);
     });
-
-    console.log('Attaching mouseleave event handler...');
-    $(document).on('mouseleave.genericTooltip', '.master-head, .chief-head, .location-head', function(){
-        console.log('mouseleave event fired on:', this.className);
+    $(document).on('mouseleave.genericTooltip', '[id$="-empty-sp"]', function(){
         if (tooltipTimeoutId) {
             clearTimeout(tooltipTimeoutId);
         }
-        
-        // Очищаем таймер скрытия, если он был установлен
         if (tooltipHideTimeoutId) {
             clearTimeout(tooltipHideTimeoutId);
         }
-        
-        // Устанавливаем новый таймер скрытия с задержкой
         tooltipHideTimeoutId = setTimeout(() => {
             tooltip.fadeOut(100);
         }, 300);
     });
-    
-    // Добавляем обработчик наведения на сам тултип для предотвращения скрытия
     tooltip.on('mouseenter', function() {
         if (tooltipHideTimeoutId) {
             clearTimeout(tooltipHideTimeoutId);
@@ -2606,37 +2492,6 @@ function initTooltips() {
     }).on('mouseleave', function() {
         tooltip.stop(true, true).fadeOut(100);
     });
-    
-    // Добавляем диагностическое логирование
-    console.log('initTooltips configuration complete, checking headers...');
-    
-    // Проверяем несколько заголовков, чтобы убедиться, что data-атрибуты установлены
-    if ($('.master-head').length > 0) {
-        const sample = $('.master-head').first();
-        console.log('Sample master-head data attributes:', {
-            'id': sample.attr('id'),
-            'location-idx': sample.data('location-idx'),
-            'chief-idx': sample.data('chief-idx'),
-            'master-idx': sample.data('master-idx')
-        });
-    }
-    
-    if ($('.chief-head').length > 0) {
-        const sample = $('.chief-head').first();
-        console.log('Sample chief-head data attributes:', {
-            'id': sample.attr('id'),
-            'location-idx': sample.data('location-idx'),
-            'chief-idx': sample.data('chief-idx')
-        });
-    }
-    
-    if ($('.location-head').length > 0) {
-        const sample = $('.location-head').first();
-        console.log('Sample location-head data attributes:', {
-            'id': sample.attr('id'),
-            'location-idx': sample.data('location-idx')
-        });
-    }
 }
 
 // Также вызываем initTooltips только при загрузке страницы,
@@ -2652,7 +2507,7 @@ $(document).ready(function() {
 // Добавляем индикатор ввода при загрузке страницы
 $(document).ready(function() {
     if ($('#input-indicator').length === 0) {
-        $('body').append('<div id="input-indicator" style="position:fixed;top:210px;right:30px;z-index:9999;background:#fff;border:1px solid #ccc;padding:3px 8px;border-radius:5px;box-shadow:0 2px 6px #0002;display:none;font-size:16px;"></div>');
+        $('body').append('<div id="input-indicator" style="position:fixed;top:210px;right:30px;background:#fff;border:1px solid #ccc;padding:3px 8px;border-radius:5px;box-shadow:0 2px 6px #0002;display:none;font-size:16px;"></div>');
     }
 });
 
@@ -2677,90 +2532,962 @@ function showConfirmClearModal(onConfirm) {
     });
 }
 
-// Логирование клика по ячейке
-$(document).on('click', '[id$="-day-dv"]', function(e) {
-    var id = $(this).attr('id');
-    var match = id.match(/^(\d+)-(\d+)-day-dv$/);
-    if (match) {
-        var row = parseInt(match[1], 10) - 1;
-        var col = parseInt(match[2], 10) - 1;
-        if (typeof sendActionToServer === 'function') {
-            sendActionToServer({
-                type: 'cell_click',
-                row: row,
-                col: col
-            });
+// === Фильтр по организациям (overlay) ===
+$(document).ready(function () {
+  // ... существующий код ...
+
+  // Открытие/закрытие overlay
+  $('#open-org-filter').on('click', function() {
+    $('#org-filter-overlay').show();
+  });
+  $('#close-org-filter').on('click', function() {
+    $('#org-filter-overlay').hide();
+  });
+
+  // Генерация списка организаций (вызывать после получения organizations)
+  window.renderOrgFilter = function(organizations) {
+    let selectedArr = [];
+    try {
+      selectedArr = JSON.parse(localStorage.getItem('org_filter_uids') || '[]');
+    } catch(e) { selectedArr = []; }
+    // Добавляем "Без организации" как обычную организацию
+    let orgs = organizations.filter(org => org.firm_uid).map(org => ({...org}));
+    orgs.push({ firm_uid: null, firm_name: 'Без организации' });
+    let orgUids = orgs.map(org => org.firm_uid === null ? 'null' : org.firm_uid);
+    let orgCount = orgUids.length;
+    let allChecked = (selectedArr.length === 0 || selectedArr.length === orgCount);
+    let html = `<label><input type="checkbox" id="org-all-checkbox" ${(allChecked ? 'checked' : '')}>Все</label>`;
+    orgs.forEach(org => {
+      let value = org.firm_uid === null ? 'null' : org.firm_uid;
+      let checked = (selectedArr.length === 0) ? 'checked' : (selectedArr.includes(value) ? 'checked' : '');
+      html += `<label><input type="checkbox" class="org-checkbox" value="${value}" ${checked}>${org.firm_name}</label>`;
+    });
+    $('#org-filter-list').html(html);
+  };
+
+  // Событие для чекбокса "Все"
+  $('#org-filter-list').on('change', '#org-all-checkbox', function() {
+    let checked = $(this).is(':checked');
+    let orgCheckboxes = $('#org-filter-list .org-checkbox');
+    if (checked) {
+      orgCheckboxes.prop('checked', true);
+      localStorage.setItem('org_filter_uids', JSON.stringify([])); // [] = все
+    } else {
+      orgCheckboxes.prop('checked', false);
+      localStorage.setItem('org_filter_uids', JSON.stringify([]));
+    }
+    // applyOrgFilter(); // Убираем автоприменение
+  });
+
+  // Событие выбора чекбоксов организаций
+  $('#org-filter-list').on('change', '.org-checkbox', function() {
+    let arr = [];
+    $('#org-filter-list .org-checkbox:checked').each(function() {
+      arr.push($(this).val());
+    });
+    let orgCount = $('#org-filter-list .org-checkbox').length;
+    if (arr.length === orgCount) arr = [];
+    localStorage.setItem('org_filter_uids', JSON.stringify(arr));
+    // applyOrgFilter(); // Убираем автоприменение
+  });
+
+  // Кнопка "Применить"
+  $(document).on('click', '#org-filter-apply', function() {
+    $('#org-filter-overlay').hide();
+    applyOrgFilter();
+    updateOrgFilterSelected();
+    logUserAction('applyOrgFilter');
+  });
+
+  // Применение фильтра к сотрудникам
+  window.applyOrgFilter = function() {
+    let selectedArr = [];
+    try {
+      selectedArr = JSON.parse(localStorage.getItem('org_filter_uids') || '[]');
+    } catch(e) { selectedArr = []; }
+    let allOrgs = [];
+    if (window.organizations) {
+      allOrgs = window.organizations.filter(org => org.firm_uid).map(org => org.firm_uid);
+      allOrgs.push(null); // для "Без организации"
+    }
+    // 1. Фильтрация сотрудников
+    for (let w in WORKERS) {
+      let worker = WORKERS[w];
+      let no = Number(w) + 1;
+      let id = no + '_' + worker['uid'];
+      let $row = $('#' + id + '-row');
+      let inUnassigned = $row.parents('.location-head').text().toUpperCase().includes('НЕРАСПРЕДЕЛ') ||
+                        $row.parents('.location-head').text().toUpperCase().includes('НЕСОТРУДНИК');
+      let show = false;
+      let workerFirm = (worker['firm_uid'] === null || worker['firm_uid'] === undefined) ? 'null' : worker['firm_uid'];
+      // Мульти-фильтрация: показываем если firm_uid выбран
+      if (
+        (selectedArr.length === 0 || selectedArr.includes(workerFirm))
+      ) {
+        show = true;
+      }
+      // Если это НЕРАСПРЕДЕЛЁННЫЕ или НЕСОТРУДНИКИ, не трогаем их при отсутствии фильтра
+      if (selectedArr.length === 0 && inUnassigned) {
+        show = true;
+      }
+      if (show) {
+        $('#' + id + '-row').show();
+        $('#' + id + '-dv').show();
+        $('#' + id + '-days-dv').show();
+        $('#' + id + '-hours-dv').show();
+      } else {
+        $('#' + id + '-row').hide();
+        $('#' + id + '-dv').hide();
+        $('#' + id + '-days-dv').hide();
+        $('#' + id + '-hours-dv').hide();
+      }
+    }
+    // 2. Фильтрация location-head/master-head
+    $('.location-head, .master-head, .chief-head').each(function() {
+      let headId = $(this).attr('id');
+      let canvasId = '#' + headId.replace('-head', '-canvas');
+      // Показываем по умолчанию
+      $(this).show();
+      $(canvasId).show();
+    });
+    // Мастера: скрываем если у них canvas высота == 0
+    $('.master-head').each(function() {
+      let masterId = $(this).attr('id').replace('-head', '');
+      let $canvas = $('#' + masterId + '-canvas');
+      if ($canvas.height() == 0) {
+        $(this).hide();
+        $canvas.hide();
+      }
+    });
+    // Шефы: скрываем если у них canvas высота == 0
+    $('.chief-head').each(function() {
+      let chiefId = $(this).attr('id').replace('-head', '');
+      let $canvas = $('#' + chiefId + '-canvas');
+      if ($canvas.height() == 0) {
+        $(this).hide();
+        $canvas.hide();
+      }
+    });
+    // Локации: скрываем если у них canvas высота == 0
+    $('.location-head').each(function() {
+      let locId = $(this).attr('id').replace('-head', '');
+      let $canvas = $('#' + locId + '-canvas');
+      if ($canvas.height() == 0) {
+        $(this).hide();
+        $canvas.hide();
+      }
+    });
+  };
+
+  // === Отображение выбранных фильтров организаций ===
+  window.updateOrgFilterSelected = function() {
+    let selectedArr = [];
+    try {
+      selectedArr = JSON.parse(localStorage.getItem('org_filter_uids') || '[]');
+    } catch(e) { selectedArr = []; }
+    let orgNames = [];
+    let orgs = window.organizations ? window.organizations.filter(org => org.firm_uid).map(org => ({...org})) : [];
+    orgs.push({ firm_uid: null, firm_name: 'Без организации' });
+    if (selectedArr.length === 0) {
+      orgNames = orgs.map(org => org.firm_name);
+    } else {
+      orgNames = orgs.filter(org => selectedArr.includes(org.firm_uid === null ? 'null' : org.firm_uid)).map(org => org.firm_name);
+    }
+    let parts = [];
+    if (selectedArr.length === 0) {
+      parts.push('Все организации');
+    } else if (orgNames.length > 0) {
+      parts.push(orgNames.join(', '));
+    }
+    $('#org-filter-selected').text(parts.length ? 'Фильтр: ' + parts.join(' + ') : '');
+  };
+
+  // Вызов при инициализации фильтра (например, после renderOrgFilter)
+  if (window.organizations) updateOrgFilterSelected();
+
+});
+// ... существующий код ...
+
+// ... существующий код ...
+// === Режим только для чтения ===
+let IS_READONLY = getCookie("READONLY") === "1";
+
+// После загрузки страницы — визуальный индикатор
+$(document).ready(function() {
+  if (IS_READONLY) {
+    // Надпись в шапке
+    if ($('#readonly-indicator').length === 0) {
+      $('#main-head').append('<div id="readonly-indicator" style="position:absolute;top:0;right:0;width:220px;height:32px;line-height:32px;background:#ffe0e0;color:#b00;font-size:18px;font-weight:bold;text-align:center;z-index:10;">Только для чтения</div>');
+    }
+    // Отключаем ввод поиска
+    // Отключаем кнопки фильтра
+    // Отключаем меню редактирования
+    $('#context-menu').remove();
+    $('#cell-menu').remove();
+    // Отключаем добавление комментариев
+    $('#add-comment-dv').remove();
+    // Отключаем кнопки очистки/применения фильтра
+    $('#filter-dv .filter-act-clear-bt').hide();
+    $('#filter-dv .filter-act-apply-bt').hide();
+    // Отключаем drag'n'drop, клики по ячейкам и т.д.
+    $(document).off('mousedown');
+    $(document).off('keydown');
+    $(document).off('mouseup');
+    $(document).off('mousemove');
+    // Блокируем любые действия по изменению данных
+    window.setCells = function(){};
+    window.setComment = function(){};
+    window.cellAction = function(){};
+    window.contextAction = function(){};
+    window.changeChief = function(){};
+    window.changeMaster = function(){};
+    window.clearFio = function(){};
+    window.showHideInfo = function(){};
+    window.startSelect = function(){};
+    window.endSelect = function(){};
+    window.selectCell = function(){};
+    window.selectRow = function(){};
+    window.selectCol = function(){};
+    window.onRightClick = function(){};
+    window.onDoubleClick = function(){};
+    window.setCellVal = function(){};
+    window.unselectCells = function(){};
+    // Визуально делаем ячейки неактивными
+    setTimeout(function(){
+      $('.worker-row, .row-days-dv, .days-work, .days-weekend').css({'pointer-events':'none','opacity':0.7});
+    }, 500);
+  }
+});
+// ... существующий код ...
+
+// === Сохранение и восстановление выделения ячеек при обновлении таблицы ===
+let savedSelection = [];
+
+function saveSelection() {
+    savedSelection = selectedCells.map(cell => {
+        let worker = WORKERS[cell.row];
+        return {
+            uid: worker ? worker.uid : null,
+            col: cell.col
+        };
+    });
+}
+
+function restoreSelection() {
+    selectedCells = [];
+    savedSelection.forEach(sel => {
+        let row = WORKERS.findIndex(w => w.uid === sel.uid);
+        if (row !== -1) {
+            let cell = {row: row, col: sel.col};
+            selectedCells.push(cell);
+            // Восстанавливаем подсветку
+            $('#'+Number(row+1)+'-'+Number(sel.col+1)+'-day-dv').css("background", selectedBgd);
+            $('#'+Number(row+1)+'-'+Number(sel.col+1)+'-day-dv').css("color", selectedFnt);
+            $('#'+Number(row+1)+'number-row').css("background", selectedBgd);
+            $('#0_'+Number(sel.col)+'-day-dv').css("background", selectedBgd);
+        }
+    });
+}
+
+// ... существующий код ...
+
+// === Сохранение координат последней выделенной ячейки для автоскролла ===
+function saveScrollCellToCookie() {
+    if (selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let worker = WORKERS[cell.row];
+        if (worker) {
+            let obj = { uid: worker.uid, col: cell.col };
+            document.cookie = "tabel_scroll_cell=" + encodeURIComponent(JSON.stringify(obj)) + ";path=/;max-age=2592000";
         }
     }
+}
+
+function scrollToCellFromCookie() {
+    let matches = document.cookie.match(/(?:^|; )tabel_scroll_cell=([^;]*)/);
+    if (matches) {
+        try {
+            let obj = JSON.parse(decodeURIComponent(matches[1]));
+            let row = WORKERS.findIndex(w => w.uid === obj.uid);
+            if (row !== -1) {
+                let id = Number(row+1)+'-'+Number(obj.col+1)+'-day-dv';
+                let cell = document.getElementById(id);
+                console.log('Пробую скроллить к:', id, cell ? 1 : 0);
+                if (cell) {
+                    cell.scrollIntoView({behavior: 'smooth', block: 'center'});
+                    cell.classList.add('scroll-highlight');
+                    setTimeout(() => cell.classList.remove('scroll-highlight'), 1200);
+                }
+            }
+        } catch(e) {console.log('Ошибка scrollToCellFromCookie', e);}
+    }
+}
+
+// ... существующий код ...
+
+// Вызовы сохранения координат после выделения
+// В конец функций selectCell, selectRow, selectCol, unselectCells, selectRectangle добавьте:
+// saveScrollCellToCookie();
+//
+// Например:
+// function selectCell(indexRow, indexCol, shiftSelection=false){
+//   ...
+//   saveScrollCellToCookie();
+// }
+// ...
+//
+// После createTabel() и применения фильтра вызовите scrollToCellFromCookie();
+// Например:
+// createTabel();
+// ...
+// scrollToCellFromCookie();
+// ...
+//
+// В CSS добавьте:
+// .scroll-highlight {
+//     box-shadow: 0 0 0 3px #ffeb3b, 0 0 8px 2px #ffeb3b;
+//     transition: box-shadow 0.8s;
+// }
+
+// ... существующий код ...
+// Сохраняем позицию прокрутки окна
+$(window).on('scroll', function() {
+    localStorage.setItem('tabel_scroll_top', window.scrollY || window.pageYOffset);
 });
 
-// Логирование перехода между страницами
-function logPageNavigation(page) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'navigate', page: page });
+// После построения таблицы и применения фильтра восстанавливаем scrollTop
+function restoreScrollPosition() {
+    setTimeout(function() {
+        let scrollTop = localStorage.getItem('tabel_scroll_top');
+        console.log('Восстанавливаю scrollTop:', scrollTop, 'document.body.scrollHeight:', document.body.scrollHeight);
+        if (scrollTop !== null) {
+            window.scrollTo(0, parseInt(scrollTop, 10));
+        }
+    }, 1200); // увеличенная задержка
+}
+
+// ... существующий код ...
+// Сохраняем последнюю активную ячейку
+function saveLastCellToStorage() {
+    if (selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let worker = WORKERS[cell.row];
+        if (worker) {
+            let obj = { uid: worker.uid, col: cell.col };
+            localStorage.setItem('tabel_last_cell', JSON.stringify(obj));
+        }
     }
 }
 
-// Логирование применения фильтра
-function logFilterApply(filter) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'filter_apply', filter: filter });
+// Вызовите saveLastCellToStorage() в конце selectCell, selectRow, selectCol, selectRectangle, unselectCells
+// Например, после saveScrollCellToCookie();
+
+// Восстанавливаем позицию: если ячейка есть — скроллим к ней, иначе scrollTop
+function restoreLastCellOrScroll() {
+    setTimeout(function() {
+        let lastCell = localStorage.getItem('tabel_last_cell');
+        if (lastCell) {
+            try {
+                let obj = JSON.parse(lastCell);
+                let row = WORKERS.findIndex(w => w.uid === obj.uid);
+                if (row !== -1) {
+                    let id = Number(row+1)+'-'+Number(obj.col+1)+'-day-dv';
+                    let cell = document.getElementById(id);
+                    if (cell) {
+                        cell.scrollIntoView({behavior: 'smooth', block: 'center'});
+                        cell.classList.add('scroll-highlight');
+                        setTimeout(() => cell.classList.remove('scroll-highlight'), 1200);
+                        return;
+                    }
+                }
+            } catch(e) {}
+        }
+        // Если не удалось — fallback на scrollTop
+        let scrollTop = localStorage.getItem('tabel_scroll_top');
+        console.log('Восстанавливаю scrollTop:', scrollTop, 'document.body.scrollHeight:', document.body.scrollHeight);
+        if (scrollTop !== null) {
+            window.scrollTo(0, parseInt(scrollTop, 10));
+        }
+    }, 1200);
+}
+
+// Вызовите restoreLastCellOrScroll() в самом конце после построения таблицы и фильтрации
+// Вместо restoreScrollPosition()
+
+// ... существующий код ...
+function checkSelectedCellVisibility() {
+    if (selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let selector = '#'+Number(cell.row+1)+'-'+Number(cell.col+1)+'-day-dv';
+        if (!isCellVisible(selector)) {
+            unselectCells();
+        }
     }
 }
 
-// Логирование открытия/закрытия модального окна
-function logModal(action, modalId) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'modal', action: action, modal: modalId });
+// Проверка при скролле окна
+$(window).on('scroll', function() {
+    checkSelectedCellVisibility();
+});
+
+// После фильтрации, свертывания и т.д. вызывайте checkSelectedCellVisibility()
+// Например, в applyOrgFilter, rollAll, slideDiv — в конце:
+// checkSelectedCellVisibility();
+
+function isCellTrulyVisible(cellSelector) {
+    const $cell = $(cellSelector);
+    if ($cell.length === 0) return false;
+    if (!$cell.is(':visible')) return false;
+    const rect = $cell[0].getBoundingClientRect();
+    return (
+        rect.bottom > 0 &&
+        rect.right > 0 &&
+        rect.top < (window.innerHeight || document.documentElement.clientHeight) &&
+        rect.left < (window.innerWidth || document.documentElement.clientWidth)
+    );
+}
+
+function checkSelectedCellVisibility() {
+    if (selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let selector = '#'+Number(cell.row+1)+'-'+Number(cell.col+1)+'-day-dv';
+        if (!isCellTrulyVisible(selector)) {
+            unselectCells();
+        }
     }
 }
 
-// Логирование ошибок
-function logError(message, details) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'error', message: message, details: details });
+// ... существующий код ...
+
+// === Режим выделения строки только для просмотра (read-only) ===
+console.log('report.js debug: read-only режим по фамилии активен');
+let isReadOnlyRowSelected = false;
+let readOnlyRowIndex = -1;
+
+function initReadOnlyHandlers() {
+    // Клик по фамилии — только read-only выделение, обычное выделение по фамилии запрещено
+    $(document).off('click.readonlyrow').on('click.readonlyrow', '.worker_lb', function(e) {
+        let id = $(this).attr('id');
+        let match = id && id.match(/^([0-9]+)_/);
+        if (match) {
+            let rowIndex = parseInt(match[1], 10) - 1;
+            if (!(isReadOnlyRowSelected && readOnlyRowIndex === rowIndex)) {
+                console.log('[DEBUG] Клик по фамилии: ставим read-only выделение строки', rowIndex);
+                isReadOnlyRowSelected = true;
+                readOnlyRowIndex = rowIndex;
+                selectRow(rowIndex, true); // true — readOnly
+                // Явно выделяем строку через класс
+                $('.worker-row').removeClass('readonly-row-selected');
+                $('.worker-row').eq(rowIndex).addClass('readonly-row-selected');
+            } else {
+                console.log('[DEBUG] Клик по фамилии: повторный клик по той же строке, ничего не делаем');
+            }
+        }
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
+    });
+
+    // Дабл-клик по фамилии — полностью игнорируем
+    $(document).off('dblclick.readonlyrow').on('dblclick.readonlyrow', '.worker_lb', function(e) {
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
+    });
+
+    // Глобальный клик по документу — если не по .worker_lb, сбрасываем read-only выделение и инициируем обычное выделение
+    $(document).off('mousedown.readonlyrow').on('mousedown.readonlyrow', function(e) {
+        if (!$(e.target).closest('.worker_lb').length && isReadOnlyRowSelected) {
+            // Если клик по ячейке внутри строки — обработает отдельный обработчик ниже
+            let $cell = $(e.target).closest('[id$="-day-dv"]');
+            if ($cell.length) {
+                let id = $cell.attr('id');
+                let match = id && id.match(/^([0-9]+)-([0-9]+)-day-dv$/);
+                if (match) {
+                    let row = parseInt(match[1], 10) - 1;
+                    if (row === readOnlyRowIndex) return;
+                }
+            }
+            clearReadOnlyRowSelection();
+            // Если клик по ячейке — инициируем обычное выделение
+            if ($cell.length) {
+                let id = $cell.attr('id');
+                let match = id && id.match(/^([0-9]+)-([0-9]+)-day-dv$/);
+                if (match) {
+                    let row = parseInt(match[1], 10) - 1;
+                    let col = parseInt(match[2], 10) - 1;
+                    selectCell(row, col);
+                }
+            }
+            // Если клик по номеру строки
+            let $row = $(e.target).closest('.number-row');
+            if ($row.length) {
+                let row = parseInt($row.attr('id'), 10) - 1;
+                if (!isNaN(row)) {
+                    selectRow(row);
+                }
+            }
+            e.stopPropagation();
+            e.preventDefault();
+            return false;
+        }
+    });
+}
+
+// Клик по ячейке внутри read-only строки — снимает read-only и выделяет только эту ячейку (навешивается только один раз)
+if (!window._readonly_rowcell_handler_attached) {
+    $(document).on('mousedown.readonlyrowcell', '[id$="-day-dv"]', function(e) {
+        let id = $(this).attr('id');
+        let match = id && id.match(/^([0-9]+)-([0-9]+)-day-dv$/);
+        if (match) {
+            let row = parseInt(match[1], 10) - 1;
+            let col = parseInt(match[2], 10) - 1;
+            if (isReadOnlyRowSelected && row === readOnlyRowIndex) {
+                console.log('[DEBUG] mousedown: снимаю read-only и выделяю ячейку', {row, col});
+                clearReadOnlyRowSelection();
+                unselectCells();
+                selectCell(row, col);
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            } else if (!isReadOnlyRowSelected) {
+                // Если уже не read-only, но клик по ячейке — всегда снимаем выделение и выделяем её заново
+                unselectCells();
+                selectCell(row, col);
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            }
+        }
+    });
+    window._readonly_rowcell_handler_attached = true;
+}
+
+function clearReadOnlyRowSelection() {
+    if (isReadOnlyRowSelected) {
+        console.log('[DEBUG] clearReadOnlyRowSelection: снимаю read-only');
+        let row = readOnlyRowIndex;
+        isReadOnlyRowSelected = false;
+        readOnlyRowIndex = -1;
+        $('.worker-row, .row-days-dv, .number-row').removeClass('selected');
+        // Снимаем класс выделения read-only
+        $('.worker-row').removeClass('readonly-row-selected');
+        // Явно убираем фон и цвет у всех ячеек строки и номера строки
+        if (typeof row === 'number' && row >= 0) {
+            for (let j in DAYS) {
+                let col_no = Number(j) + 1;
+                $('#'+Number(row+1)+'-'+col_no+'-day-dv').css({
+                    "background": unselectedBgd,
+                    "color": unselectedFnt
+                });
+            }
+            $('#'+Number(row+1)+'number-row').css("background", unselectedNoBgd);
+        }
     }
 }
 
-// Логирование массового изменения
-function logMassEdit(cells, newValue) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'mass_edit', cells: cells, newValue: newValue });
+// Переопределяем selectRow/selectCell/startSelect: если клик по фамилии — ничего не делаем
+let orig_selectRow = selectRow;
+selectRow = function(indexRow, readOnlyFlag) {
+    if (readOnlyFlag === true) {
+        return orig_selectRow.apply(this, arguments);
     }
+    if (event && $(event.target).closest('.worker_lb').length) {
+        return false;
+    }
+    return orig_selectRow.apply(this, arguments);
+};
+let orig_selectCell = selectCell;
+selectCell = function(indexRow, indexCol, shiftSelection) {
+    console.log('[DEBUG] selectCell вызван', {isReadOnlyRowSelected, indexRow, indexCol, shiftSelection});
+    if (isReadOnlyRowSelected) {
+        console.log('[DEBUG] selectCell: снимаю read-only');
+        clearReadOnlyRowSelection();
+    }
+    return orig_selectCell.apply(this, arguments);
+};
+let orig_startSelect = startSelect;
+startSelect = function(indexRow, indexCol, shiftSelection) {
+    console.log('[DEBUG] startSelect вызван', {isReadOnlyRowSelected, indexRow, indexCol, shiftSelection});
+    if (isReadOnlyRowSelected) {
+        console.log('[DEBUG] startSelect: снимаю read-only');
+        clearReadOnlyRowSelection();
+    }
+    return orig_startSelect.apply(this, arguments);
+};
+
+// В начало функций редактирования — запрет если read-only выделение
+let orig_setCells = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+  // Блокируем одиночную букву 'М' (русскую или английскую)
+  if (!isComment && !isFullClear && (value === 'М' || value === 'M')) {
+    return;
+  }
+  return orig_setCells.apply(this, arguments);
+};
+let orig_setComment = setComment;
+setComment = function() { if (isReadOnlyRowSelected) return; return orig_setComment.apply(this, arguments); };
+let orig_cellAction = cellAction;
+cellAction = function() { if (isReadOnlyRowSelected) return; return orig_cellAction.apply(this, arguments); };
+let orig_contextAction = contextAction;
+contextAction = function() { if (isReadOnlyRowSelected) return; return orig_contextAction.apply(this, arguments); };
+
+// Вызов обработчиков после построения таблицы и автообновления
+document.addEventListener('DOMContentLoaded', initReadOnlyHandlers);
+if (typeof createTabel === 'function') {
+    let orig_createTabel = createTabel;
+    createTabel = function() {
+        let res = orig_createTabel.apply(this, arguments);
+        initReadOnlyHandlers();
+        return res;
+    };
+}
+if (typeof getDataTabel === 'function') {
+    let orig_getDataTabel = getDataTabel;
+    getDataTabel = function() {
+        let res = orig_getDataTabel.apply(this, arguments);
+        initReadOnlyHandlers();
+        return res;
+    };
 }
 
-// Логирование работы с комментариями
-function logComment(action, row, col, comment) {
-    if (typeof sendActionToServer === 'function') {
-        sendActionToServer({ type: 'comment', action: action, row: row, col: col, comment: comment });
+// ... существующий код ...
+// === Проверка размера окна для табеля ===
+function checkTabelWindowSize() {
+  var minWidth = 1200;
+  var minHeight = 700;
+  if (window.innerWidth < minWidth || window.innerHeight < minHeight) {
+    if ($('#tabel-size-warning').length === 0) {
+      $('body').append('<div id="tabel-size-warning" style="position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.97);display:flex;align-items:center;justify-content:center;font-size:2.2em;color:#b00;text-align:center;"><div><b>Размер окна слишком маленький для корректного отображения табеля.<br>Пожалуйста, увеличьте размер окна.</b></div></div>');
+    } else {
+      $('#tabel-size-warning').show();
     }
+    $('#head, #table, #sticky').hide();
+  } else {
+    $('#tabel-size-warning').hide();
+    $('#head, #table, #sticky').css('display', '');
+  }
 }
 
-// Пример использования:
-// 1. Навигация между страницами
 $(document).ready(function() {
-    var page = window.location.pathname.split('/').pop().replace('.htm', '');
-    logPageNavigation(page);
+  checkTabelWindowSize();
+  $(window).on('resize', checkTabelWindowSize);
 });
+// ... существующий код ...
 
-// 2. Применение фильтра (вызывайте logFilterApply в функции changeFilter или аналогичной)
-// Например, после применения фильтра:
-// logFilterApply({ fio: $('#fio-filter-in').val() });
+// ... существующий код ...
+window.tabelIsSaving = false;
 
-// 3. Открытие/закрытие модальных окон (например, комментарии)
-$('#add-comment-dv').on('show', function() { logModal('open', 'add-comment-dv'); });
-$('#add-comment-dv').on('hide', function() { logModal('close', 'add-comment-dv'); });
+// Модифицируем sendDataTabel для блокировки
+let orig_sendDataTabel = sendDataTabel;
+sendDataTabel = async function(full=true) {
+  window.tabelIsSaving = true;
+  try {
+    await orig_sendDataTabel.apply(this, arguments);
+  } finally {
+    window.tabelIsSaving = false;
+  }
+};
 
-// 4. Ошибки (например, при потере соединения)
-function showConnectionError(message = "Потеряно соединение с сервером! Изменения не сохранены.") {
-    logError(message, {});
-    // ... существующий код ...
+// Вспомогательная функция для показа уведомления
+function showSavingAlert() {
+  if ($('#tabel-saving-alert').length === 0) {
+    $('body').append('<div id="tabel-saving-alert" style="position:fixed;z-index:99999;top:40px;right:40px;background:#ffe0e0;color:#b00;padding:18px 32px;border-radius:8px;box-shadow:0 2px 8px #0002;font-size:20px;display:none;">Пожалуйста, дождитесь сохранения данных...</div>');
+  }
+  $('#tabel-saving-alert').stop(true, true).fadeIn(200).delay(1200).fadeOut(400);
 }
 
-// 5. Массовое изменение (например, при выделении диапазона и изменении значения)
-// logMassEdit([{row: 1, col: 2}, {row: 1, col: 3}], 'Я');
+// Блокируем ввод, если идет сохранение
+let orig_setCells2 = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+  if (isReadOnlyRowSelected) return; // read-only строка — запретить редактирование
+  if (window.tabelIsSaving) {
+    showSavingAlert();
+    return;
+  }
+  return orig_setCells2.apply(this, arguments);
+};
+let orig_setComment2 = setComment;
+setComment = function() {
+  if (isReadOnlyRowSelected) return;
+  if (window.tabelIsSaving) {
+    showSavingAlert();
+    return;
+  }
+  return orig_setComment2.apply(this, arguments);
+};
+let orig_cellAction2 = cellAction;
+cellAction = function() {
+  if (isReadOnlyRowSelected) return;
+  if (window.tabelIsSaving) {
+    showSavingAlert();
+    return;
+  }
+  return orig_cellAction2.apply(this, arguments);
+};
+let orig_contextAction2 = contextAction;
+contextAction = function() {
+  if (isReadOnlyRowSelected) return;
+  if (window.tabelIsSaving) {
+    showSavingAlert();
+    return;
+  }
+  return orig_contextAction2.apply(this, arguments);
+};
+// ... существующий код ...
 
-// 6. Работа с комментариями (добавление, изменение, удаление)
-// logComment('add', row, col, comment);
-// logComment('edit', row, col, comment);
-// logComment('delete', row, col, '');
+function getTodayYMD() {
+  const d = new Date();
+  const pad = n => n < 10 ? '0'+n : n;
+  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+}
+
+function getReportUrl(groupby, type) {
+  // SID, UID всегда брать из куков
+  let sid = getCookie('SID') || '';
+  let uid = getCookie('UID') || '';
+  let date = getTodayYMD();
+  return `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
+}
+
+// ... существующий код ...
+function getAuthHeaderForReport() {
+  // 1. Если явно задано — используем
+  if (window.AUTH_HEADER) return window.AUTH_HEADER;
+  // 2. Пробуем взять из куки или переменных
+  // Обычно логин — это UID или LABEL, пароль — pass (но pass не хранится, поэтому не получится)
+  // Если в куках есть base64 строка или логин:пароль, используем
+  // Пример: если есть кука 'AUTH', где base64(login:pass)
+  var authCookie = getCookie('AUTH');
+  if (authCookie) {
+    return 'Basic ' + authCookie;
+  }
+  // 3. Пробуем взять из library.js (например, если есть функция base64_encode)
+  // Но пароль нигде не хранится после авторизации, поэтому если нет — возвращаем пусто
+  return '';
+}
+
+function getReportFileName(groupby, type) {
+  const today = new Date();
+  const pad = n => n < 10 ? '0'+n : n;
+  const dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
+  let base = '';
+  if (groupby === 'masters') base = 'Отчет по мастерам';
+  else if (groupby === 'firms') base = 'Отчет по организациям';
+  else if (groupby === 'locations') base = 'Отчет по объектам';
+  else base = 'Отчет';
+  return `${base} от ${dateStr}.${type === 'pdf' ? 'pdf' : 'xlsx'}`;
+}
+
+// --- Новый обработчик для скачивания отчёта с авторизацией ---
+async function downloadReportWithAuth(groupby, type) {
+  let url = getReportUrl(groupby, type);
+  let authHeader = getAuthHeaderForReport();
+  if (!authHeader) {
+    alert('Не найден заголовок авторизации. Повторите вход.');
+    return;
+  }
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeader
+      }
+    });
+    if (!response.ok) {
+      throw new Error('Ошибка загрузки отчёта: ' + response.status);
+    }
+    const blob = await response.blob();
+    let fileName = getReportFileName(groupby, type);
+    // Для IE/Edge
+    if (window.navigator && window.navigator.msSaveOrOpenBlob) {
+      window.navigator.msSaveOrOpenBlob(blob, fileName);
+      showReportSpinner(false);
+    } else {
+      const link = document.createElement('a');
+      link.href = window.URL.createObjectURL(blob);
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      setTimeout(() => {
+        window.URL.revokeObjectURL(link.href);
+        link.remove();
+        showReportSpinner(false);
+      }, 2000);
+    }
+  } catch (e) {
+    alert('Ошибка при получении отчёта: ' + e.message);
+    showReportSpinner(false);
+  }
+}
+
+$(document).off('click.reportDownload').on('click.reportDownload', '#report-pdf-btn, #report-xlsx-btn', function() {
+  let groupby = $("input[name='report-groupby']:checked").val();
+  let type = $(this).attr('id') === 'report-pdf-btn' ? 'pdf' : 'xlsx';
+  downloadReportWithAuth(groupby, type);
+  $('#reports-modal').fadeOut(120);
+  logUserAction('downloadReport', { type: type });
+});
+// Показ/скрытие спиннера загрузки отчёта
+function showReportSpinner(show) {
+  if (show) {
+    $('#reports-modal-spinner').css('display', 'flex');
+  } else {
+    $('#reports-modal-spinner').css('display', 'none');
+  }
+}
+
+// ... существующий код ...
+
+// === Универсальная функция логирования действий пользователя ===
+function logUserAction(action, details = {}) {
+  try {
+    const fio = getCookie('LABEL') || getCookie('UID') || 'unknown';
+    const payload = {
+      fio,
+      action,
+      details,
+      url: location.pathname,
+      datetime: new Date().toISOString(),
+      userAgent: navigator.userAgent
+    };
+    fetch('https://t2.ooo-kem.ru:8383/collect', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) { /* ignore */ }
+}
+
+// === Встраиваем логирование в основные действия ===
+
+// 1. Изменение ячейки (setCells)
+let orig_setCells_log = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+  if (!isComment && !isFullClear) {
+    for (let cell of selectedCells) {
+      let worker = WORKERS[cell.row] || {};
+      logUserAction('setCell', {
+        fio: worker.fio,
+        uid: worker.uid,
+        row: cell.row,
+        col: cell.col,
+        value
+      });
+    }
+  }
+  return orig_setCells_log.apply(this, arguments);
+};
+
+// 2. Кнопки меню ячейки (cellAction)
+let orig_cellAction_log = cellAction;
+cellAction = function(vt) {
+  let cell = selectedCells[0] || {};
+  let worker = WORKERS[cell.row] || {};
+  logUserAction('cellAction', {
+    fio: worker.fio,
+    uid: worker.uid,
+    row: cell.row,
+    col: cell.col,
+    vt
+  });
+  return orig_cellAction_log.apply(this, arguments);
+};
+
+// 3. Контекстное меню (contextAction)
+let orig_contextAction_log = contextAction;
+contextAction = function(act) {
+  let cell = selectedCells[0] || {};
+  let worker = WORKERS[cell.row] || {};
+  logUserAction('contextAction', {
+    fio: worker.fio,
+    uid: worker.uid,
+    row: cell.row,
+    col: cell.col,
+    act
+  });
+  return orig_contextAction_log.apply(this, arguments);
+};
+
+// 4. Фильтры (changeFilter)
+let orig_changeFilter_log = changeFilter;
+changeFilter = function(type) {
+  logUserAction('changeFilter', { type });
+  return orig_changeFilter_log.apply(this, arguments);
+};
+
+// 5. Выделение ячейки (selectCell)
+let orig_selectCell_log = selectCell;
+selectCell = function(indexRow, indexCol, shiftSelection) {
+  let worker = WORKERS[indexRow] || {};
+  logUserAction('selectCell', {
+    fio: worker.fio,
+    uid: worker.uid,
+    row: indexRow,
+    col: indexCol,
+    shiftSelection
+  });
+  return orig_selectCell_log.apply(this, arguments);
+};
+
+// 6. Открытие/закрытие модального окна отчёта
+$(document).on('click', '#menu-reports', function() {
+  logUserAction('openReportsModal');
+});
+$(document).on('click', '#reports-modal-close', function() {
+  logUserAction('closeReportsModal');
+});
+$(document).on('click', '#report-pdf-btn', function() {
+  logUserAction('downloadReport', { type: 'pdf' });
+});
+$(document).on('click', '#report-xlsx-btn', function() {
+  logUserAction('downloadReport', { type: 'xlsx' });
+});
+
+// 7. Применение фильтра организаций
+$(document).on('click', '#org-filter-apply', function() {
+  logUserAction('applyOrgFilter');
+});
+
+
+
+// 8. Логирование удаления (очистки) ячейки
+let orig_showConfirmClearModal = showConfirmClearModal;
+showConfirmClearModal = function(onConfirm) {
+  logUserAction('showConfirmClearModal');
+  return orig_showConfirmClearModal.call(this, function() {
+    logUserAction('cellClearConfirmed');
+    if (typeof onConfirm === 'function') onConfirm();
+  });
+};
+
+// 9. Логирование нажатий по всем кнопкам
+$(document).on('click', 'button, .btn, .filter-act-clear-bt, .filter-act-apply-bt, .toggle-bt, input[type=button], input[type=submit]', function(e) {
+  let $btn = $(this);
+  logUserAction('buttonClick', {
+    text: $btn.text() || $btn.val() || '',
+    id: $btn.attr('id') || '',
+    class: $btn.attr('class') || '',
+    name: $btn.attr('name') || '',
+    value: $btn.val() || '',
+    tag: this.tagName
+  });
+});
+
+// 10. Логирование нажатий клавиш на клавиатуре
+$(document).on('keydown', function(e) {
+  logUserAction('keyDown', {
+    key: e.key,
+    code: e.code,
+    keyCode: e.keyCode,
+    ctrlKey: e.ctrlKey,
+    shiftKey: e.shiftKey,
+    altKey: e.altKey,
+    metaKey: e.metaKey,
+    target: e.target && e.target.id ? e.target.id : '',
+    tag: e.target && e.target.tagName ? e.target.tagName : ''
+  });
+});
+
+
+

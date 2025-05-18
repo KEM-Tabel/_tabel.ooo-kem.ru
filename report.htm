@@ -18,7 +18,6 @@
 <script type="text/javascript" language="Javascript" src="js/date.format.js"></script>
 <script type="text/javascript" language="Javascript" src="js/datepicker.min.js"></script>
 <script type="text/javascript" language="Javascript" src="js/report.js?1273455245"></script>
-<script type="text/javascript" language="Javascript" src="js/userActions.js?1273455245"></script>
 
 </head>
 <script>
@@ -94,6 +93,10 @@ $(document).ready(function () {
 	const inputField = document.getElementById('fio-filter-in');
 	inputField.addEventListener('input', searchWorkers);
 	
+	$('#menu-help').off('click').on('click', function(){
+		window.open('https://vpc.ooo-kem.ru:5001/d/s/13MWXnkgpSepdBoTxHBI8i6KPojSLoYI/h6lec6y80hPGrFIJlwFqL-9z_1wRiGT7-Cb8gAwWPRww', '_blank');
+	});
+	
 });
 
 var isCalendarVisible = false;
@@ -162,8 +165,10 @@ function dShow(){
 				<div id="menu-head">
 				<div id="menu-rollDown" onClick="rollAll('down')" >Развернуть все</div>
 				<div id="menu-rollUp" onClick="rollAll('up')" >Свернуть все</div>
+					<div id="org-filter-selected" style="display:inline-block; margin-left:32px; font-size:15px; color:#1a237e; vertical-align:middle;"></div>
 					<div id="menu-reports" class="menu-button" >Отчеты</div>
 					<div id="menu-help" class="menu-button" >Помощь</div>
+
 				</div>
 				
 				<div id="head-days"></div>
@@ -211,6 +216,9 @@ function dShow(){
 		
 		<div id="table"></div>
 		
+		<div id="open-org-filter" class="filter-open-bt"><i class="fa fa-filter"></i></div>
+		<div id="org-filter-selected" style="margin: 12px 0 0 0; font-size: 15px; color: #444;"></div>
+		
 		<div id="add-comment-dv">
 			<input id="add-comment-in" type="text" />
 			<div id="add-comment-bt" onClick="setComment()"><i class="fa-solid fa-check"></i></div>
@@ -232,6 +240,19 @@ function dShow(){
     <div style="margin-bottom:18px; font-size:18px;">Удалить данные из ячейки?</div>
     <button id="confirm-clear-yes" style="margin-right:16px; padding:6px 18px;">Да</button>
     <button id="confirm-clear-no" style="padding:6px 18px;">Нет</button>
+  </div>
+</div>
+
+<div id="org-filter-overlay" class="org-filter-overlay">
+  <div class="org-filter-panel">
+    <div class="org-filter-header">
+      <span>Фильтр по организациям</span>
+      <span id="close-org-filter" class="close-bt">&times;</span>
+    </div>
+    <div id="org-filter-list"></div>
+    <div style="margin-top: 24px; text-align: right;">
+      <button id="org-filter-apply" class="btn btn-primary">Применить</button>
+    </div>
   </div>
 </div>
 

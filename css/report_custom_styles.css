@@ -40,3 +40,12 @@
     border-bottom: 1px dotted #eee;
 }
 
+.scroll-highlight {
+    box-shadow: 0 0 0 3px #ff0000, 0 0 8px 2px #ff0000;
+    transition: box-shadow 0.8s;
+}
+
+.readonly-row-selected {
+    background: #9dff00 !important; /* светло-оранжевый */
+    color: #000 !important;
+}

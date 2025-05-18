@@ -1,3 +1,4 @@
+window.AUTH_HEADER = 'Basic d2ViOkFTRHFhejEyMw==';
 
 Date.prototype.daysInMonth = function() {
 	return 33 - new Date(this.getFullYear(), this.getMonth(), 33).getDate();

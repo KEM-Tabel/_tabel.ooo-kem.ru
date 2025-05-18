@@ -1,5 +1,3 @@
-
-
 // CREATE ===========================
 
 // ACTION ===========================
@@ -31,11 +29,11 @@ async function Login(){
 			SID 	= data.result.SID;
 			UID   	= data.result.UID;
 			LABEL 	= data.result.label;
-			
+			var readonly = data.result.readonly ? '1' : '0';
 			setCookie("SID", SID, "/", null, null);
 			setCookie("UID", UID, "/", null, null);
 			setCookie("LABEL", LABEL, "/", null, null);
-			
+			setCookie("READONLY", readonly, "/", null, null);
 			document.location.href="/report.htm";
 		}else{
 			 $('#loader').hide();
