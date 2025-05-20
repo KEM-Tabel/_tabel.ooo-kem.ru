@@ -208,7 +208,7 @@ body {
 
 #head {	
 	display: inline-flex;
-  '	align-items: stretch;
+    align-items: stretch;
 	gap: 1px;
 	background:#999;
 	border-bottom: solid 1px #999;
@@ -244,7 +244,7 @@ body {
 #report{
 	margin:202px 0 0 0;
 	display: inline-flex;
-  '	align-items: stretch;
+  	align-items: stretch;
 	gap: 1px;
 	background:#999;
 	position: relative;

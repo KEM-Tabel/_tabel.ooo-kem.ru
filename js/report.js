@@ -1490,76 +1490,6 @@ function changeFilter(type){
 	
 }
 
-function changeChief(worker_id){
-	
-	let location_uid 	= $(':selected', $('#chiefs-sl')).parent().attr('value');
-	let chief_uid 		= "";
-	
-	for(let w in WORKERS){
-		
-		let no = Number(w)+1;
-		let id = no+'_'+WORKERS[w]['uid'];
-		
-		if(id == worker_id && w == no-1){
-			
-			//if(WORKERS[w]['location_uid'] != location_uid && chief_uid != $('#chiefs-sl').val()){
-			if($('#chiefs-sl').val() != WORKERS[w]['chief_uid']){
-			
-				$('#info-dv .info-save-dv').show();
-		
-				$('#info-dv .info-save-dv').click(function(){
-					changeData("НазначитьМастеруНовогоНачальника", location_uid, WORKERS[w]['location_uid'], $('#chiefs-sl').val(), WORKERS[w]['uid']);
-					
-					$('#info-dv .info-save-dv').hide();
-				});
-			
-			}else{
-				$('#info-dv .info-save-dv').hide();
-			}
-			
-			break;
-		}
-	}
-}
-
-function changeMaster(worker_id){
-
-	let location_uid 	= $(':selected', $('#masters-sl')).parent().attr('value');
-	let chief_uid 		= "";
-	
-	for(let l in LOCATIONS){
-		for(let m in LOCATIONS[l]['masters']){
-			if($('#masters-sl').val() == LOCATIONS[l]['masters'][m]['uid']){
-				chief_uid = LOCATIONS[l]['masters'][m]['chief_uid'];
-			}		
-		}
-	}
-
-
-	for(let w in WORKERS){
-		
-		let no = Number(w)+1;
-		let id = no+'_'+WORKERS[w]['uid'];
-
-		if(id == worker_id && w == no-1){
-	
-			if(location_uid != WORKERS[w]['location_uid'] || (chief_uid != "" && WORKERS[w]['master_uid'] != $('#masters-sl').val())){
-			
-				$('#info-dv .info-save-dv').show();
-			
-				$('#info-dv .info-save-dv').click(function(){
-					changeData("НазначитьРаботникуНовогоМастера", location_uid, chief_uid, $('#masters-sl').val(), WORKERS[w]['uid']);
-
-					$('#info-dv .info-save-dv').hide();
-				});
-				
-			}else{
-				$('#info-dv .info-save-dv').hide();
-			}
-		}
-	}
-}
-
 function clearFio(){
 	$('#fio-filter-in').val("");
 	
@@ -1715,6 +1645,67 @@ function showHideInfo(element, id){
 				$('#info-dv .info-birthday-dv').html("<strong>Дата рождения: </strong>"+worker['birthday']+" ("+worker['age']+" л.)");
 				$('#info-dv .info-data-in-dv').html("<strong>Дата приёма: </strong>" + (worker['date_in'] ? worker['date_in'] : '-'));
 				$('#info-dv .info-data-out-dv').html("<strong>Дата увольнения: </strong>" + (worker['date_out'] ? worker['date_out'] : '-'));
+				// --- Показываем кнопку сохранить только если выбран другой мастер или начальник ---
+				let showSave = false;
+				if(worker['master_uid'] !== undefined && $('#masters-sl').length && $('#masters-sl').val() != worker['master_uid']) {
+					showSave = true;
+				}
+				if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) {
+					showSave = true;
+				}
+				if(showSave) {
+					console.log('[info-save-dv] show (условие выполнено)');
+					$('#info-dv .info-save-dv').show().css('display', 'block');
+				} else {
+					console.log('[info-save-dv] hide (условие не выполнено)');
+					$('#info-dv .info-save-dv').hide();
+				}
+				// --- Обработчики onchange для select'ов ---
+				setTimeout(function() {
+					$('#masters-sl').off('change.infoSave').on('change.infoSave', function() {
+						let showSave = false;
+						if(worker['master_uid'] !== undefined && $('#masters-sl').val() != worker['master_uid']) showSave = true;
+						if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) showSave = true;
+						if(showSave) {
+							console.log('[info-save-dv] show (onchange)');
+							$('#info-dv .info-save-dv').show().css('display', 'block');
+						} else {
+							console.log('[info-save-dv] hide (onchange)');
+							$('#info-dv .info-save-dv').hide();
+						}
+					});
+					$('#chiefs-sl').off('change.infoSave').on('change.infoSave', function() {
+						let showSave = false;
+						if(worker['master_uid'] !== undefined && $('#masters-sl').length && $('#masters-sl').val() != worker['master_uid']) showSave = true;
+						if(worker['chief_uid'] !== undefined && $('#chiefs-sl').val() != worker['chief_uid']) showSave = true;
+						if(showSave) {
+							console.log('[info-save-dv] show (onchange)');
+							$('#info-dv .info-save-dv').show().css('display', 'block');
+						} else {
+							console.log('[info-save-dv] hide (onchange)');
+							$('#info-dv .info-save-dv').hide();
+						}
+					});
+				}, 0);
+				// --- Обработчик нажатия на кнопку сохранить ---
+				$('#info-dv .info-save-dv').off('click.save').on('click.save', function() {
+					let changed = false;
+					if(worker['master_uid'] !== undefined && $('#masters-sl').length && $('#masters-sl').val() != worker['master_uid']) {
+						// Изменён мастер
+						console.log('[info-save-dv] Отправка изменения мастера', {worker_id: id, new_master: $('#masters-sl').val()});
+						changeMaster(id);
+						changed = true;
+					}
+					if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) {
+						// Изменён начальник
+						console.log('[info-save-dv] Отправка изменения начальника', {worker_id: id, new_chief: $('#chiefs-sl').val()});
+						changeChief(id);
+						changed = true;
+					}
+					if(changed) {
+						$(this).hide();
+					}
+				});
 			}
 		}
 		$('#info-dv .info-save-dv').hide();
@@ -3774,6 +3765,88 @@ function forceShowUnassigned() {
         console.log('[forceShowUnassigned] Завершено');
     }, 250);
 }
+
+// --- Обёртки для логирования ответа от сервера ---
+function changeChief(worker_id){
+	
+	let location_uid 	= $(':selected', $('#chiefs-sl')).parent().attr('value');
+	let chief_uid 		= "";
+	
+	for(let w in WORKERS){
+		
+		let no = Number(w)+1;
+		let id = no+'_'+WORKERS[w]['uid'];
+		
+		if(id == worker_id && w == no-1){
+			
+			//if(WORKERS[w]['location_uid'] != location_uid && chief_uid != $('#chiefs-sl').val()){
+			if($('#chiefs-sl').val() != WORKERS[w]['chief_uid']){
+			
+				$('#info-dv .info-save-dv').show();
+		
+				$('#info-dv .info-save-dv').click(function(){
+					changeData("НазначитьМастеруНовогоНачальника", location_uid, WORKERS[w]['location_uid'], $('#chiefs-sl').val(), WORKERS[w]['uid']);
+					
+					$('#info-dv .info-save-dv').hide();
+				});
+			
+			}else{
+				$('#info-dv .info-save-dv').hide();
+			}
+			
+			break;
+		}
+	}
+}
+
+function changeMaster(worker_id){
+    let location_uid = $(':selected', $('#masters-sl')).parent().attr('value');
+    let chief_uid = "";
+    let master_uid = $('#masters-sl').val();
+    for(let l in LOCATIONS){
+        for(let m in LOCATIONS[l]['masters']){
+            if(master_uid == LOCATIONS[l]['masters'][m]['uid']){
+                chief_uid = LOCATIONS[l]['masters'][m]['chief_uid'];
+            }
+        }
+    }
+    for(let w in WORKERS){
+        let no = Number(w)+1;
+        let id = no+'_'+WORKERS[w]['uid'];
+        if(id == worker_id && w == no-1){
+            if(location_uid != WORKERS[w]['location_uid'] || (chief_uid != "" && WORKERS[w]['master_uid'] != master_uid)){
+                $('#info-dv .info-save-dv').show();
+                console.log('[info-save-dv] Отправка смены мастера:', {location_uid, chief_uid, master_uid, worker_uid: WORKERS[w]['uid']});
+                changeData("НазначитьРаботникуНовогоМастера", location_uid, chief_uid, master_uid, WORKERS[w]['uid']);
+                $('#info-dv .info-save-dv').hide();
+            }else{
+                $('#info-dv .info-save-dv').hide();
+            }
+        }
+    }
+}
+
+function changeChief(worker_id){
+    let location_uid = $(':selected', $('#chiefs-sl')).parent().attr('value');
+    let chief_uid = $('#chiefs-sl').val();
+    for(let w in WORKERS){
+        let no = Number(w)+1;
+        let id = no+'_'+WORKERS[w]['uid'];
+        if(id == worker_id && w == no-1){
+            let old_location_uid = WORKERS[w]['location_uid'];
+            if(chief_uid != WORKERS[w]['chief_uid']){
+                $('#info-dv .info-save-dv').show();
+                console.log('[info-save-dv] Отправка смены начальника:', {location_uid, old_location_uid, chief_uid, worker_uid: WORKERS[w]['uid']});
+                changeData("НазначитьМастеруНовогоНачальника", location_uid, old_location_uid, chief_uid, WORKERS[w]['uid']);
+                $('#info-dv .info-save-dv').hide();
+            }else{
+                $('#info-dv .info-save-dv').hide();
+            }
+            break;
+        }
+    }
+}
+
 
 
 
