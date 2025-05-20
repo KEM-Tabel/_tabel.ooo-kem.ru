@@ -699,16 +699,17 @@ body {
 	top:2px;
 	left:336px;
 	width:336px;
-	height:210px;
+	height:auto;
+	min-height: 120px;
 	z-index:1000;
-	overflow: hidden;
+	overflow: visible;
     border: 1px solid #CCC;
-    white-space: nowrap;
+    white-space: normal;
     font-family: sans-serif;
     background: #f7f7f7;
     color: #333;
     border-radius: 5px;
-	padding: 0;
+	padding: 16px 18px 16px 18px;
 	box-shadow: 2px 2px 5px 0px rgba(0, 0, 0, 0.5);
 }
 
@@ -730,7 +731,7 @@ body {
 	cursor:pointer;
 }
 
-#info-dv .info-fio-dv, .info-organization-dv, .info-location-dv, .info-master-dv, .info-post-dv, .info-category-dv, .info-birthday-dv  {
+#info-dv .info-fio-dv, .info-organization-dv, .info-location-dv, .info-master-dv, .info-post-dv, .info-category-dv, .info-birthday-dv, .info-data-in-dv, .info-data-out-dv  {
 	margin: 14px 0 0 8px;
 }
 
@@ -1324,3 +1325,28 @@ body {
     cursor: not-allowed !important;
     pointer-events: auto;
 }
+
+.cell-before-ob {
+    background: #e0e0e0 !important;
+    color: #888 !important;
+    cursor: not-allowed !important;
+    opacity: 1;
+    box-shadow: none !important;
+    font-weight: normal !important;
+}
+
+.cell-attendance-missing-hours.cell-before-ob {
+    box-shadow: none !important;
+    color: #888 !important;
+    font-weight: normal !important;
+}
+
+.cell-before-in {
+    background: #e0e0e0 !important;
+    color: #888 !important;
+    border: 2px dashed #a3a3a3  !important;
+    cursor: default !important;
+    opacity: 1 !important;
+    box-shadow: none !important;
+    font-weight: normal !important;
+}	

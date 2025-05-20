@@ -30,7 +30,7 @@ let unselectedBgd	= '#f6f7f6';
 let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
-let VER 			= "19";
+let VER 			= "20";
 
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
@@ -177,6 +177,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 			restoreSelection();
 			updateOrgFilterSelected();
 			applyOrgFilter();
+			forceShowUnassigned();
 			restoreLastCellOrScroll();
 			
 			// Обновляем глобальные переменные для тултипов
@@ -398,54 +399,68 @@ function createTabel(){
 					html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
 					html += '<div id="'+worker_id+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
 					html += '<span id="'+worker_id+'-sp">'+worker['fio']+'</span>';
-					html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, '+"'"+worker_id+"'"+')" class="info-row"></div>';
+					html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, \''+worker_id+'\')" class="info-row"></div>';
 					html += '</div>';
 					html += '</div>';
 					
 					//days++
 					htmlDays+= '<div id="'+worker_id+'-dv" class="row-days-dv">';
+					// --- Новая логика: ищем дату приёма ---
+					let dateIn = worker['date_in'];
+					let normIn = '';
+					if(dateIn) {
+						normIn = parseDateIn(dateIn);
+					}
 					for(let d in DAYS){
-						
-						let day			= worker['days'][d];
-						let days_id		= worker_no+'-'+(Number(d)+1);
-						let dayHours 	= "";
-						let dayValue 	= "";
-						
-						if(day != undefined && day['vt'] != undefined){	
+						let day = worker['days'][d];
+						let days_id = worker_no+'-'+(Number(d)+1);
+						let dayHours = "";
+						let dayValue = "";
+						if(day != undefined && day['vt'] != undefined){    
 							dayValue = day['vt'];
-						
 							if(codesDi.includes(String(day['hours']))){
 								dayHours = day['hours'];
 							}
-							
 						}
-						
 						suffix = day['weekend'] ? 'weekend' : 'work';
 						opacity = '1';
 						let isFixed = day && day.fixState;
 						let cellClass = 'days-' + suffix;
+						// --- Исправлено: блокируем до даты приёма по дате, а не по индексу ---
+						if(normIn) {
+							let dayObj = DAYS[d];
+							// Формируем дату дня в формате YYYYMMDD
+							let dayDate = '';
+							if(dayObj && dayObj['year'] && dayObj['month'] && dayObj['day']) {
+								dayDate = String(dayObj['year']) + ('0'+dayObj['month']).slice(-2) + ('0'+dayObj['day']).slice(-2);
+							}
+							let normDay = String(dayDate);
+							if(Number(normDay) < Number(normIn) && (!dayHours || dayHours == 0)) {
+								cellClass += ' cell-before-in';
+							}
+						}
 						if (isFixed) cellClass += ' cell-fixed';
-						//day['enable'] ? '1' : '.5';
-					
-						// Формируем красивый html для ячейки
+						// --- ДОБАВЛЕНО: data-doc для фиксированных ячеек ---
+						let docAttr = '';
+						if (isFixed && day && day['doc']) {
+							docAttr = ' data-doc="'+String(day['doc']).replace(/"/g, '&quot;')+'"';
+						}
 						let hoursNum = Number(dayHours);
 						let htmlCell = '';
 						if(dayValue && !hoursNum){
-							htmlCell = `<span class="cell-code-big">${dayValue}</span>`;
-							htmlCell += `<div id="${days_id}-day-hours" class="days-hours"></div>`;
+							htmlCell = '<span class="cell-code-big">'+dayValue+'</span>';
+							htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
 						}else if(dayValue && hoursNum){
-							htmlCell = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+							htmlCell = '<span class="cell-code-small">'+dayValue+'</span><span class="cell-hours-big">'+hoursNum+'</span>';
+						}else if(hoursNum) {
+							htmlCell = '<span class="cell-hours-big">'+hoursNum+'</span>';
 						}else{
 							htmlCell = '';
-							htmlCell += `<div id="${days_id}-day-hours" class="days-hours"></div>`;
+							htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
 						}
-						htmlCell += `<div id="${days_id}-day-comment" class="days-comment" style="display: ${day['comment'] != "" ? "block" : "none"};"></div>`;
-						
-						htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+'"'+(isFixed ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';" title="'+day['comment']+'" onMouseDown="startSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+Number(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
-						
+						htmlCell += '<div id="'+days_id+'-day-comment" class="days-comment" style="display: '+(day['comment'] != '' ? 'block' : 'none')+';"></div>';
+						htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+'" '+docAttr+' '+(isFixed ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';" title="'+day['comment']+'" onMouseDown="startSelect('+(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
 					}
-					
-					//days--
 					htmlDays += '</div>';
 				
 					htmlSumDays	+= '<div id="'+worker_id+'-days-dv" class="row-sum-days-dv"></div>';
@@ -1272,7 +1287,6 @@ function contextAction(act){
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
 		case "comment":
-			console.log('contextAction(comment) вызван', {startRow, startCol, selectedCells});
 			// Позиционируем окно комментария рядом с выбранной ячейкой
 			let $cell = $('#' + Number(startRow+1) + '-' + Number(startCol+1) + '-day-dv');
 			let cellOffset = $cell.offset();
@@ -1553,128 +1567,139 @@ function clearFio(){
 }
 
 function slideDiv(type, uid){
-	showHideInfo(null,null);
+    console.log('slideDiv вызван:', type, uid); // Лог для отладки
+    showHideInfo(null,null);
 
-	let $head = $('#'+type+'_'+uid+'-head');
-	let $canvas = $('#'+type+'_'+uid+'-canvas');
-	if($canvas.is(':hidden')){
-		$head.find('.toggle-bt').css('background-image', 'url("/images/report/up.png")');
-		$canvas.slideDown(100);
-		$head.removeClass('collapsed');
-		setCookie(type+'_'+uid, "show", "/", null, null);
-	}else{
-		$head.find('.toggle-bt').css('background-image', 'url("/images/report/down.png")');
-		$canvas.slideUp(100);
-		$head.addClass('collapsed');
-		setCookie(type+'_'+uid, "hide", "/", null, null);
+    let $head = $('#'+type+'_'+uid+'-head');
+    let $canvas = $('#'+type+'_'+uid+'-canvas');
+    if($canvas.is(':hidden')){
+        $head.find('.toggle-bt').css('background-image', 'url("/images/report/up.png")');
+        $canvas.slideDown(100);
+        $head.removeClass('collapsed');
+        setCookie(type+'_'+uid, "show", "/", null, null);
+        // --- ДОБАВЛЕНО: раскрываем все вложенные canvases, которые не имеют collapsed ---
+        if(type === 'l') {
+            $canvas.find('[id$="-canvas"]').each(function() {
+                let headId = $(this).attr('id').replace('-canvas', '-head');
+                if (!$('#'+headId).hasClass('collapsed')) {
+                    $(this).slideDown(100);
+                }
+            });
+        }
+    }else{
+        $head.find('.toggle-bt').css('background-image', 'url("/images/report/down.png")');
+        $canvas.slideUp(100);
+        $head.addClass('collapsed');
+        setCookie(type+'_'+uid, "hide", "/", null, null);
         unselectCells(); // Снимаем выделение при сворачивании
-	}
+        // Принудительно скрываем все вложенные canvases и их head
+        if(type === 'l') {
+            $canvas.find('[id$="-canvas"]').each(function() {
+                $(this).hide();
+                let headId = $(this).attr('id').replace('-canvas', '-head');
+                $('#'+headId).addClass('collapsed');
+            });
+        }
+    }
 }
 
 function rollAll(way){
-	
-	switch(way){
-		default:
-			return;
-			break;
-		case "up":
-			for(index in CANVASES){
-		
-				let canvas = CANVASES[index];
-				
-				$('#'+canvas['id']+'-canvas').hide();
-				
-				delCookie(canvas['id'], "/", null);
-			}
-			
-			scrollTo(0, 0);
-			break;
-		case "down": 		
-			for(index in CANVASES){
-		
-				let canvas = CANVASES[index];
-				
-				$('#'+canvas['id']+'-canvas').show();
-				
-				setCookie(canvas['id'], "show", "/", null, null);
-			}			
-			break;
-	}
-	
+    switch(way){
+        default:
+            return;
+            break;
+        case "up":
+            for(index in CANVASES){
+                let canvas = CANVASES[index];
+                $('#'+canvas['id']+'-canvas').hide();
+                delCookie(canvas['id'], "/", null);
+            }
+           
+            scrollTo(0, 0);
+            break;
+        case "down":         
+            for(index in CANVASES){
+                let canvas = CANVASES[index];
+                $('#'+canvas['id']+'-canvas').show();
+                setCookie(canvas['id'], "show", "/", null, null);
+            }           
+            break;
+    }
 }
 
 // EVENTS ===========================
 
 function showHideInfo(element, id){
-	
 	let action = "";
 	if($(element).css('opacity') == .2){
 		action = "show";
 	}
-	
 	$('.info-row').css({opacity: .2});
-	
 	if(action == "show"){
-		
-		let id_arr 	= id.split('_');
-		let no 		= Number(id_arr[0]);
-		let uid 	= id_arr[1];
-		
+		let id_arr  = id.split('_');
+		let no     = Number(id_arr[0]);
+		let uid    = id_arr[1];
 		$(element).css({opacity: 1});
-	
 		let e = window.event;
-		
-		let X = e.clientX+20;
-		let Y = (e.clientY+250 > $(window).height()) ? $(window).height()-230 : e.clientY;
-		
-		$("#info-dv").css({top: Y + "px", left:  X + "px"});
-		
+		let infoDv = $("#info-dv");
+		infoDv.show();
+		let winH = $(window).height();
+		let winW = $(window).width();
+		let mouseX = e.clientX;
+		let mouseY = e.clientY;
+		let infoH = infoDv.outerHeight();
+		let infoW = infoDv.outerWidth();
+		let top, left;
+		if (mouseY + 20 + infoH < winH - 20) {
+			top = mouseY + 20;
+		} else if (mouseY - infoH - 20 > 20) {
+			top = mouseY - infoH - 20;
+		} else {
+			top = Math.max((winH - infoH) / 2, 20);
+		}
+		if (mouseX + 20 + infoW < winW - 20) {
+			left = mouseX + 20;
+		} else if (mouseX - infoW - 20 > 20) {
+			left = mouseX - infoW - 20;
+		} else {
+			left = Math.max((winW - infoW) / 2, 20);
+		}
+		infoDv.css({top: top + "px", left: left + "px"});
+		// --- ВОССТАНОВЛЕНО НАПОЛНЕНИЕ info-dv ---
 		for(let w in WORKERS){
-			
 			let worker = WORKERS[w];
-			
 			if(uid == worker['uid'] && w == no-1){
-				
 				$('#info-dv .info-fio-dv').html("<strong>ФИО: </strong>"+worker['fio'].toUpperCase());
 				$('#info-dv .info-organization-dv').html("<strong>Организация: </strong>"+worker['firm_name']);
 				$('#info-dv .info-location-dv').html("<strong>Участок: </strong>"+worker['location_name']);
-				
-				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief('+"'"+id+"'"+')">';
+				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief(\'"+id+"\')">';
 				for(let l in LOCATIONS){
 					htmlChiefs += '<optgroup label="'+LOCATIONS[l]['name']+'" value="'+LOCATIONS[l]['uid']+'" >';
 					for(let c in LOCATIONS[l]['chiefs']){
-						
 						let chief = LOCATIONS[l]['chiefs'][c];
-						
 						if(worker['chief_uid'] == chief['uid'] && worker['location_uid'] == LOCATIONS[l]['uid']){
-							htmlChiefs += '<option value="'+chief['uid']+'" selected="selected">'+chief['name']+'</option>';					
+							htmlChiefs += '<option value="'+chief['uid']+'" selected="selected">'+chief['name']+'</option>';
 						}else{
 							htmlChiefs += '<option value="'+chief['uid']+'">'+chief['name']+'</option>';
 						}
-						
 					}
 					htmlChiefs += '</optgroup>';
 				}
 				htmlChiefs += '</select>';
-				
-				let htmlMasters = '<select id="masters-sl" onchange="changeMaster('+"'"+id+"'"+')">';
+				let htmlMasters = '<select id="masters-sl" onchange="changeMaster(\'"+id+"\')">';
 				for(let l in LOCATIONS){
 					htmlMasters += '<optgroup label="'+LOCATIONS[l]['name']+'" value="'+LOCATIONS[l]['uid']+'" >';
 					for(let m in LOCATIONS[l]['masters']){
-						
 						let master = LOCATIONS[l]['masters'][m];
-						
 						if(worker['master_uid'] == master['uid']  && worker['location_uid'] == LOCATIONS[l]['uid']){
-							htmlMasters += '<option value="'+master['uid']+'" selected="selected">'+master['name']+'</option>';					
+							htmlMasters += '<option value="'+master['uid']+'" selected="selected">'+master['name']+'</option>';
 						}else{
 							htmlMasters += '<option value="'+master['uid']+'">'+master['name']+'</option>';
 						}
-						
 					}
 					htmlMasters += '</optgroup>';
 				}
 				htmlMasters += '</select>';
-			
 				if(worker['is_master']){
 					if(!worker['is_chief']){
 						$('#info-dv .info-master-dv').html("<strong>Начальник: </strong>"+htmlChiefs);
@@ -1682,30 +1707,26 @@ function showHideInfo(element, id){
 						$('#info-dv .info-master-dv').html("<strong>Начальник: </strong>"+htmlChiefs);
 					}
 				}
-				
 				if(worker['is_worker']){
 					$('#info-dv .info-master-dv').html("<strong>Мастер: </strong>"+htmlMasters);
 				}
-				
 				$('#info-dv .info-post-dv').html("<strong>Должность: </strong>"+worker['post_name']);
 				$('#info-dv .info-category-dv').html("<strong>Разряд: </strong>"+worker['category_name']);
 				$('#info-dv .info-birthday-dv').html("<strong>Дата рождения: </strong>"+worker['birthday']+" ("+worker['age']+" л.)");
-				
-			}	
-			
-		}	
-		
+				$('#info-dv .info-data-in-dv').html("<strong>Дата приёма: </strong>" + (worker['date_in'] ? worker['date_in'] : '-'));
+				$('#info-dv .info-data-out-dv').html("<strong>Дата увольнения: </strong>" + (worker['date_out'] ? worker['date_out'] : '-'));
+			}
+		}
 		$('#info-dv .info-save-dv').hide();
 		$('#info-dv').show();
-	}else{
+	} else {
 		$('#info-dv .info-save-dv').hide();
 		$('#info-dv').hide();
 	}
-	
 }
 
 function setMouseUpState(e) {
-  
+		
 	let flags = e.buttons !== undefined ? e.buttons : e.which;
 
 	mouseUp 	= (flags & 1) === 1;
@@ -2534,7 +2555,7 @@ function showConfirmClearModal(onConfirm) {
 
 // === Фильтр по организациям (overlay) ===
 $(document).ready(function () {
-  // ... существующий код ...
+  
 
   // Открытие/закрытие overlay
   $('#open-org-filter').on('click', function() {
@@ -2616,7 +2637,7 @@ $(document).ready(function () {
       let no = Number(w) + 1;
       let id = no + '_' + worker['uid'];
       let $row = $('#' + id + '-row');
-      let inUnassigned = $row.parents('.location-head').text().toUpperCase().includes('НЕРАСПРЕДЕЛ') ||
+      let inUnassigned = $row.parents('.location-head').text().toUpperCase().includes('НЕРАСПРЕД') ||
                         $row.parents('.location-head').text().toUpperCase().includes('НЕСОТРУДНИК');
       let show = false;
       let workerFirm = (worker['firm_uid'] === null || worker['firm_uid'] === undefined) ? 'null' : worker['firm_uid'];
@@ -2677,6 +2698,31 @@ $(document).ready(function () {
         $canvas.hide();
       }
     });
+    // --- ДОБАВЛЕНО: разворачиваем "нераспределённых" полностью с вложенными ---
+    let foundUnassigned = false;
+    $('.location-head').each(function() {
+        let text = $(this).text().toUpperCase();
+        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+            let id = $(this).attr('id').replace('-head', '');
+            console.log('[applyOrgFilter] Найден нераспределённый блок:', id, $(this).text());
+            // Разворачиваем сам location
+            $('#'+id+'-canvas').show();
+            $('#'+id+'-head .toggle-bt').css('background-image', 'url("/images/report/up.png")');
+            $('#'+id+'-head').removeClass('collapsed');
+            // Разворачиваем все вложенные canvases (chiefs, masters и т.д.)
+            $('#'+id+'-canvas').find('[id$="-canvas"]').each(function() {
+                $(this).show();
+                let headId = $(this).attr('id').replace('-canvas', '-head');
+                $('#'+headId+' .toggle-bt').css('background-image', 'url("/images/report/up.png")');
+                $('#'+headId).removeClass('collapsed');
+            });
+            console.log('[applyOrgFilter] Развернул:', id, $('#'+id+'-canvas').is(':visible'), $('#'+id+'-head').hasClass('collapsed'));
+            foundUnassigned = true;
+        }
+    });
+    if (!foundUnassigned) {
+        console.log('[applyOrgFilter] Не найдено ни одного блока нераспределённых!');
+    }
   };
 
   // === Отображение выбранных фильтров организаций ===
@@ -2706,9 +2752,9 @@ $(document).ready(function () {
   if (window.organizations) updateOrgFilterSelected();
 
 });
-// ... существующий код ...
 
-// ... существующий код ...
+
+
 // === Режим только для чтения ===
 let IS_READONLY = getCookie("READONLY") === "1";
 
@@ -2758,7 +2804,7 @@ $(document).ready(function() {
     }, 500);
   }
 });
-// ... существующий код ...
+
 
 // === Сохранение и восстановление выделения ячеек при обновлении таблицы ===
 let savedSelection = [];
@@ -2789,7 +2835,7 @@ function restoreSelection() {
     });
 }
 
-// ... существующий код ...
+
 
 // === Сохранение координат последней выделенной ячейки для автоскролла ===
 function saveScrollCellToCookie() {
@@ -2823,7 +2869,7 @@ function scrollToCellFromCookie() {
     }
 }
 
-// ... существующий код ...
+
 
 // Вызовы сохранения координат после выделения
 // В конец функций selectCell, selectRow, selectCol, unselectCells, selectRectangle добавьте:
@@ -2849,7 +2895,7 @@ function scrollToCellFromCookie() {
 //     transition: box-shadow 0.8s;
 // }
 
-// ... существующий код ...
+
 // Сохраняем позицию прокрутки окна
 $(window).on('scroll', function() {
     localStorage.setItem('tabel_scroll_top', window.scrollY || window.pageYOffset);
@@ -2866,7 +2912,7 @@ function restoreScrollPosition() {
     }, 1200); // увеличенная задержка
 }
 
-// ... существующий код ...
+
 // Сохраняем последнюю активную ячейку
 function saveLastCellToStorage() {
     if (selectedCells.length > 0) {
@@ -2914,7 +2960,7 @@ function restoreLastCellOrScroll() {
 // Вызовите restoreLastCellOrScroll() в самом конце после построения таблицы и фильтрации
 // Вместо restoreScrollPosition()
 
-// ... существующий код ...
+
 function checkSelectedCellVisibility() {
     if (selectedCells.length > 0) {
         let cell = selectedCells[0];
@@ -2957,7 +3003,7 @@ function checkSelectedCellVisibility() {
     }
 }
 
-// ... существующий код ...
+
 
 // === Режим выделения строки только для просмотра (read-only) ===
 console.log('report.js debug: read-only режим по фамилии активен');
@@ -3151,7 +3197,7 @@ if (typeof getDataTabel === 'function') {
     };
 }
 
-// ... существующий код ...
+
 // === Проверка размера окна для табеля ===
 function checkTabelWindowSize() {
   var minWidth = 1200;
@@ -3173,9 +3219,9 @@ $(document).ready(function() {
   checkTabelWindowSize();
   $(window).on('resize', checkTabelWindowSize);
 });
-// ... существующий код ...
 
-// ... существующий код ...
+
+
 window.tabelIsSaving = false;
 
 // Модифицируем sendDataTabel для блокировки
@@ -3234,7 +3280,7 @@ contextAction = function() {
   }
   return orig_contextAction2.apply(this, arguments);
 };
-// ... существующий код ...
+
 
 function getTodayYMD() {
   const d = new Date();
@@ -3250,7 +3296,7 @@ function getReportUrl(groupby, type) {
   return `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
 }
 
-// ... существующий код ...
+
 function getAuthHeaderForReport() {
   // 1. Если явно задано — используем
   if (window.AUTH_HEADER) return window.AUTH_HEADER;
@@ -3337,7 +3383,7 @@ function showReportSpinner(show) {
   }
 }
 
-// ... существующий код ...
+
 
 // === Универсальная функция логирования действий пользователя ===
 function logUserAction(action, details = {}) {
@@ -3488,6 +3534,247 @@ $(document).on('keydown', function(e) {
     tag: e.target && e.target.tagName ? e.target.tagName : ''
   });
 });
+
+
+// В setCells и startSelect запретить редактирование cell-before-ob
+let orig_setCells3 = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
+        if ($cell.hasClass('cell-before-ob')) {
+            return; // Блокируем редактирование
+        }
+    }
+    return orig_setCells3.apply(this, arguments);
+};
+let orig_startSelect3 = startSelect;
+startSelect = function(indexRow, indexCol, shiftSelection=false) {
+    let $cell = $('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv');
+    if ($cell.hasClass('cell-before-ob')) {
+        return; // Блокируем выделение
+    }
+    return orig_startSelect3.apply(this, arguments);
+};
+
+
+// --- Функция для преобразования даты приёма из строки '17 мая 2022 г.' в YYYYMMDD ---
+function parseDateIn(dateIn) {
+    let months = {
+        'января': '01', 'февраля': '02', 'марта': '03', 'апреля': '04', 'мая': '05', 'июня': '06',
+        'июля': '07', 'августа': '08', 'сентября': '09', 'октября': '10', 'ноября': '11', 'декабря': '12'
+    };
+    let match = String(dateIn).match(/(\d{1,2})\s+([а-яё]+)\s+(\d{4})/i);
+    if (match) {
+        let day = ('0' + match[1]).slice(-2);
+        let month = months[match[2].toLowerCase()] || '01';
+        let year = match[3];
+        return year + month + day;
+    }
+    return '';
+}
+
+
+let orig_setCells_cellBeforeIn = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
+        if ($cell.hasClass('cell-before-in')) {
+            // Разрешаем только часы от 1 до 25 или удаление (пусто/0)
+            let uid = WORKERS[Number(cell['row'])]['uid'];
+            let day = Number(cell['col']);
+            let no = Number(cell['row'])+1;
+            let id = no+'_'+uid;
+            if (value === '' || value === 0 || value === '0') {
+                // Удаление значения
+                TABEL[id][day]['vt'] = '';
+                TABEL[id][day]['hours'] = 0;
+                // Очищаем отображение
+                let htmlValue = '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+                htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+                $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+                $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
+                // Фиксируем изменение для отправки на сервер
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][day] = TABEL[id][day];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                return;
+            }
+            let num = Number(value);
+            if (!/^[0-9]+$/.test(value) || num < 1 || num > 25) {
+                return; // Блокируем всё, кроме чисел 1-25 и удаления
+            }
+            // Принудительно ставим Я и часы
+            value = num;
+            // Устанавливаем только часы, vt = 'Я'
+            TABEL[id][day]['vt'] = 'Я';
+            TABEL[id][day]['hours'] = num;
+            // Обновляем отображение
+            let htmlValue = '<span class="cell-code-small">Я</span><span class="cell-hours-big">'+num+'</span>';
+            htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
+            // Фиксируем изменение для отправки на сервер
+            if (!changedCells[id]) changedCells[id] = {};
+            changedCells[id][day] = TABEL[id][day];
+            TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+            return;
+        }
+    }
+    return orig_setCells_cellBeforeIn.apply(this, arguments);
+};
+
+
+// === Tooltip для фиксированных ячеек с doc ===
+$(document).on('mouseenter', '[data-fixed="1"]', function(e) {
+    let doc = $(this).attr('data-doc');
+    if (doc) {
+        let $tooltip = $('#fixstate-tooltip');
+        if ($tooltip.length === 0) {
+            $('body').append('<div id="fixstate-tooltip" style="position:absolute;z-index:99999;max-width:400px;background:#fffbe6;border:1px solid #e6b800;padding:10px 16px;border-radius:7px;box-shadow:0 2px 8px #0002;font-size:15px;display:none;"></div>');
+            $tooltip = $('#fixstate-tooltip');
+        }
+        $tooltip.html('<b>Документ:</b><br>' + doc.replace(/\n/g, '<br>'));
+        let offset = $(this).offset();
+        let tooltipH = $tooltip.outerHeight();
+        let tooltipW = $tooltip.outerWidth();
+        let cellH = $(this).outerHeight();
+        let cellW = $(this).outerWidth();
+        let winH = $(window).height();
+        let winW = $(window).width();
+        let top = offset.top - tooltipH - 8; // по умолчанию — сверху
+        let left = offset.left;
+        // Если не влезает сверху — показываем снизу
+        if (top < 10) {
+            top = offset.top + cellH + 8;
+        }
+        // Если не влезает справа — сдвигаем влево
+        if (left + tooltipW > winW - 10) {
+            left = winW - tooltipW - 10;
+        }
+        if (left < 10) left = 10;
+        // Если открыто контекстное меню — tooltip выше него
+        let $ctx = $('#context-menu:visible');
+        if ($ctx.length) {
+            let ctxOffset = $ctx.offset();
+            let ctxH = $ctx.outerHeight();
+            // Если tooltip может перекрыть меню — поднимаем выше
+            if (top + tooltipH > ctxOffset.top && top < ctxOffset.top + ctxH) {
+                top = ctxOffset.top - tooltipH - 8;
+                if (top < 10) top = 10;
+            }
+        }
+        $tooltip.css({
+            top: top + 'px',
+            left: left + 'px',
+            display: 'block'
+        });
+    }
+});
+$(document).on('mouseleave', '[data-fixed="1"]', function() {
+    $('#fixstate-tooltip').hide();
+});
+
+
+
+    // --- ЯВНО показываем head/canvas для "НЕРАСПРЕДЕЛЕННЫЕ", если внутри есть хотя бы один видимый сотрудник ---
+    $('.location-head').each(function() {
+        let text = $(this).text().toUpperCase();
+        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+            let id = $(this).attr('id').replace('-head', '');
+            let hasVisible = $('#'+id+'-canvas .worker-row:visible').length > 0;
+            if (hasVisible) {
+                $(this).show();
+                $('#'+id+'-canvas').show();
+            }
+        }
+    });
+
+
+
+    // --- Гарантируем, что head "НЕРАСПРЕДЕЛЕННЫЕ" показывается, если есть видимые сотрудники ---
+    $('.location-head').each(function() {
+        let text = $(this).text().toUpperCase();
+        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+            let id = $(this).attr('id').replace('-head', '');
+            let hasVisible = $('#'+id+'-canvas .worker-row:visible').length > 0;
+            if (hasVisible) {
+                $(this).css('display', 'flex'); // Явно flex, чтобы не было display: none
+                $('#'+id+'-canvas').show();
+            } else {
+                $(this).hide();
+                $('#'+id+'-canvas').hide();
+            }
+        }
+    });
+
+    // ... существующий код ...
+    // --- ЯВНО показываем master-head и chief-head внутри "НЕРАСПРЕДЕЛЕННЫЕ", если есть видимые сотрудники ---
+    $('.location-head').each(function() {
+        let text = $(this).text().toUpperCase();
+        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+            let id = $(this).attr('id').replace('-head', '');
+            // Для каждого master-head внутри этого location
+            $('#'+id+'-canvas .master-head').each(function() {
+                let masterId = $(this).attr('id').replace('-head', '');
+                let hasVisible = $('#'+masterId+'-canvas .worker-row:visible').length > 0;
+                if (hasVisible) {
+                    $(this).css('display', 'flex');
+                    $('#'+masterId+'-canvas').show();
+                } else {
+                    $(this).hide();
+                    $('#'+masterId+'-canvas').hide();
+                }
+            });
+            // Для каждого chief-head внутри этого location
+            $('#'+id+'-canvas .chief-head').each(function() {
+                let chiefId = $(this).attr('id').replace('-head', '');
+                let hasVisible = $('#'+chiefId+'-canvas .master-head:visible, #'+chiefId+'-canvas .worker-row:visible').length > 0;
+                if (hasVisible) {
+                    $(this).css('display', 'flex');
+                    $('#'+chiefId+'-canvas').show();
+                } else {
+                    $(this).hide();
+                    $('#'+chiefId+'-canvas').hide();
+                }
+            });
+        }
+    });
+// ... существующий код ...
+
+// === Принудительно раскрыть нераспределённых и их мастеров после фильтрации/автообновления ===
+function forceShowUnassigned() {
+    console.log('[forceShowUnassigned] Запуск функции');
+    setTimeout(function() {
+        $('.location-head').each(function() {
+            let text = $(this).text().toUpperCase();
+            if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+                let id = $(this).attr('id').replace('-head', '');
+                let hasVisible = $('#'+id+'-canvas .worker-row:visible').length > 0;
+                if (hasVisible) {
+                    this.style.removeProperty('display');
+                    this.style.setProperty('display', 'flex', 'important');
+                    $(this).removeClass('collapsed');
+                    $('#'+id+'-canvas').show();
+                    // Аналогично для master-head
+                    $('#'+id+'-canvas .master-head').each(function() {
+                        let masterId = $(this).attr('id').replace('-head', '');
+                        let hasVisible = $('#'+masterId+'-canvas .worker-row:visible').length > 0;
+                        if (hasVisible) {
+                            this.style.removeProperty('display');
+                            this.style.setProperty('display', 'flex', 'important');
+                            $(this).removeClass('collapsed');
+                            $('#'+masterId+'-canvas').show();
+                        }
+                    });
+                }
+            }
+        });
+        console.log('[forceShowUnassigned] Завершено');
+    }, 250);
+}
+
 
 
 
