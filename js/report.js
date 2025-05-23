@@ -16,6 +16,7 @@ let symbolsDi 		= ['0','1','2','3','4','5','6','7','8','9'];
 let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г'];
 let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u'];
 let codesDi 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
+let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В'];
 let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В'];
 let mFullDays		= ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 let mouseUp 		= false;
@@ -30,7 +31,7 @@ let unselectedBgd	= '#f6f7f6';
 let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
-let VER 			= "20";
+let VER 			= "21";
 
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
@@ -45,6 +46,20 @@ document.addEventListener("mousemove", 	setMouseDownState);
 document.addEventListener("mouseup", 	setMouseUpState);
 document.addEventListener('keydown', 	setCellVal);
 document.addEventListener('scroll', 	scrollDocument);
+
+document.addEventListener('mousedown', function(e) {
+    console.log('[DEBUG] mousedown document', e.target);
+}, true);
+
+
+function getReadAllCookie() {
+    const match = document.cookie.match(/readAll=([^;]+)/);
+    return match ? match[1] === 'true' : false;
+}
+// === Глобальная функция для установки куки readAll ===
+function setReadAllCookie(value) {
+    document.cookie = `readAll=${value}; path=/; max-age=31536000`;
+}
 
 $(document).ready(function() {
     if (!sessionIntervalId) {
@@ -91,6 +106,9 @@ $(document).ready(function() {
       `);
     }
 
+
+
+
     $('#menu-reports').off('click.reportsModal').on('click.reportsModal', function(e) {
       $('#reports-modal').fadeIn(120);
       logUserAction('openReportsModal');
@@ -114,6 +132,153 @@ $(document).ready(function() {
       $('#reports-modal').fadeOut(120);
       logUserAction('downloadReport', { type: type });
     });
+
+    // Добавляем кнопку "Табель (только просмотр)" рядом с "Отчёты"
+    if ($('#menu-fullreadonly').length === 0) {
+        $('#menu-reports').after('<button id="menu-fullreadonly" class="menu-button" style="margin-left:12px; background:#999999;color:#fff;border:none;display:none;">Смотреть</button>');
+    }
+
+    // Функция для работы с куки readAll
+   
+
+    // Флаг режима полного read-only
+    window.IS_FULL_READONLY = false;
+    // Обработчик нажатия на кнопку
+    $(document).on('click', '#menu-fullreadonly', function() {
+        if (!window.IS_FULL_READONLY) {
+            // Входим в режим просмотра
+            window.IS_FULL_READONLY = true;
+            $('#menu-fullreadonly').text('Изменить');
+            // Вызываем getDataTabel с доп. true
+            getDataTabel(true, false, UID, DATATIME, false, true);
+        } else {
+            // Выходим из режима просмотра
+            window.IS_FULL_READONLY = false;
+            $('#menu-fullreadonly').text('Смотреть');
+            // Обычный запрос
+            getDataTabel(true, false, UID, DATATIME, false);
+        }
+    });
+
+    // === МЕНЮ ДЛЯ FIXSTATE ===
+    if ($('#fixstate-menu').length === 0) {
+        $('body').append(`
+            <div id="fixstate-menu" style="display:none;position:absolute;z-index:0;background:#fffbe6;border:1px solid #e6b800;padding:16px 20px;border-radius:10px;box-shadow:0 2px 8px #0002;min-width:220px;">
+                <div style="font-size:17px;font-weight:bold;margin-bottom:10px;">Изменить фикс. состояние</div>
+                <div style="margin-bottom:10px;">
+                    <label>Код:<br>
+                        <select id="fixstate-code-select" style="width:100%;font-size:16px;padding:4px 6px;"></select>
+                    </label>
+                </div>
+                <div style="margin-bottom:14px;">
+                    <label>Часы:<br>
+                        <select id="fixstate-hours-select" style="width:100%;font-size:16px;padding:4px 6px;">
+                            <option value="">-</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                            <option value="10">10</option>
+                        </select>
+                    </label>
+                </div>
+                <div style="display:flex;gap:10px;justify-content:flex-end;">
+                    <button id="fixstate-save-btn" class="btn btn-primary" style="padding:6px 18px;font-size:15px;">Сохранить</button>
+                    <button id="fixstate-cancel-btn" class="btn btn-secondary" style="padding:6px 18px;font-size:15px;">Отмена</button>
+                </div>
+            </div>
+        `);
+    }
+
+    // Заполняем коды
+    let $codeSelect = $('#fixstate-code-select');
+    $codeSelect.empty();
+    for (let code of codesRu1) {
+        $codeSelect.append(`<option value="${code}">${code}</option>`);
+    }
+
+    // Обработчик клика по фиксированной ячейке
+    $(document).on('click', '.cell-fixed, [data-fixed="1"]', function(e) {
+        if (window.IS_FULL_READONLY) return; // Запрет в режиме только для чтения
+        e.stopPropagation();
+        let $cell = $(this);
+        let id = $cell.attr('id');
+        let match = id && id.match(/^(\d+)-(\d+)-day-dv$/);
+        if (!match) return;
+        let row = parseInt(match[1], 10) - 1;
+        let col = parseInt(match[2], 10) - 1;
+        // Сохраняем в data атрибуты для дальнейшего использования
+        $('#fixstate-menu').data('row', row).data('col', col);
+        // Устанавливаем текущие значения
+        let uid = WORKERS[row]['uid'];
+        let no = row + 1;
+        let tabelId = no + '_' + uid;
+        let dayObj = TABEL[tabelId][col];
+        $codeSelect.val(dayObj['vt'] || codesRu1[0]);
+        $('#fixstate-hours-select').val(dayObj['hours'] || '');
+        // Показываем меню рядом с ячейкой
+        let offset = $cell.offset();
+        let menuW = $('#fixstate-menu').outerWidth();
+        let menuH = $('#fixstate-menu').outerHeight();
+        let left = offset.left;
+        let top = offset.top + $cell.outerHeight();
+        // Если не влезает справа — сдвигаем влево
+        if (left + menuW > $(window).width() - 10) left = $(window).width() - menuW - 10;
+        if (left < 10) left = 10;
+        // Если не влезает снизу — показываем выше
+        if (top + menuH > $(window).height() + $(window).scrollTop() - 10) {
+            top = offset.top - menuH;
+            if (top < 10) top = 10;
+        }
+        $('#fixstate-menu').css({left: left, top: top, display: 'block'});
+    });
+
+    // Сохранить изменения
+    $(document).on('click', '#fixstate-save-btn', async function() {
+        let row = $('#fixstate-menu').data('row');
+        let col = $('#fixstate-menu').data('col');
+        let code = $('#fixstate-code-select').val();
+        let hours = $('#fixstate-hours-select').val();
+        let uid = WORKERS[row]['uid'];
+        let no = row + 1;
+        let tabelId = no + '_' + uid;
+        // Обновляем данные
+        TABEL[tabelId][col]['vt'] = code;
+        TABEL[tabelId][col]['hours'] = hours === '' ? 0 : Number(hours);
+        // Фиксируем изменение для отправки на сервер
+        if (!changedCells[tabelId]) changedCells[tabelId] = {};
+        changedCells[tabelId][col] = TABEL[tabelId][col];
+        TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+        // Обновляем отображение ячейки
+        let htmlValue = '';
+        if (code && (!hours || hours == 0)) {
+            htmlValue = `<span class="cell-code-big">${code}</span>`;
+        } else if (code && hours) {
+            htmlValue = `<span class="cell-code-small">${code}</span><span class="cell-hours-big">${hours}</span>`;
+        }
+        htmlValue += `<div id="${row+1}-${col+1}-day-comment" class="days-comment" title="${TABEL[tabelId][col]['comment']||''}"></div>`;
+        $('#' + (row+1) + '-' + (col+1) + '-day-dv').html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+        // Отправляем на сервер
+        await sendDataTabel(false);
+        $('#fixstate-menu').hide();
+    });
+
+    // Отмена
+    $(document).on('click', '#fixstate-cancel-btn', function() {
+        $('#fixstate-menu').hide();
+    });
+
+    // Клик вне меню — закрыть
+    $(document).on('mousedown', function(e) {
+        if ($('#fixstate-menu').is(':visible') && !$(e.target).closest('#fixstate-menu').length && !$(e.target).hasClass('cell-fixed')) {
+            $('#fixstate-menu').hide();
+        }
+    });
 });
 
 
@@ -126,100 +291,89 @@ function checkSession(){
 }
 
 function checkActivity(){
-	if((Math.floor(Date.now() / 1000) - TIMESTAMP_ACTIVITY) > 10){
+    if((Math.floor(Date.now() / 1000) - TIMESTAMP_ACTIVITY) > 10){
         console.log('[Табель] Автообновление данных: ', new Date().toLocaleString());
-		getDataTabel(false, false, UID, DATATIME, true);
-	}
+        if(window.lastTabelRequestArgs) {
+            let args = Object.values(window.lastTabelRequestArgs);
+            if(args.length >= 1) args[0] = false; // loader = false
+            if(args.length >= 5) args[4] = true;  // update = true
+            getDataTabel.apply(null, args);
+        } else {
+            getDataTabel(false, false, UID, DATATIME, true);
+        }
+    }
 }
 
-async function getDataTabel(loader=true, hideAfter=false, UID, date, update=false){
-
-    console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update});
-
-	if(!UID || !date) return;
-	
-	let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", [UID, DATATIME, update]);
-
-	console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
-
-	TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
-	TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
-	
-	if(data){
-
-		if(!data.error && data.valid){	
-			
-			if(Number(VER) < Number(data.result.ver)){
-				sleep(5).then(() => {document.location.reload();});
-			}
-
-			DAYS 		= data.result.days;
-			LOCATIONS 	= data.result.locations;
-			DATA 		= data.result.data;
-			// --- ДОБАВЛЕНО: сохранять organizations только при первой инициализации ---
-			if(!window.organizations && data.result.organizations) {
-				window.organizations = data.result.organizations;
-				renderOrgFilter(window.organizations);
-			}
-				
-			$("#loader").hide();
-			
-			if(DATA.length == 0) return;
-			
-			DATATIME = new Date().format("yyyymmddHHMMss");
-			
-			let pageX = window.pageXOffset;
-			let pageY = window.pageYOffset;	
-			
-			saveSelection();
-			createHead();
-			createTabel();
-			restoreSelection();
-			updateOrgFilterSelected();
-			applyOrgFilter();
-			forceShowUnassigned();
-			restoreLastCellOrScroll();
-			
-			// Обновляем глобальные переменные для тултипов
-			window.SAVED_DATA = DATA;
-			
-			// Вызываем initTooltips ПОСЛЕ того, как данные загружены и таблица создана
-			initTooltips();
-			
-			// --- ДОБАВЛЕНО: применить фильтр после построения таблицы ---
-			if(window.organizations) applyOrgFilter();
-			
-		}else{
-			
-			console.log(data.des);
-				
-			$('#loader_dv').hide();
-			$('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
-			$('#loader_des').append(data.des);
-			$('#loader_des').show();
-			$('#loader').show();
-
-			SID = null;
-			UID = null;	
-			LABEL = null;
-				
-			delAllCookie();
-				
-			document.location.href="/auth.htm";
-
-			}
-			
-	}else{
-		
-		console.log(data.des);
-		
-		$('#loader_dv').hide();
-		$('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
-		$('#loader_des').append(data.des);
-		$('#loader_des').show();
-		$('#loader').show();	
-	}
-	
+async function getDataTabel(loader=true, hideAfter=false, UID, date, update=false, fullReadonly=false) {
+    window.lastTabelRequestArgs = {loader, hideAfter, UID, date, update, fullReadonly};
+    window.IS_FULL_READONLY = !!fullReadonly;
+    if (window.IS_FULL_READONLY) unselectCells();
+    console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
+    if(!UID || !date) return;
+    let args = [UID, DATATIME, update];
+    if (fullReadonly) args.push(true);
+    let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
+    console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
+    TIMESTAMP_SESSION = Math.floor(Date.now() / 1000);
+    TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+    if(data){
+        if(!data.error && data.valid){
+            if(Number(VER) < Number(data.result.ver)){
+                sleep(5).then(() => {document.location.reload();});
+            }
+            DAYS = data.result.days;
+            LOCATIONS = data.result.locations;
+            DATA = data.result.data;
+            
+            // Обработка поля readAll
+            if ('readAll' in data.result) {
+                $('#menu-fullreadonly').show();
+            } else if (getReadAllCookie()) {
+                $('#menu-fullreadonly').show();
+            } else {
+                $('#menu-fullreadonly').hide();
+            }
+            
+            if(!window.organizations && data.result.organizations) {
+                window.organizations = data.result.organizations;
+                renderOrgFilter(window.organizations);
+            }
+            $("#loader").hide();
+            if(DATA.length == 0) return;
+            DATATIME = new Date().format("yyyymmddHHMMss");
+            let pageX = window.pageXOffset;
+            let pageY = window.pageYOffset;
+            saveSelection();
+            createHead();
+            createTabel();
+            restoreSelection();
+            updateOrgFilterSelected();
+            applyOrgFilter();
+            forceShowUnassigned();
+            restoreLastCellOrScroll();
+            window.SAVED_DATA = DATA;
+            initTooltips();
+            if(window.organizations) applyOrgFilter();
+        }else{
+            console.log(data.des);
+            $('#loader_dv').hide();
+            $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
+            $('#loader_des').append(data.des);
+            $('#loader_des').show();
+            SID = null;
+            UID = null;
+            LABEL = null;
+            delAllCookie();
+            document.location.href="/auth.htm";
+        }
+    }else{
+        console.log(data.des);
+        $('#loader_dv').hide();
+        $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
+        $('#loader_des').append(data.des);
+        $('#loader_des').show();
+        $('#loader').show();
+    }
 }
 
 function createHead(){
@@ -1132,11 +1286,35 @@ function selectCell(indexRow, indexCol, shiftSelection=false){
 let startRow = -1;
 let startCol = -1;
 function startSelect(indexRow, indexCol, shiftSelection=false){
+    // Запрет выделения в режиме полного просмотра
+    if (window.IS_FULL_READONLY) return;
     let $cell = $('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv');
-    if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') return;
+    // Запрет выделения, если ячейка фиксирована, до даты приёма или заблокирована
+    if (
+        $cell.hasClass('cell-fixed') ||
+        $cell.attr('data-fixed') == '1' ||
+        $cell.hasClass('cell-before-in') ||
+        isCellLocked(indexRow, indexCol)
+    ) return;
     // Если Shift нажат и уже есть одна выделенная ячейка
     if ((window.event && window.event.shiftKey) && selectedCells.length === 1) {
         let start = selectedCells[0];
+        // Проверка: если в диапазоне есть запрещённые ячейки — не выделять
+        let minRow = Math.min(start.row, indexRow);
+        let maxRow = Math.max(start.row, indexRow);
+        let minCol = Math.min(start.col, indexCol);
+        let maxCol = Math.max(start.col, indexCol);
+        for (let row = minRow; row <= maxRow; row++) {
+            for (let col = minCol; col <= maxCol; col++) {
+                let $cell2 = $('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv');
+                if (
+                    isCellLocked(row, col) ||
+                    $cell2.hasClass('cell-fixed') ||
+                    $cell2.attr('data-fixed') == '1' ||
+                    $cell2.hasClass('cell-before-in')
+                ) return;
+            }
+        }
         selectRectangle(start.row, start.col, indexRow, indexCol);
         startRow = start.row;
         startCol = start.col;
@@ -1151,77 +1329,87 @@ function startSelect(indexRow, indexCol, shiftSelection=false){
 }
 
 function endSelect(indexRow, indexCol){
-
-	if(!mouseDown || isRightMB) return;
-	
-	unselectCells();
-	
-	let rows = [];
-	if(startRow > indexRow){
-		for(let i = startRow; i >= indexRow; i--){
-			if(!rows.includes(i)) rows.push(i);
-		}
-	}else{
-		for(let i = startRow; i <= indexRow; i++){
-			if(!rows.includes(i)) rows.push(i);
-		}
-	}
-	
-	let cols = [];
-	if(startCol > indexCol){
-		for(let i = startCol; i >= indexCol; i--){
-			if(!cols.includes(i)) cols.push(i);
-		}
-	}else{
-		for(let i = startCol; i <= indexCol; i++){
-			if(!cols.includes(i)) cols.push(i);
-		}
-	}
-
-	rows.forEach((row) => {
-		cols.forEach((col) => {
-			let cell 	= {};
-			cell['row'] = row;
-			cell['col'] = col;
-			
-			selectedCells.push(cell);
-			
-			$('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv').css("background", selectedBgd);
-			$('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv').css("color", selectedFnt);
-			
-			$('#'+Number(row+1)+'number-row').css("background", selectedBgd);
-			$('#0_'+Number(col)+'-day-dv').css("background", selectedBgd);
-		});
-	});
-	
+    // Запрет выделения в режиме полного просмотра
+    if (window.IS_FULL_READONLY) return;
+    if(!mouseDown || isRightMB) return;
+    // Проверка: если в диапазоне есть запрещённые ячейки — не выделять
+    let minRow = Math.min(startRow, indexRow);
+    let maxRow = Math.max(startRow, indexRow);
+    let minCol = Math.min(startCol, indexCol);
+    let maxCol = Math.max(startCol, indexCol);
+    for (let row = minRow; row <= maxRow; row++) {
+        for (let col = minCol; col <= maxCol; col++) {
+            let $cell2 = $('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv');
+            if (
+                isCellLocked(row, col) ||
+                $cell2.hasClass('cell-fixed') ||
+                $cell2.attr('data-fixed') == '1' ||
+                $cell2.hasClass('cell-before-in')
+            ) return;
+        }
+    }
+    unselectCells();
+    let rows = [];
+    if(startRow > indexRow){
+        for(let i = startRow; i >= indexRow; i--){
+            if(!rows.includes(i)) rows.push(i);
+        }
+    }else{
+        for(let i = startRow; i <= indexRow; i++){
+            if(!rows.includes(i)) rows.push(i);
+        }
+    }
+    let cols = [];
+    if(startCol > indexCol){
+        for(let i = startCol; i >= indexCol; i--){
+            if(!cols.includes(i)) cols.push(i);
+        }
+    }else{
+        for(let i = startCol; i <= indexCol; i++){
+            if(!cols.includes(i)) cols.push(i);
+        }
+    }
+    rows.forEach((row) => {
+        cols.forEach((col) => {
+            let cell   = {};
+            cell['row'] = row;
+            cell['col'] = col;
+            selectedCells.push(cell);
+            $('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv').css('background', selectedBgd);
+            $('#'+Number(row+1)+'-'+Number(col+1)+'-day-dv').css('color', selectedFnt);
+            $('#'+Number(row+1)+'number-row').css('background', selectedBgd);
+            $('#0_'+Number(col)+'-day-dv').css('background', selectedBgd);
+        });
+    });
 }
 
 function selectRow(indexRow){
-	unselectCells();
-	let hasVisible = false;
-	for(let j in DAYS){	
-		let col_no = Number(j)+1;
-		let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
-		if ($cell.is(':visible')) {
-			hasVisible = true;
-			break;
-		}
-	}
-	if (!hasVisible) return; // Нет видимых ячеек — не выделяем
+    unselectCells();
+    let hasVisible = false;
+    for(let j in DAYS){    
+        let col_no = Number(j)+1;
+        let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
+        if ($cell.is(':visible')) {
+            hasVisible = true;
+            break;
+        }
+    }
+    if (!hasVisible) return; // Нет видимых ячеек — не выделяем
 
-	for(let j in DAYS){
-		let col_no = Number(j)+1;
-		let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
-		if (!$cell.is(':visible')) continue;
-		let cell  = {};
-		cell['row'] = indexRow;
-		cell['col'] = Number(j);
-		selectedCells.push(cell);
-		$cell.css("background", selectedBgd);
-		$cell.css("color", selectedFnt);
-	}
-	saveScrollCellToCookie();
-	saveLastCellToStorage();
+    for(let j in DAYS){
+        let col_no = Number(j)+1;
+        let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
+        if (!$cell.is(':visible')) continue;
+        if (isCellLocked(indexRow, Number(j))) continue; // Запрет выделения lock-ячейки
+        let cell  = {};
+        cell['row'] = indexRow;
+        cell['col'] = Number(j);
+        selectedCells.push(cell);
+        $cell.css("background", selectedBgd);
+        $cell.css("color", selectedFnt);
+    }
+    saveScrollCellToCookie();
+    saveLastCellToStorage();
 }
 
 function selectCol(indexCol){
@@ -1602,7 +1790,7 @@ function showHideInfo(element, id){
 				$('#info-dv .info-fio-dv').html("<strong>ФИО: </strong>"+worker['fio'].toUpperCase());
 				$('#info-dv .info-organization-dv').html("<strong>Организация: </strong>"+worker['firm_name']);
 				$('#info-dv .info-location-dv').html("<strong>Участок: </strong>"+worker['location_name']);
-				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief(\'"+id+"\')">';
+				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief(\"'+id+'\")\"'+(window.IS_FULL_READONLY ? ' disabled' : '')+'>';
 				for(let l in LOCATIONS){
 					htmlChiefs += '<optgroup label="'+LOCATIONS[l]['name']+'" value="'+LOCATIONS[l]['uid']+'" >';
 					for(let c in LOCATIONS[l]['chiefs']){
@@ -1616,7 +1804,7 @@ function showHideInfo(element, id){
 					htmlChiefs += '</optgroup>';
 				}
 				htmlChiefs += '</select>';
-				let htmlMasters = '<select id="masters-sl" onchange="changeMaster(\'"+id+"\')">';
+				let htmlMasters = '<select id="masters-sl" onchange="changeMaster(\"'+id+'\")"'+(window.IS_FULL_READONLY ? ' disabled' : '')+'>';
 				for(let l in LOCATIONS){
 					htmlMasters += '<optgroup label="'+LOCATIONS[l]['name']+'" value="'+LOCATIONS[l]['uid']+'" >';
 					for(let m in LOCATIONS[l]['masters']){
@@ -2015,21 +2203,28 @@ function onRightClick(){
 }
 
 function onDoubleClick(){
-	// Если выделено несколько ячеек — не трогаем выделение
-	if (selectedCells.length > 1) {
-		// только показываем меню
-	} else {
-		// если выделена одна или ни одна — выделяем текущую
-		let value = getCellValue(startRow, startCol);
-		selectCell(startRow, startCol);
-	}
-	let $menu = $("#cell-menu");
-	$menu.show();
-	// Показываем меню относительно первой выделенной ячейки (или текущей)
-	let cell = selectedCells.length > 0 ? selectedCells[0] : {row: startRow, col: startCol};
-	let $cell = $('#' + Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
-	showMenuNearCell($cell, $menu, 1);
-	$menu.finish().fadeIn(50);
+    // Запрет в режиме только для чтения
+    if (window.IS_FULL_READONLY) return;
+    // Получаем ячейку, по которой был двойной клик
+    let cell = selectedCells.length > 0 ? selectedCells[0] : {row: startRow, col: startCol};
+    let $cell = $('#' + Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
+    // Если ячейка фиксированная — ничего не делаем
+    if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') {
+        return;
+    }
+    // Если выделено несколько ячеек — не трогаем выделение
+    if (selectedCells.length > 1) {
+        // только показываем меню
+    } else {
+        // если выделена одна или ни одна — выделяем текущую
+        let value = getCellValue(startRow, startCol);
+        selectCell(startRow, startCol);
+    }
+    let $menu = $("#cell-menu");
+    $menu.show();
+    // Показываем меню относительно первой выделенной ячейки (или текущей)
+    showMenuNearCell($cell, $menu, 1);
+    $menu.finish().fadeIn(50);
 }
 
 function scrollDocument(e){
@@ -2793,6 +2988,18 @@ $(document).ready(function() {
     setTimeout(function(){
       $('.worker-row, .row-days-dv, .days-work, .days-weekend').css({'pointer-events':'none','opacity':0.7});
     }, 500);
+    // Функция для навешивания обработчика скрытия info-dv
+    function attachInfoDvHideHandler() {
+        $(document).off('mousedown.hideInfoDv').on('mousedown.hideInfoDv', function(e) {
+            if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
+                $('#info-dv').hide();
+            }
+        });
+    }
+    // Навешиваем обработчик при загрузке
+    $(document).ready(function() {
+        attachInfoDvHideHandler();
+    });
   }
 });
 
@@ -2860,31 +3067,6 @@ function scrollToCellFromCookie() {
     }
 }
 
-
-
-// Вызовы сохранения координат после выделения
-// В конец функций selectCell, selectRow, selectCol, unselectCells, selectRectangle добавьте:
-// saveScrollCellToCookie();
-//
-// Например:
-// function selectCell(indexRow, indexCol, shiftSelection=false){
-//   ...
-//   saveScrollCellToCookie();
-// }
-// ...
-//
-// После createTabel() и применения фильтра вызовите scrollToCellFromCookie();
-// Например:
-// createTabel();
-// ...
-// scrollToCellFromCookie();
-// ...
-//
-// В CSS добавьте:
-// .scroll-highlight {
-//     box-shadow: 0 0 0 3px #ffeb3b, 0 0 8px 2px #ffeb3b;
-//     transition: box-shadow 0.8s;
-// }
 
 
 // Сохраняем позицию прокрутки окна
@@ -3006,19 +3188,32 @@ function initReadOnlyHandlers() {
     $(document).off('click.readonlyrow').on('click.readonlyrow', '.worker_lb', function(e) {
         let id = $(this).attr('id');
         let match = id && id.match(/^([0-9]+)_/);
+        console.log('[DEBUG] Клик по фамилии', {id, match, isReadOnlyRowSelected, readOnlyRowIndex});
         if (match) {
             let rowIndex = parseInt(match[1], 10) - 1;
+            console.log('[DEBUG] rowIndex:', rowIndex, 'isReadOnlyRowSelected:', isReadOnlyRowSelected, 'readOnlyRowIndex:', readOnlyRowIndex);
             if (!(isReadOnlyRowSelected && readOnlyRowIndex === rowIndex)) {
-                console.log('[DEBUG] Клик по фамилии: ставим read-only выделение строки', rowIndex);
                 isReadOnlyRowSelected = true;
                 readOnlyRowIndex = rowIndex;
+                console.log('[DEBUG] Выделяю строку', rowIndex);
                 selectRow(rowIndex, true); // true — readOnly
-                // Явно выделяем строку через класс
-                $('.worker-row').removeClass('readonly-row-selected');
-                $('.worker-row').eq(rowIndex).addClass('readonly-row-selected');
+                // Снимаем выделение со всех
+                $('.worker-row, .row-days-dv, .number-row').removeClass('readonly-row-selected');
+                // Добавляем только нужным элементам по id
+                let worker = WORKERS[rowIndex];
+                if (worker) {
+                    let rowId = (rowIndex+1)+'_'+worker.uid+'-row';
+                    let dvId = (rowIndex+1)+'_'+worker.uid+'-dv';
+                    let numId = (rowIndex+1)+'number-row';
+                    $('#'+rowId).addClass('readonly-row-selected');
+                    $('#'+dvId).addClass('readonly-row-selected');
+                    $('#'+numId).addClass('readonly-row-selected');
+                }
             } else {
-                console.log('[DEBUG] Клик по фамилии: повторный клик по той же строке, ничего не делаем');
+                console.log('[DEBUG] Повторный клик по той же строке, ничего не делаю');
             }
+        } else {
+            console.log('[DEBUG] Не удалось распарсить id');
         }
         e.stopPropagation();
         e.preventDefault();
@@ -3106,19 +3301,31 @@ function clearReadOnlyRowSelection() {
         let row = readOnlyRowIndex;
         isReadOnlyRowSelected = false;
         readOnlyRowIndex = -1;
-        $('.worker-row, .row-days-dv, .number-row').removeClass('selected');
-        // Снимаем класс выделения read-only
-        $('.worker-row').removeClass('readonly-row-selected');
-        // Явно убираем фон и цвет у всех ячеек строки и номера строки
-        if (typeof row === 'number' && row >= 0) {
+        // Снимаем выделение только с нужных элементов
+        let worker = WORKERS[row];
+        if (worker) {
+            let rowId = (row+1)+'_'+worker.uid+'-row';
+            let dvId = (row+1)+'_'+worker.uid+'-dv';
+            let numId = (row+1)+'number-row';
+            $('#'+rowId).removeClass('readonly-row-selected');
+            $('#'+dvId).removeClass('readonly-row-selected');
+            $('#'+numId).removeClass('readonly-row-selected');
+            // Восстанавливаем стили ячеек строки
             for (let j in DAYS) {
                 let col_no = Number(j) + 1;
-                $('#'+Number(row+1)+'-'+col_no+'-day-dv').css({
-                    "background": unselectedBgd,
-                    "color": unselectedFnt
-                });
+                let $cell = $('#'+Number(row+1)+'-'+col_no+'-day-dv');
+                let dayType = DAYS[j]['weekend'] ? 'weekend' : 'work';
+                $cell.removeClass('readonly-row-selected');
+                $cell.removeClass('days-work days-weekend');
+                $cell.addClass('days-' + dayType);
+                // Восстанавливаем фон
+                if (dayType === 'weekend') {
+                    $cell.css({"background": weekendBgd, "color": unselectedFnt});
+                } else {
+                    $cell.css({"background": unselectedBgd, "color": unselectedFnt});
+                }
             }
-            $('#'+Number(row+1)+'number-row').css("background", unselectedNoBgd);
+            $('#'+numId).css("background", unselectedNoBgd);
         }
     }
 }
@@ -3191,8 +3398,8 @@ if (typeof getDataTabel === 'function') {
 
 // === Проверка размера окна для табеля ===
 function checkTabelWindowSize() {
-  var minWidth = 1200;
-  var minHeight = 700;
+  var minWidth = 900;
+  var minHeight = 500;
   if (window.innerWidth < minWidth || window.innerHeight < minHeight) {
     if ($('#tabel-size-warning').length === 0) {
       $('body').append('<div id="tabel-size-warning" style="position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.97);display:flex;align-items:center;justify-content:center;font-size:2.2em;color:#b00;text-align:center;"><div><b>Размер окна слишком маленький для корректного отображения табеля.<br>Пожалуйста, увеличьте размер окна.</b></div></div>');
@@ -3700,7 +3907,7 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
         }
     });
 
-    // ... существующий код ...
+    
     // --- ЯВНО показываем master-head и chief-head внутри "НЕРАСПРЕДЕЛЕННЫЕ", если есть видимые сотрудники ---
     $('.location-head').each(function() {
         let text = $(this).text().toUpperCase();
@@ -3732,7 +3939,7 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
             });
         }
     });
-// ... существующий код ...
+
 
 // === Принудительно раскрыть нераспределённых и их мастеров после фильтрации/автообновления ===
 function forceShowUnassigned() {
@@ -3846,6 +4053,413 @@ function changeChief(worker_id){
         }
     }
 }
+
+// === Проверка lock для ячеек ===
+function isCellLocked(row, col) {
+    let worker = WORKERS[row];
+    if (!worker || !worker.days || !worker.days[col]) return false;
+    return !!worker.days[col].lock;
+}
+
+// --- Модификация setCells ---
+let orig_setCells_lock = setCells;
+setCells = function(value, isComment=false, isFullClear=false) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        if (isCellLocked(cell.row, cell.col)) return; // Блокируем редактирование
+    }
+    return orig_setCells_lock.apply(this, arguments);
+};
+// --- Модификация setComment ---
+let orig_setComment_lock = setComment;
+setComment = function(clear=false) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        if (isCellLocked(cell.row, cell.col)) return;
+    }
+    return orig_setComment_lock.apply(this, arguments);
+};
+// --- Модификация startSelect ---
+let orig_startSelect_lock = startSelect;
+startSelect = function(indexRow, indexCol, shiftSelection=false) {
+    if (isCellLocked(indexRow, indexCol)) return;
+    return orig_startSelect_lock.apply(this, arguments);
+};
+// --- Модификация selectCell ---
+let orig_selectCell_lock = selectCell;
+selectCell = function(indexRow, indexCol, shiftSelection=false) {
+    if (isCellLocked(indexRow, indexCol)) return;
+    return orig_selectCell_lock.apply(this, arguments);
+};
+// --- Модификация cellAction ---
+let orig_cellAction_lock = cellAction;
+cellAction = function(vt) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        if (isCellLocked(cell.row, cell.col)) return;
+    }
+    return orig_cellAction_lock.apply(this, arguments);
+};
+// --- Модификация contextAction ---
+let orig_contextAction_lock = contextAction;
+contextAction = function(act) {
+    if(selectedCells.length > 0) {
+        let cell = selectedCells[0];
+        if (isCellLocked(cell.row, cell.col)) return;
+    }
+    return orig_contextAction_lock.apply(this, arguments);
+};
+// --- Визуализация заблокированных ячеек ---
+
+// Вызов после createTabel и после получения данных
+let orig_createTabel_lock = createTabel;
+createTabel = function() {
+    let res = orig_createTabel_lock.apply(this, arguments);
+    return res;
+};
+
+
+// 1. Снимаем выделение при изменении поиска по ФИО
+$(document).on('input', '#fio-filter-in', function() {
+    unselectCells();
+});
+// 2. Снимаем выделение при клике на фильтр (changeFilter)
+let orig_changeFilter_unselect = changeFilter;
+changeFilter = function(type) {
+    unselectCells();
+    return orig_changeFilter_unselect.apply(this, arguments);
+};
+// 3. При клике на ячейку убираем фокус с поиска по ФИО
+let orig_selectCell_unfocus = selectCell;
+selectCell = function(indexRow, indexCol, shiftSelection) {
+    if (document.activeElement && document.activeElement.id === 'fio-filter-in') {
+        document.activeElement.blur();
+    }
+    return orig_selectCell_unfocus.apply(this, arguments);
+};
+let orig_startSelect_unfocus = startSelect;
+startSelect = function(indexRow, indexCol, shiftSelection) {
+    if (document.activeElement && document.activeElement.id === 'fio-filter-in') {
+        document.activeElement.blur();
+    }
+    return orig_startSelect_unfocus.apply(this, arguments);
+};
+
+
+// --- Сохранение и восстановление открытых canvases в cookie ---
+function saveOpenedCanvasesToCookie() {
+    let opened = CANVASES.filter(c => {
+        let $canvas = $('#' + c.id + '-canvas');
+        return $canvas.is(':visible');
+    }).map(c => c.id);
+    document.cookie = 'opened_canvases=' + encodeURIComponent(JSON.stringify(opened)) + ';path=/;max-age=2592000';
+}
+function getOpenedCanvasesFromCookie() {
+    let matches = document.cookie.match(/(?:^|; )opened_canvases=([^;]*)/);
+    if (matches) {
+        try {
+            return JSON.parse(decodeURIComponent(matches[1]));
+        } catch(e) { return []; }
+    }
+    return [];
+}
+// --- Модифицируем slideDiv ---
+let orig_slideDiv_saveCanvas = slideDiv;
+slideDiv = function(type, uid) {
+    let res = orig_slideDiv_saveCanvas.apply(this, arguments);
+    setTimeout(saveOpenedCanvasesToCookie, 150);
+    return res;
+};
+// --- Модифицируем rollAll ---
+let orig_rollAll_saveCanvas = rollAll;
+rollAll = function(way) {
+    let res = orig_rollAll_saveCanvas.apply(this, arguments);
+    setTimeout(saveOpenedCanvasesToCookie, 150);
+    return res;
+};
+// --- Восстанавливаем открытые canvases при создании таблицы ---
+let orig_createTabel_restoreCanvas = createTabel;
+createTabel = function() {
+    let res = orig_createTabel_restoreCanvas.apply(this, arguments);
+    let opened = getOpenedCanvasesFromCookie();
+    if (Array.isArray(opened) && opened.length > 0) {
+        for (let c of CANVASES) {
+            let $canvas = $('#' + c.id + '-canvas');
+            let $head = $('#' + c.id + '-head');
+            if (opened.includes(c.id)) {
+                $canvas.show();
+                $head.find('.toggle-bt').css('background-image', 'url("/images/report/up.png")');
+                $head.removeClass('collapsed');
+            } else {
+                $canvas.hide();
+                $head.find('.toggle-bt').css('background-image', 'url("/images/report/down.png")');
+                $head.addClass('collapsed');
+            }
+        }
+    }
+    return res;
+};
+
+
+// --- Жёсткое скрытие fixstate-menu при любом клике вне него и при скролле (нативный обработчик) ---
+document.addEventListener('mousedown', function(e) {
+    const fixMenu = document.getElementById('fixstate-menu');
+    if (fixMenu && getComputedStyle(fixMenu).display !== 'none' && !e.target.closest('#fixstate-menu')) {
+        fixMenu.style.display = 'none';
+        console.log('[native] Скрыто fixstate-menu по клику вне меню');
+    }
+}, true);
+window.addEventListener('scroll', function() {
+    const fixMenu = document.getElementById('fixstate-menu');
+    if (fixMenu && getComputedStyle(fixMenu).display !== 'none') {
+        fixMenu.style.display = 'none';
+        console.log('[native] Скрыто fixstate-menu по скроллу');
+    }
+}, true);
+
+// --- Принудительно показываем всех начальников (chief-head) в нераспределённых ---
+function showAllChiefsInUnassigned() {
+    $('.location-head').each(function() {
+        let text = $(this).text().toUpperCase();
+        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
+            let id = $(this).attr('id').replace('-head', '');
+            // Для каждого chief-head внутри этого location
+            $('#'+id+'-canvas .chief-head').each(function() {
+                $(this).css('display', 'flex');
+                let chiefId = $(this).attr('id').replace('-head', '');
+                $('#'+chiefId+'-canvas').show();
+            });
+        }
+    });
+}
+// После applyOrgFilter и forceShowUnassigned вызываем showAllChiefsInUnassigned
+let oldApplyOrgFilter = window.applyOrgFilter;
+window.applyOrgFilter = function() {
+    oldApplyOrgFilter();
+    setTimeout(function() {
+        if (typeof forceShowUnassigned === 'function') forceShowUnassigned();
+        showAllChiefsInUnassigned();
+    }, 300);
+};
+
+
+// Скрытие окна детального просмотра при клике вне его
+$(document).on('mousedown.hideInfoDv', function(e) {
+    if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
+        $('#info-dv').hide();
+    }
+});
+
+
+
+// Функция для навешивания обработчиков скрытия info-dv
+function attachInfoDvHideHandler() {
+    $(document).off('mousedown.hideInfoDv').on('mousedown.hideInfoDv', function(e) {
+        if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
+            $('#info-dv').hide();
+        }
+    });
+    $(window).off('scroll.hideInfoDv').on('scroll.hideInfoDv', function() {
+        if ($('#info-dv').is(':visible')) {
+            $('#info-dv').hide();
+        }
+    });
+}
+// Навешиваем обработчик при загрузке
+$(document).ready(function() {
+    attachInfoDvHideHandler();
+});
+// После любого глобального .off('mousedown') или .off() — снова навешиваем
+// В режиме только для чтения
+$(document).ready(function() {
+  if (IS_READONLY) {
+    $(document).off('mousedown');
+    attachInfoDvHideHandler();
+  }
+});
+// После крупных обновлений
+if (typeof getDataTabel === 'function') {
+    let orig_getDataTabel_attachInfo = getDataTabel;
+    getDataTabel = function() {
+        let res = orig_getDataTabel_attachInfo.apply(this, arguments);
+        attachInfoDvHideHandler();
+        return res;
+    };
+}
+if (typeof createTabel === 'function') {
+    let orig_createTabel_attachInfo = createTabel;
+    createTabel = function() {
+        let res = orig_createTabel_attachInfo.apply(this, arguments);
+        attachInfoDvHideHandler();
+        return res;
+    };
+}
+
+
+
+// Обработчики скрытия info-dv — только один раз при загрузке
+$(document).ready(function() {
+    $(document).on('mousedown.hideInfoDv', function(e) {
+        if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
+            $('#info-dv').hide();
+        }
+    });
+    $(window).on('scroll.hideInfoDv', function() {
+        if ($('#info-dv').is(':visible')) {
+            $('#info-dv').hide();
+        }
+    });
+});
+
+// Тултип по всем сотрудникам при наведении на #master-head
+let masterHeadTooltipTimeout = null;
+
+function positionMasterTooltip() {
+    let $this = $('#master-head');
+    let $tooltip = $('#master-tooltip');
+    if (!$this.length || !$tooltip.length || !$tooltip.is(':visible')) return;
+    let offset = $this.offset();
+    let tooltipW = $tooltip.outerWidth();
+    let tooltipH = $tooltip.outerHeight();
+    let left = offset.left + $this.outerWidth() + 10;
+    let top = offset.top;
+    let winW = $(window).width();
+    let winH = $(window).height();
+    let scrollTop = $(window).scrollTop();
+
+    // Если не помещается справа — показываем слева
+    if (left + tooltipW > winW - 10) {
+        left = offset.left - tooltipW - 10;
+        if (left < 10) left = 10;
+    }
+
+    // --- КОРРЕКТНОЕ ПОВЕДЕНИЕ ПО ВЕРТИКАЛИ ---
+    // Если тултип не помещается снизу — показываем строго над #master-head
+    if (top + tooltipH > winH + scrollTop - 10) {
+        top = offset.top - tooltipH;
+        if (top < scrollTop + 10) top = scrollTop + 10; // не выше окна
+    }
+
+    $tooltip.css({top: top + 'px', left: left + 'px'});
+}
+
+$(document).on('mouseenter', '#master-head', function(e) {
+    if (masterHeadTooltipTimeout) clearTimeout(masterHeadTooltipTimeout);
+    const $this = $(this);
+    masterHeadTooltipTimeout = setTimeout(function() {
+        let workersForTooltip = Array.isArray(WORKERS) ? WORKERS.slice() : [];
+        // Фильтрация "несотрудников"
+        workersForTooltip = workersForTooltip.filter(
+            w => w && w.uid && w.fio && typeof w.fio === 'string' && !/^[<‹]/.test(w.fio.trim())
+        );
+        let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
+        // Формируем тултип аналогично tooltipStats
+        let countY = 0, countB = 0, countEmpty = 0;
+        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
+        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'ДО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0};
+        let totalWorkers = 0;
+        for(let w_idx in workersForTooltip){
+            let worker = workersForTooltip[w_idx];
+            let vt = '';
+            if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
+                countEmpty++;
+                totalWorkers++;
+                continue;
+            }
+            vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
+            totalWorkers++;
+            if (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') {
+                countEmpty++;
+                continue;
+            }
+            vt = String(worker.days[todayIndex].vt).toUpperCase();
+            if (vt === 'Я') {
+                countY++;
+            } else if (vt === 'Б') {
+                countB++;
+            } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
+                detailedNotPresentCounts[vt]++;
+            } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
+                detailedAbsentCounts[vt]++;
+            } else if (vt === '') {
+                countEmpty++;
+            }
+        }
+        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
+        let sumAbsent = 0;
+        for (const code in detailedAbsentCounts) {
+            sumAbsent += detailedAbsentCounts[code];
+        }
+        let statsTableHtml = `
+        <div class=\"master-tooltip-content\">
+            <table style=\"width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
+                <tr>
+                     <td style=\"padding: 2px;font-weight: bold; font-size: 13px;\">На объекте</td>
+                     <td style=\"padding: 2px; text-align:right; font-weight: bold; font-size: 13px;\">${totalWorkers - sumAbsent}</td>
+                </tr>
+            </table>
+            <table style=\"width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
+                <tr>
+                     <td style=\"padding: 2px;font-weight: bold; font-size: 13px;\">Явка</td>
+                     <td style=\"padding: 2px; text-align:right; font-weight: bold; font-size: 13px;\">${countY}</td>
+                </tr>
+            </table>
+            <div style=\"display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
+                <div style=\"width: 48%;\">
+                    <table style=\"width:100%; border-collapse: collapse;\">
+                        <tr><td style=\"padding: 1px 2px; font-weight: bold; font-size: 13px;\">Не выход</td><td style=\"padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px\"> ${sumNotPresent}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Б</td><td style=\"padding: 1px 2px; text-align:right;\">${countB}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">НВ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['НВ']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Г</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['Г']}</td></tr>
+                        <tr><td style=\"padding: 1px 2px;\">МО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['МО']}</td></tr>
+                    </table>
+                </div>
+                <div style=\"width: 48%;\">
+                    <table style=\"width:100%; border-collapse: collapse;\">
+                        <tr><td style=\"padding: 1px 2px; font-weight: bold; font-size: 13px;\">Отсутствуют</td><td style=\"padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px\">${sumAbsent}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОТ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОТ']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОД</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОД']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">У</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['У']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОБ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОБ']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ПК</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ПК']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Д</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Д']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ДО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ДО']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">УВ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['УВ']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Р</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Р']}</td></tr>
+                        <tr><td style=\"padding: 1px 2px;\">ОЖ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОЖ']}</td></tr>
+                    </table>
+                </div>
+            </div>
+            <table style=\"width: 100%; margin-top: 5px; border-collapse: collapse;\">
+                 <tr>
+                    <td style=\"padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;\">НН</td>
+                    <td style=\"padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;\">${detailedNotPresentCounts['НН']}</td>
+                    <td style=\"padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;\">Пусто</td>
+                    <td style=\"padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;\">${countEmpty}</td>
+                </tr>
+            </table>
+        </div>
+        `;
+        let $tooltip = $('#master-tooltip');
+        if ($tooltip.length === 0) {
+            $('body').append('<div id="master-tooltip" class="tooltip-popup" style="position: absolute; z-index: 9999; background: white; border: 1px solid #788cad; box-shadow: 0 3px 8px rgba(0,0,0,0.3); border-radius: 5px; padding: 10px; display: none; max-width: 400px;"></div>');
+            $tooltip = $('#master-tooltip');
+        }
+        $tooltip.html(statsTableHtml);
+        $tooltip.show();
+        positionMasterTooltip();
+        // Навешиваем обработчики scroll/resize для прилипания
+        $(window).on('scroll.masterTooltip resize.masterTooltip', positionMasterTooltip);
+    }, 0); // 0 секунд задержка
+});
+$(document).on('mouseleave', '#master-head', function() {
+    if (masterHeadTooltipTimeout) clearTimeout(masterHeadTooltipTimeout);
+    $('#master-tooltip').hide();
+    // Снимаем обработчики scroll/resize
+    $(window).off('scroll.masterTooltip resize.masterTooltip');
+});
+
+
 
 
 

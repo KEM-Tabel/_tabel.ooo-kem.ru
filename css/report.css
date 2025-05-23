@@ -69,7 +69,7 @@ body {
 
 #cell-menu {
     display: none;
-    z-index: 1000;
+    z-index: 100 !important;
     position: absolute;
     min-width: 300px;
     min-height: 40px;
@@ -375,6 +375,7 @@ body {
 	cursor:pointer;
 	background:#c3c3c3;
 }
+
 
  #link-back{
 	position:absolute;

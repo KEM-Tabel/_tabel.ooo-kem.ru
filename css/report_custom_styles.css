@@ -46,6 +46,27 @@
 }
 
 .readonly-row-selected {
-    background: #9dff00 !important; /* светло-оранжевый */
+    background: #6690EF !important;
     color: #000 !important;
+    z-index: 1;
+}
+
+.row-days-dv.readonly-row-selected {
+    background: #6690EF !important;
+    z-index: 1;
+}
+
+.number-row.readonly-row-selected {
+    background: #6690EF !important;
+    color: #000 !important;
+    z-index: 1;
+}
+
+.row-days-dv.readonly-row-selected .days-work,
+.row-days-dv.readonly-row-selected .days-weekend {
+    background: #6690EF !important;
+    color: #000 !important;
+    border: 2px solid #6690EF !important;
+    z-index: 2;
+    position: relative;
 }

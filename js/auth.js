@@ -21,7 +21,11 @@ async function Login(){
 	$("#loader").show();
 	
 	var pass = $("#pass_in").val();
+
+	console.log('Отправляю авторизацию:', {pass, userData});
+
 	var data = await getData(true, false, "Авторизация", [pass, userData]);
+
 
 	if(data){
 		
@@ -34,6 +38,9 @@ async function Login(){
 			setCookie("UID", UID, "/", null, null);
 			setCookie("LABEL", LABEL, "/", null, null);
 			setCookie("READONLY", readonly, "/", null, null);
+			if ('readAll' in data.result) {
+				setreadAllCookie(data.result.readAll === true);
+			}
 			document.location.href="/report.htm";
 		}else{
 			 $('#loader').hide();
@@ -51,6 +58,10 @@ async function Login(){
 	
 }
 
+// --- Глобальная функция для установки куки readAll ---
+function setreadAllCookie(value) {
+	document.cookie = `readAll=${value}; path=/; max-age=31536000`;
+}
 
 // EVENTS ===========================
 
