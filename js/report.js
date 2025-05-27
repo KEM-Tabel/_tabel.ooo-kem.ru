@@ -76,11 +76,11 @@ $(document).ready(function() {
       $('body').append(`
         <div id="reports-modal" style="display:none;position:fixed;z-index:10001;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);" class="reports-modal-center">
           <div id="reports-modal-content" style="background:#fff;padding:32px 36px 24px 36px;border-radius:12px;box-shadow:0 4px 24px #0002;min-width:320px;max-width:96vw;max-height:90vh;position:relative;">
-            <div style="font-size:22px;font-weight:bold;margin-bottom:18px;">Выберите тип отчета</div>
+            <div style="font-size:22px;font-weight:bold;margin-bottom:18px;">Выберите отчет</div>
             <div style="margin-bottom:18px;">
-              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="masters" checked> По мастерам</label>
-              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="firms"> По организациям</label>
-              <label style="display:block;"><input type="radio" name="report-groupby" value="locations"> По объектам</label>
+              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="masters" checked> Табель с группировкой по мастерам</label>
+              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="firms"> Табель с группировкой по организациям</label>
+              <label style="display:block;"><input type="radio" name="report-groupby" value="locations"> Табель с группировкой по объектам</label>
             </div>
             <div style="display:flex;gap:18px;justify-content:center;margin-top:18px;">
               <button id="report-pdf-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">PDF</button>
@@ -413,299 +413,219 @@ function createTabel(){
     WORKERS = [];
     TABEL = [];
 
-	$('#filter-firms-dv').empty();
-	$('#filter-posts-dv').empty();
-	$('#filter-locations-dv').empty();
-	
-	$('#table').empty();
-	
-	let firm_uid 		= [];
-	let post_uid 		= [];
-	let location_uid 	= [];
-	
-	let location_no		= 0;
-	let chief_no		= 0;
-	let master_no		= 0;
-	let worker_no		= 0;
-	
-	let html = '<div style="width:'+$('#head').innerWidth()+'px;">';
-	for(let l in DATA){
-		
-		let location = DATA[l];
-		location_no		= location_no+1;
-		let location_id	= location_no+'_'+location['uid'];
-		
-		let canvas 		= {};
-		canvas['id'] 	= 'l_'+location_id;
-		canvas['state'] = "show";
-			
-		CANVASES.push(canvas);
-		
-		//location-head++
-		html += '<div id="l_'+location_id+'-head" class="location-head" data-location-idx="'+l+'" onclick="slideDiv('+"'l',"+"'"+location_id+"'"+')">';
-		html += '<div class="toggle-bt" onclick="slideDiv('+"'l',"+"'"+location_id+"'"+')"></div>';
-		html += '<span id="l_'+location_id+'-sp">'+location['name']+'</span>';
-		html += '<div class="location-count-workers"><span id="l_'+location_id+'-empty-sp"></span></div>';
-		html += '</div>';
-		
-		//location-canvas++
-		html += '<div id="l_'+location_id+'-canvas" style="width:'+$('#head').innerWidth()+'px;">';
-		
-		for(let c in location['chiefs']){
-			
-			let chief 		= location['chiefs'][c];
-			chief_no		= chief_no+1;
-			let chief_id	= chief_no+'_'+chief['uid'];		
-			
-			//chief-head++
-			let notChief = chief['name'].match(/(\=|\#|\<|\>)/ig);
-			if(notChief == null) {
-				html += '<div id="c_'+chief_id+'-head" class="chief-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" onclick="slideDiv('+"'c',"+"'"+chief_id+"'"+')">';
-				html += '<div class="toggle-bt" onclick="slideDiv('+"'c',"+"'"+chief_id+"'"+')"></div>';
-				html += '<span id="c_'+chief_id+'-sp">НАЧАЛЬНИК: '+chief['name']+'</span>';
-				html += '<div class="chief-count-workers"><span id="c_'+chief_id+'-empty-sp"></span></div>';
-				html += '</div>';
-				
-				let canvas 		= {};
-				canvas['id'] 	= 'c_'+chief_id;
-				canvas['state'] = getCookie(canvas['id']);
-				
-				CANVASES.push(canvas);
-			}else{
-				let canvas 		= {};
-				canvas['id'] 	= 'c_'+chief_id;
-				canvas['state'] = "show";
-				
-				CANVASES.push(canvas);
-			}
-			
-			//chief-canvas++
-			html += '<div id="c_'+chief_id+'-canvas">';
-			
-			for(let m in chief['masters']){
-				
-				let master 		= chief['masters'][m];
-				master_no		= master_no+1;
-				let master_id	= master_no+'_'+master['uid'];
-					
-				Array.prototype.push.apply(WORKERS, master['workers']);
-				
-				let canvas 		= {};
-				canvas['id'] 	= 'm_'+master_id;
-				canvas['state'] = getCookie(canvas['id']);
-			
-				CANVASES.push(canvas);
-				
-				//master-head++
-				let master_name = '';
-				let notMaster = master['name'].match(/(\=|\#|\<|\>)/ig);
-				if(notMaster == null) master_name = 'МАСТЕР: ';
-				html += '<div id="m_'+master_id+'-head" class="master-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" data-master-idx="'+m+'" onclick="slideDiv('+"'m',"+"'"+master_id+"'"+')">';
-				html += '<div class="toggle-bt" onclick="slideDiv('+"'m',"+"'"+master_id+"'"+')"></div>';
-				html += '<span id="m_'+master_id+'-short-sp" class="master-text-short">'+master_name+master['name']+'</span>';
-				html += '<span id="m_'+master_id+'-full-sp" class="master-text-full">'+location['name']+' > НАЧАЛЬНИК: '+chief['name']+' > '+master_name+master['name']+'</span>';
-				html += '<div class="master-count-workers"><span id="m_'+master_id+'-empty-sp"></span></div>';
-				html += '</div>'; 
-				
-				//workers++
-				html += '<div id="m_'+master_id+'-canvas" class="workers">';
-				
-				//items++
-				html += '<div class="items">';
-				
-				let htmlDays = '';
-				let htmlSumDays	= '';
-				let htmlSumHours = '';
-				
-				for(let w in master['workers']){
-					
-					let worker 		= master['workers'][w];
-					worker_no		= worker_no+1;
-					let worker_id	= worker_no+'_'+worker['uid'];
-					
-					let notWorker 	= worker['fio'].match(/(\=|\#|\<|\>)/ig);
-					
-					if(typeof notWorker === 'object' && notWorker != null) continue;
-					
-					TABEL[worker_id] = worker['days'];
-					
-					//filter++
-					if(!firm_uid.includes(worker['firm_uid'])){
-						firm_uid.push(worker['firm_uid']);
-						
-						$('#filter-firms-dv').append('<label><input type="checkbox" onClick="changeFilter('+"'firm'"+')" checked="checked" name="'+worker['firm_uid']+'" />'+worker['firm_name']+'</label>');
-					}
-					
-					if(!post_uid.includes(worker['post_uid'])){
-						post_uid.push(worker['post_uid']);
-						
-						$('#filter-posts-dv').append('<label><input type="checkbox" onClick="changeFilter('+"'post'"+')"  checked="checked" name="'+worker['post_uid']+'" />'+worker['post_name']+'</label>');
-					}
-					
-					if(!location_uid.includes(worker['location_uid'])){
-						location_uid.push(worker['location_uid']);
-						
-						$('#filter-locations-dv').append('<label><input type="checkbox" onClick="changeFilter('+"'location'"+')"  checked="checked" name="'+worker['location_uid']+'" />'+worker['location_name']+'</label>');
-					}
-					//filter--
-					
-					html += '<div id="'+worker_id+'-row" class="worker-row">';
-					html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
-					html += '<div id="'+worker_id+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
-					html += '<span id="'+worker_id+'-sp">'+worker['fio']+'</span>';
-					html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, \''+worker_id+'\')" class="info-row"></div>';
-					html += '</div>';
-					html += '</div>';
-					
-					//days++
-					htmlDays+= '<div id="'+worker_id+'-dv" class="row-days-dv">';
-					// --- Новая логика: ищем дату приёма ---
-					let dateIn = worker['date_in'];
-					let normIn = '';
-					if(dateIn) {
-						normIn = parseDateIn(dateIn);
-					}
-					for(let d in DAYS){
-						let day = worker['days'][d];
-						let days_id = worker_no+'-'+(Number(d)+1);
-						let dayHours = "";
-						let dayValue = "";
-						if(day != undefined && day['vt'] != undefined){    
-							dayValue = day['vt'];
-							if(codesDi.includes(String(day['hours']))){
-								dayHours = day['hours'];
-							}
-						}
-						suffix = day['weekend'] ? 'weekend' : 'work';
-						opacity = '1';
-						let isFixed = day && day.fixState;
-						let cellClass = 'days-' + suffix;
-						// --- Исправлено: блокируем до даты приёма по дате, а не по индексу ---
-						if(normIn) {
-							let dayObj = DAYS[d];
-							// Формируем дату дня в формате YYYYMMDD
-							let dayDate = '';
-							if(dayObj && dayObj['year'] && dayObj['month'] && dayObj['day']) {
-								dayDate = String(dayObj['year']) + ('0'+dayObj['month']).slice(-2) + ('0'+dayObj['day']).slice(-2);
-							}
-							let normDay = String(dayDate);
-							if(Number(normDay) < Number(normIn) && (!dayHours || dayHours == 0)) {
-								cellClass += ' cell-before-in';
-							}
-						}
-						if (isFixed) cellClass += ' cell-fixed';
-						// --- ДОБАВЛЕНО: data-doc для фиксированных ячеек ---
-						let docAttr = '';
-						if (isFixed && day && day['doc']) {
-							docAttr = ' data-doc="'+String(day['doc']).replace(/"/g, '&quot;')+'"';
-						}
-						let hoursNum = Number(dayHours);
-						let htmlCell = '';
-						if(dayValue && !hoursNum){
-							htmlCell = '<span class="cell-code-big">'+dayValue+'</span>';
-							htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
-						}else if(dayValue && hoursNum){
-							htmlCell = '<span class="cell-code-small">'+dayValue+'</span><span class="cell-hours-big">'+hoursNum+'</span>';
-						}else if(hoursNum) {
-							htmlCell = '<span class="cell-hours-big">'+hoursNum+'</span>';
-						}else{
-							htmlCell = '';
-							htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
-						}
-						htmlCell += '<div id="'+days_id+'-day-comment" class="days-comment" style="display: '+(day['comment'] != '' ? 'block' : 'none')+';"></div>';
-						htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+'" '+docAttr+' '+(isFixed ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';" title="'+day['comment']+'" onMouseDown="startSelect('+(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
-					}
-					htmlDays += '</div>';
-				
-					htmlSumDays	+= '<div id="'+worker_id+'-days-dv" class="row-sum-days-dv"></div>';
-					htmlSumHours+= '<div id="'+worker_id+'-hours-dv" class="row-sum-hours-dv"></div>';
-								
-				}
-				
-				//items--
-				html += '</div>';
-				
-				//field++
-				html += '<div id="field">';
-				html += htmlDays;
-				html += '</div>';
-				
-				//sum-days
-				html += '<div id="sum-days-dv">';
-				html += htmlSumDays;
-				html += '</div>'
-				
-				//sum-hours		
-				html += '<div id="sum-hours-dv">';
-				html += htmlSumHours;
-				html += '</div>'
-				
-				//workers--
-				html += '</div>';
-				
-			}
-			
-			//chief-canvas--
-			html += '</div>';
-			
-		}
-		
-		//location-canvas--
-		html += '</div>';
-		
-	}
-	
-	html += '</div>';
+    // Оптимизация: формируем фильтры блоками
+    let filterFirmsHtml = '';
+    let filterPostsHtml = '';
+    let filterLocationsHtml = '';
 
-	$('#table').html(html);
-	// Удалена синхронизация ширины #head-days через JS
-
-	for(let w in WORKERS){
-		
-		let row_no 	= Number(w)+1;
-		let id 		= row_no+'_'+WORKERS[w]['uid'];
-		
-		for(let d in TABEL[id]){
-			
-			let col_no = Number(d)+1;
-			let val = TABEL[id][d]['vt'];
-			let hours = TABEL[id][d]['hours'];
-			let $cell = $('#'+row_no+'-'+col_no+'-day-dv');
-			$cell.removeClass('cell-attendance-missing-hours');
-			// Применяем только для дней ДО сегодняшнего (не включая сегодня)
-			if(col_no < Number(TODAY)+1) {
-				if((!val || val === "") && (!hours || hours == 0)){
-					$cell.addClass('cell-attendance-missing-hours');
-					$cell.css({"color": YaFnt, "font-weight": "bold"});
-				}else if(val === "Я" && (!hours || hours == 0)){
-					$cell.addClass('cell-attendance-missing-hours');
-					$cell.css({"color": YaFnt, "font-weight": "bold"});
-				}else{
-					$cell.css({"color": selectedFnt, "font-weight": "normal"});
-				}
-			} else {
-				$cell.css({"color": selectedFnt, "font-weight": "normal"});
-			}
-
-		}
-		
-	}
-	
-	for(index in CANVASES){
-		
-		let canvas = CANVASES[index];
-		
-		if(canvas['state'] == "show" || master_no == 1){
-			$('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/up.png")');
-			$('#'+canvas['id']+'-canvas').show();
-		}else{
-			$('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/down.png")');
-			$('#'+canvas['id']+'-canvas').hide();
-		}
-	}
-	
-	calcDays();
-	
+    $('#filter-firms-dv').empty();
+    $('#filter-posts-dv').empty();
+    $('#filter-locations-dv').empty();
+    
+    $('#table').empty();
+    
+    let firm_uid       = [];
+    let post_uid       = [];
+    let location_uid   = [];
+    
+    let location_no    = 0;
+    let chief_no       = 0;
+    let master_no      = 0;
+    let worker_no      = 0;
+    
+    let html = '<div style="width:'+$('#head').innerWidth()+'px;">';
+    for(let l in DATA){
+        let location = DATA[l];
+        location_no     = location_no+1;
+        let location_id = location_no+'_'+location['uid'];
+        let canvas      = {};
+        canvas['id']    = 'l_'+location_id;
+        canvas['state'] = "show";
+        CANVASES.push(canvas);
+        html += '<div id="l_'+location_id+'-head" class="location-head" data-location-idx="'+l+'" onclick="slideDiv(\'l\',\''+location_id+'\')">';
+        html += '<div class="toggle-bt" onclick="slideDiv(\'l\',\''+location_id+'\')"></div>';
+        html += '<span id="l_'+location_id+'-sp">'+location['name']+'</span>';
+        html += '<div class="location-count-workers"><span id="l_'+location_id+'-empty-sp"></span></div>';
+        html += '</div>';
+        html += '<div id="l_'+location_id+'-canvas" style="width:'+$('#head').innerWidth()+'px;">';
+        for(let c in location['chiefs']){
+            let chief      = location['chiefs'][c];
+            chief_no      = chief_no+1;
+            let chief_id  = chief_no+'_'+chief['uid'];
+            let notChief = chief['name'].match(/(\=|\#|\<|\>)/ig);
+            if(notChief == null) {
+                html += '<div id="c_'+chief_id+'-head" class="chief-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" onclick="slideDiv(\'c\',\''+chief_id+'\')">';
+                html += '<div class="toggle-bt" onclick="slideDiv(\'c\',\''+chief_id+'\')"></div>';
+                html += '<span id="c_'+chief_id+'-sp">НАЧАЛЬНИК: '+chief['name']+'</span>';
+                html += '<div class="chief-count-workers"><span id="c_'+chief_id+'-empty-sp"></span></div>';
+                html += '</div>';
+                let canvas      = {};
+                canvas['id']    = 'c_'+chief_id;
+                canvas['state'] = getCookie(canvas['id']);
+                CANVASES.push(canvas);
+            }else{
+                let canvas      = {};
+                canvas['id']    = 'c_'+chief_id;
+                canvas['state'] = "show";
+                CANVASES.push(canvas);
+            }
+            html += '<div id="c_'+chief_id+'-canvas">';
+            for(let m in chief['masters']){
+                let master      = chief['masters'][m];
+                master_no      = master_no+1;
+                let master_id  = master_no+'_'+master['uid'];
+                Array.prototype.push.apply(WORKERS, master['workers']);
+                let canvas      = {};
+                canvas['id']    = 'm_'+master_id;
+                canvas['state'] = getCookie(canvas['id']);
+                CANVASES.push(canvas);
+                let master_name = '';
+                let notMaster = master['name'].match(/(\=|\#|\<|\>)/ig);
+                if(notMaster == null) master_name = 'МАСТЕР: ';
+                html += '<div id="m_'+master_id+'-head" class="master-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" data-master-idx="'+m+'" onclick="slideDiv(\'m\',\''+master_id+'\')">';
+                html += '<div class="toggle-bt" onclick="slideDiv(\'m\',\''+master_id+'\')"></div>';
+                html += '<span id="m_'+master_id+'-short-sp" class="master-text-short">'+master_name+master['name']+'</span>';
+                html += '<span id="m_'+master_id+'-full-sp" class="master-text-full">'+location['name']+' > НАЧАЛЬНИК: '+chief['name']+' > '+master_name+master['name']+'</span>';
+                html += '<div class="master-count-workers"><span id="m_'+master_id+'-empty-sp"></span></div>';
+                html += '</div>'; 
+                html += '<div id="m_'+master_id+'-canvas" class="workers">';
+                html += '<div class="items">';
+                let htmlDays = '';
+                let htmlSumDays = '';
+                let htmlSumHours = '';
+                for(let w in master['workers']){
+                    let worker      = master['workers'][w];
+                    worker_no      = worker_no+1;
+                    let worker_id  = worker_no+'_'+worker['uid'];
+                    let notWorker  = worker['fio'].match(/(\=|\#|\<|\>)/ig);
+                    if(typeof notWorker === 'object' && notWorker != null) continue;
+                    TABEL[worker_id] = worker['days'];
+                    if(!firm_uid.includes(worker['firm_uid'])){
+                        firm_uid.push(worker['firm_uid']);
+                        filterFirmsHtml += '<label><input type="checkbox" onClick="changeFilter(\'firm\')" checked="checked" name="'+worker['firm_uid']+'" />'+worker['firm_name']+'</label>';
+                    }
+                    if(!post_uid.includes(worker['post_uid'])){
+                        post_uid.push(worker['post_uid']);
+                        filterPostsHtml += '<label><input type="checkbox" onClick="changeFilter(\'post\')"  checked="checked" name="'+worker['post_uid']+'" />'+worker['post_name']+'</label>';
+                    }
+                    if(!location_uid.includes(worker['location_uid'])){
+                        location_uid.push(worker['location_uid']);
+                        filterLocationsHtml += '<label><input type="checkbox" onClick="changeFilter(\'location\')"  checked="checked" name="'+worker['location_uid']+'" />'+worker['location_name']+'</label>';
+                    }
+                    html += '<div id="'+worker_id+'-row" class="worker-row">';
+                    html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
+                    html += '<div id="'+worker_id+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
+                    html += '<span id="'+worker_id+'-sp">'+worker['fio']+'</span>';
+                    html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, \''+worker_id+'\')" class="info-row"></div>';
+                    html += '</div>';
+                    html += '</div>';
+                    htmlDays+= '<div id="'+worker_id+'-dv" class="row-days-dv">';
+                    let dateIn = worker['date_in'];
+                    let normIn = '';
+                    if(dateIn) {
+                        normIn = parseDateIn(dateIn);
+                    }
+                    for(let d in DAYS){
+                        let day = worker['days'][d];
+                        let days_id = worker_no+'-'+(Number(d)+1);
+                        let dayHours = "";
+                        let dayValue = "";
+                        if(day != undefined && day['vt'] != undefined){    
+                            dayValue = day['vt'];
+                            if(codesDi.includes(String(day['hours']))){
+                                dayHours = day['hours'];
+                            }
+                        }
+                        suffix = day['weekend'] ? 'weekend' : 'work';
+                        opacity = '1';
+                        let isFixed = day && day.fixState;
+                        let cellClass = 'days-' + suffix;
+                        if(normIn) {
+                            let dayObj = DAYS[d];
+                            let dayDate = '';
+                            if(dayObj && dayObj['year'] && dayObj['month'] && dayObj['day']) {
+                                dayDate = String(dayObj['year']) + ('0'+dayObj['month']).slice(-2) + ('0'+dayObj['day']).slice(-2);
+                            }
+                            let normDay = String(dayDate);
+                            if(Number(normDay) < Number(normIn) && (!dayHours || dayHours == 0)) {
+                                cellClass += ' cell-before-in';
+                            }
+                        }
+                        if (isFixed) cellClass += ' cell-fixed';
+                        let docAttr = '';
+                        if (isFixed && day && day['doc']) {
+                            docAttr = ' data-doc="'+String(day['doc']).replace(/"/g, '&quot;')+'"';
+                        }
+                        let hoursNum = Number(dayHours);
+                        let htmlCell = '';
+                        // --- Оптимизация: сразу добавляем класс cell-attendance-missing-hours и стили, если нужно ---
+                        let extraClass = '';
+                        let extraStyle = '';
+                        let col_no = Number(d)+1;
+                        let isToday = (typeof TODAY !== 'undefined' && col_no < Number(TODAY)+1);
+                        if(isToday) {
+                            if((!dayValue || dayValue === "") && (!hoursNum || hoursNum == 0)){
+                                extraClass = ' cell-attendance-missing-hours';
+                                extraStyle = 'color:'+YaFnt+';font-weight:bold;';
+                            }else if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
+                                extraClass = ' cell-attendance-missing-hours';
+                                extraStyle = 'color:'+YaFnt+';font-weight:bold;';
+                            }else{
+                                extraStyle = 'color:'+selectedFnt+';font-weight:normal;';
+                            }
+                        } else {
+                            extraStyle = 'color:'+selectedFnt+';font-weight:normal;';
+                        }
+                        if(dayValue && !hoursNum){
+                            htmlCell = '<span class="cell-code-big">'+dayValue+'</span>';
+                            htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
+                        }else if(dayValue && hoursNum){
+                            htmlCell = '<span class="cell-code-small">'+dayValue+'</span><span class="cell-hours-big">'+hoursNum+'</span>';
+                        }else if(hoursNum) {
+                            htmlCell = '<span class="cell-hours-big">'+hoursNum+'</span>';
+                        }else{
+                            htmlCell = '';
+                            htmlCell += '<div id="'+days_id+'-day-hours" class="days-hours"></div>';
+                        }
+                        htmlCell += '<div id="'+days_id+'-day-comment" class="days-comment" style="display: '+(day['comment'] != '' ? 'block' : 'none')+';"></div>';
+                        htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+extraClass+'" '+docAttr+' '+(isFixed ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';'+extraStyle+'" title="'+day['comment']+'" onMouseDown="startSelect('+(worker_no-1)+','+Number(d)+')" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
+                    }
+                    htmlDays += '</div>';
+                    htmlSumDays += '<div id="'+worker_id+'-days-dv" class="row-sum-days-dv"></div>';
+                    htmlSumHours+= '<div id="'+worker_id+'-hours-dv" class="row-sum-hours-dv"></div>';
+                }
+                html += '</div>';
+                html += '<div id="field">';
+                html += htmlDays;
+                html += '</div>';
+                html += '<div id="sum-days-dv">';
+                html += htmlSumDays;
+                html += '</div>';
+                html += '<div id="sum-hours-dv">';
+                html += htmlSumHours;
+                html += '</div>';
+                html += '</div>';
+            }
+            html += '</div>';
+        }
+        html += '</div>';
+    }
+    html += '</div>';
+    $('#filter-firms-dv').html(filterFirmsHtml);
+    $('#filter-posts-dv').html(filterPostsHtml);
+    $('#filter-locations-dv').html(filterLocationsHtml);
+    $('#table').html(html);
+    for(index in CANVASES){
+        let canvas = CANVASES[index];
+        if(canvas['state'] == "show" || master_no == 1){
+            $('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/up.png")');
+            $('#'+canvas['id']+'-canvas').show();
+        }else{
+            $('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/down.png")');
+            $('#'+canvas['id']+'-canvas').hide();
+        }
+    }
+    calcDays();
 }
 
 // ACTION ===========================
@@ -1124,7 +1044,13 @@ function calcDays(){
                 !worker.uid ||
                 !worker.fio ||
                 typeof worker.fio !== 'string' ||
-                worker.fio.trim().startsWith('‹') ||
+                worker.fio.trim().startsWith('‹')
+            ) {
+                // Невалидный сотрудник — пропускаем
+                continue;
+            }
+            totalWorkers++;
+            if (
                 !worker.days ||
                 !Array.isArray(worker.days) ||
                 worker.days.length <= todayIndex ||
@@ -1132,11 +1058,18 @@ function calcDays(){
                 typeof worker.days[todayIndex] !== 'object'
             ) {
                 countEmpty++;
-                totalWorkers++;
                 continue;
             }
-            let vt = String(worker.days[todayIndex].vt).toUpperCase();
-            totalWorkers++;
+            let dayObj = worker.days[todayIndex];
+            let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
+            let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
+            if (
+                (!('vt' in dayObj) && !('hours' in dayObj)) ||
+                (vt === '' && hours === 0)
+            ) {
+                countEmpty++;
+                continue;
+            }
             if (vt === 'Я') {
                 countY++;
             } else if (vt === 'Б') {
@@ -1154,7 +1087,6 @@ function calcDays(){
         for (const code in detailedAbsentCounts) {
             sumAbsent += detailedAbsentCounts[code];
         }
-        // let onObject = totalWorkers - sumAbsent;
         let onObject = totalWorkers - sumAbsent;
         return {countEmpty, onObject, sumAbsent};
     }
@@ -1255,6 +1187,10 @@ function selectCell(indexRow, indexCol, shiftSelection=false){
 			$('#'+Number(indexRow+1)+'number-row').css("background", selectedBgd);
 			$('#0_'+Number(indexCol)+'-day-dv').css("background", selectedBgd);
 		}
+		// Оптимизация: откладываем тяжёлые вычисления
+		requestAnimationFrame(() => {
+			if (typeof calcDays === 'function') calcDays();
+		});
 		return;
 	}
 	// Если уже выделена эта ячейка и выделено больше одной — не сбрасываем выделение
@@ -1281,6 +1217,10 @@ function selectCell(indexRow, indexCol, shiftSelection=false){
 	$('#0_'+Number(indexCol)+'-day-dv').css("background", selectedBgd);
 	saveScrollCellToCookie();
 	saveLastCellToStorage();
+	// Оптимизация: откладываем тяжёлые вычисления
+	requestAnimationFrame(() => {
+		if (typeof calcDays === 'function') calcDays();
+	});
 }
 
 let startRow = -1;
@@ -2563,17 +2503,22 @@ function initTooltips() {
                 let totalWorkers = 0;
                 for(let w_idx in filteredWorkers){
                     let worker = filteredWorkers[w_idx];
-                    let vt = '';
-                    if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
+                    let dayObj = worker.days && worker.days[todayIndex];
+                    let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
+                    let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
+                    if (!dayObj || (typeof dayObj !== 'object')) {
+                        countEmpty++;
+                        totalWorkers++;
                         continue;
                     }
-                    vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
                     totalWorkers++;
-                    if (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') {
+                    if (
+                        (!('vt' in dayObj) && !('hours' in dayObj)) ||
+                        (vt === '' && hours === 0)
+                    ) {
                         countEmpty++;
                         continue;
                     }
-                    vt = String(worker.days[todayIndex].vt).toUpperCase();
                     if (vt === 'Я') {
                         countY++;
                     } else if (vt === 'Б') {
@@ -3516,10 +3461,10 @@ function getReportFileName(groupby, type) {
   const pad = n => n < 10 ? '0'+n : n;
   const dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
   let base = '';
-  if (groupby === 'masters') base = 'Отчет по мастерам';
-  else if (groupby === 'firms') base = 'Отчет по организациям';
-  else if (groupby === 'locations') base = 'Отчет по объектам';
-  else base = 'Отчет';
+  if (groupby === 'masters') base = 'Табель с группировкой по мастерам';
+  else if (groupby === 'firms') base = 'Табель с группировкой по организациям';
+  else if (groupby === 'locations') base = 'Табель с группировкой по объектам';
+  else base = 'Табель';
   return `${base} от ${dateStr}.${type === 'pdf' ? 'pdf' : 'xlsx'}`;
 }
 
@@ -4367,8 +4312,15 @@ $(document).on('mouseenter', '#master-head', function(e) {
                 continue;
             }
             vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
+            let hours = ('hours' in worker.days[todayIndex]) ? Number(worker.days[todayIndex].hours) : 0;
             totalWorkers++;
-            if (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') {
+            if (
+                (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') && hours === 0
+            ) {
+                countEmpty++;
+                continue;
+            }
+            if (vt === '' && hours === 0) {
                 countEmpty++;
                 continue;
             }

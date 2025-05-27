@@ -19,6 +19,14 @@
 <script type="text/javascript" language="Javascript" src="js/datepicker.min.js"></script>
 <script type="text/javascript" language="Javascript" src="js/report.js?1273455245"></script>
 
+<style>
+.flex-center {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+}
+</style>
+
 </head>
 <script>
 
@@ -93,10 +101,46 @@ $(document).ready(function () {
 	const inputField = document.getElementById('fio-filter-in');
 	inputField.addEventListener('input', searchWorkers);
 	
+	// Модальное окно помощи
+	if ($('#help-modal').length === 0) {
+		$('body').append(`
+			<div id="help-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;min-height:100vh;height:100vh;background:rgba(0,0,0,0.25);">
+				<div id="help-modal-content" style="background:#fff;padding:32px 36px 24px 36px;border-radius:12px;box-shadow:0 4px 24px #0002;min-width:320px;max-width:96vw;max-height:90vh;position:relative;display:flex;flex-direction:column;align-items:center;">
+					<div style="font-size:22px;font-weight:bold;margin-bottom:18px;">Помощь</div>
+					<div style="margin-bottom:18px;">Выберите действие:</div>
+					<div style="display:flex;gap:18px;justify-content:center;margin-bottom:18px;">
+						<button id="help-feedback-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">Обратная связь</button>
+						<button id="help-manual-btn" class="btn btn-secondary" style="padding:8px 24px;font-size:16px;">Инструкция</button>
+					</div>
+					<button id="help-modal-close" style="position:absolute;top:8px;right:12px;font-size:22px;background:none;border:none;color:#888;cursor:pointer;">&times;</button>
+				</div>
+			</div>
+		`);
+	}
+	// Открытие модального окна по клику на "Помощь"
 	$('#menu-help').off('click').on('click', function(){
-		window.open('https://vpc.ooo-kem.ru:5001/d/s/13MWXnkgpSepdBoTxHBI8i6KPojSLoYI/h6lec6y80hPGrFIJlwFqL-9z_1wRiGT7-Cb8gAwWPRww', '_blank');
+		$('#help-modal').addClass('flex-center').fadeIn(120);
 	});
-	
+	// Закрытие по кнопке
+	$(document).on('click', '#help-modal-close', function() {
+		$('#help-modal').fadeOut(120, function() { $(this).removeClass('flex-center'); });
+	});
+	// Закрытие по клику вне окна
+	$(document).on('mousedown', function(e) {
+		if ($('#help-modal').is(':visible') && !$(e.target).closest('#help-modal-content').length && !$(e.target).is('#menu-help')) {
+			$('#help-modal').fadeOut(120, function() { $(this).removeClass('flex-center'); });
+		}
+	});
+	// Кнопка обратной связи
+	$(document).on('click', '#help-feedback-btn', function() {
+		window.open('https://vpc.ooo-kem.ru:5001/d/s/13MWXnkgpSepdBoTxHBI8i6KPojSLoYI/h6lec6y80hPGrFIJlwFqL-9z_1wRiGT7-Cb8gAwWPRww', '_blank');
+		$('#help-modal').fadeOut(120);
+	});
+	// Кнопка инструкции
+	$(document).on('click', '#help-manual-btn', function() {
+		window.open('user_manual.htm', '_blank');
+		$('#help-modal').fadeOut(120);
+	});
 });
 
 var isCalendarVisible = false;

@@ -60,7 +60,7 @@ async function Login(){
 
 // --- Глобальная функция для установки куки readAll ---
 function setreadAllCookie(value) {
-	document.cookie = `readAll=${value}; path=/; max-age=31536000`;
+	document.cookie = `readAll=${value}; path=/;`;
 }
 
 // EVENTS ===========================

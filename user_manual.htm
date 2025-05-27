@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Инструкция по работе с системой</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --accent-color: #4895ef;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+            --success-color: #4cc9f0;
+            --warning-color: #f8961e;
+            --danger-color: #f94144;
+            --border-radius: 8px;
+            --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            display: flex;
+            min-height: 100vh;
+            background-color: #f5f7fa;
+            color: var(--dark-color);
+        }
+
+        .sidebar {
+            width: 280px;
+            background: white;
+            padding: 20px;
+            box-shadow: var(--box-shadow);
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+        }
+        .step-text-1 {
+            color: var(--primary-color);
+        }
+        .step-text-2 {
+            color: var(--secondary-color);
+        }
+
+        .sidebar-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .sidebar-header i {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-right: 10px;
+        }
+
+        .sidebar-header h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .sidebar-menu {
+            list-style: none;
+        }
+
+        .sidebar-menu li {
+            margin-bottom: 5px;
+        }
+
+        .sidebar-menu a {
+            display: flex;
+            align-items: center;
+            padding: 12px 15px;
+            color: var(--dark-color);
+            text-decoration: none;
+            border-radius: var(--border-radius);
+            transition: var(--transition);
+        }
+
+        .sidebar-menu a:hover {
+            background-color: #e9ecef;
+            color: var(--primary-color);
+        }
+
+        .sidebar-menu a.active {
+            background-color: var(--primary-color);
+            color: white;
+        }
+
+        .sidebar-menu i {
+            margin-right: 10px;
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 30px;
+            max-width: calc(100% - 280px);
+        }
+
+        .section {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: var(--box-shadow);
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .section-header i {
+            font-size: 24px;
+            color: var(--primary-color);
+            margin-right: 15px;
+        }
+
+        .section-header h2 {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--dark-color);
+        }
+
+        .step {
+            display: flex;
+            margin-bottom: 20px;
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .step-number {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 30px;
+            height: 30px;
+            background-color: var(--primary-color);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .step-content {
+            flex: 1;
+        }
+
+        .step-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--dark-color);
+        }
+
+        .step-text {
+            color: #495057;
+            line-height: 1.6;
+        }
+
+        .tip {
+            background-color: #e9f7fe;
+            border-left: 4px solid var(--accent-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+
+        .tip-title {
+            font-weight: 600;
+            color: var(--accent-color);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .tip-title i {
+            margin-right: 8px;
+        }
+
+        .warning {
+            background-color: #fff3e0;
+            border-left: 4px solid var(--warning-color);
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 0 var(--border-radius) var(--border-radius) 0;
+        }
+
+        .warning-title {
+            font-weight: 600;
+            color: var(--warning-color);
+            margin-bottom: 5px;
+            display: flex;
+            align-items: center;
+        }
+
+        .warning-title i {
+            margin-right: 8px;
+        }
+
+        .image-placeholder {
+            background-color: #e9ecef;
+            height: 200px;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 15px 0;
+            color: #adb5bd;
+            font-style: italic;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+            }
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+            }
+            .main-content {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <i class="fas fa-book"></i>
+            <h2>Инструкция по системе</h2>
+        </div>
+        <ul class="sidebar-menu">
+            <li><a href="#auth" class="active"><i class="fas fa-sign-in-alt"></i> Авторизация</a></li>
+            <li><a href="#timesheet"><i class="fas fa-calendar-alt"></i> Работа с табелем</a></li>
+            <li><a href="#data-entry"><i class="fas fa-edit"></i> Ввод данных</a></li>
+            <li><a href="#employee-info"><i class="fas fa-user-tie"></i> Информация о сотруднике</a></li>
+            <li><a href="#other-functions"><i class="fas fa-cog"></i> Другие функции</a></li>
+            <li><a href="#other-functions1"><i class="fas fa-cog"></i> Выделение ячеек</a></li>
+        </ul>
+    </div>
+
+    <div class="main-content">
+        <div id="auth" class="section active">
+            <div class="section-header">
+                <i class="fas fa-sign-in-alt"></i>
+                <h2>Авторизация в системе</h2>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Откройте письмо от отдела кадров с паролем</div>
+                    <div class="step-text">В письме вы найдете ваш пароль</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Откройте страницу авторизации</div>
+                    <div class="step-text">Для начала работы с системой перейдите на страницу входа.</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Введите учетные данные</div>
+                    <div class="step-text">Заполните поле "Пароль" вашим паролем.</div>
+                    <img src="screenshots/login.png" alt="Окно выбора месяца для просмотра табеля" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Нажмите кнопку "Войти"</div>
+                    <div class="step-text">После ввода данных нажмите кнопку для завершения авторизации.</div>
+                </div>
+            </div>
+            
+            <div class="tip">
+                <div class="tip-title"><i class="fas fa-info-circle"></i> Подсказка</div>
+                <p>Если вы забыли пароль, обратитесь в отдел кадров для его восстановления.</p>
+            </div>
+        </div>
+
+        <div id="timesheet" class="section">
+            <div class="section-header">
+                <i class="fas fa-calendar-alt"></i>
+                <h2>Работа с табелем</h2>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Выбор месяца</div>
+                    <div class="step-text">В верхней части страницы используйте календарь для выбора нужного месяца.</div>
+                    <img src="screenshots/calendar.png" alt="Окно выбора месяца для просмотра табеля" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Поиск сотрудников</div>
+                    <div class="step-text">Введите фамилию или имя сотрудника в строку поиска для быстрого нахождения.</div>
+                    <img src="screenshots/searchfio.png" alt="Окно выбора месяца для просмотра табеля" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Фильтрация по организациям</div>
+                    <div class="step-text">Нажмите кнопку фильтрации в правом верхнем углу, чтобы отобразить только сотрудников определенной организации.</div>
+                    <img src="screenshots/filter.png" alt="Окно выбора месяца для просмотра табеля" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Добавление комментариев</div>
+                    <div class="step-text">Нажмите правой кнопкой мыши на ячейку и выберите "Добавить комментарий" для внесения пояснений.</div>
+                    <img src="screenshots/comment.png" alt="Окно выбора месяца для просмотра табеля" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <div class="step-title">Документ 1с для заблокированных ячеек</div>
+                    <div class="step-text">Для просмотра документа 1с, необходимо навести курсор на заблокированную ячейку</div>
+                    <img src="screenshots/doc1c.png" alt="документ 1с" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">6</div>
+                <div class="step-content">
+                    <div class="step-title">Просмотр статистики</div>
+                    <div class="step-text">Для просмотра статистики, необходимо навестись курсоро на строку пустых в правом углу Начальника, Мастера, или Объекта</div>
+                    <img src="screenshots/statistika.png" alt="статистика" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">7</div>
+                <div class="step-content">
+                    <div class="step-title">Общий просмотр статистики</div>
+                    <div class="step-text">Для просмотра общей статистики по вашим сотрудникам, необходимо навестись курсором на Ваше Фамилия Имя Отчество в верхней части страницы</div>
+                    <img src="screenshots/statistika2.png" alt="статистика" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+        </div>
+
+        <div id="data-entry" class="section">
+            <div class="section-header">
+                <i class="fas fa-edit"></i>
+                <h2>Ввод данных</h2>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Выберите сотрудника</div>
+                    <div class="step-text">Найдите нужного сотрудника в табеле или через поиск.</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Откройте форму ввода</div>
+                    <div class="step-text">Дважды кликните по ячейке дня, в который нужно внести данные.</div>
+                    <img src="screenshots/dubleclick.png" alt="Двойной клик по ячейке" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Выберите тип отметки</div>
+                    <div class="step-text">В появившемся меню выберите подходящий тип отметки (явка, отпуск, командировка и т.д.).</div>
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">4</div>
+                <div class="step-content">
+                    <div class="step-title">Ввод часов</div>
+                    <div class="step-text">Выделите нужную ячейку и введите количество часов с помощью клавиатуры.</div>
+                    <img src="screenshots/vvedenie_ch.png" alt="ввод часов" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+
+            <div class="step">
+                <div class="step-number">5</div>
+                <div class="step-content">
+                    <div class="step-title">Добавьте комментарий (при необходимости)</div>
+                    <div class="step-text">Используйте контекстное меню (правой кнопкой мыши) для добавления пояснений к отметке.</div>
+                </div>
+            </div>
+            
+
+
+
+        <div class="step">
+            <div class="step-number">6</div>
+            <div class="step-content">
+                <div class="step-title">Редактирование заблокированной ячейки</div>
+                <div class="step-text">Для редактирования заблокированной ячейки, необходимо нажать на неё левой кнопкой мыши, высветится окно редактором блокированной ячейки.</div>
+                <img src="screenshots/editblocked.png" alt="Окно редактора блокированной ячейки" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+            </div>
+        </div>
+
+
+        <div class="step">
+            <div class="step-number">7</div>
+            <div class="step-content">
+                <div class="step-title">Система автоматически сохраняет изменения при выделении другой ячейки</div>
+                <div class="step-text">Система автоматически сохраняет изменения при выделении другой ячейки, за исключением случаев, когда вы редактируете заблокированную ячейку.</div>
+            </div>
+        </div>
+    </div>
+        <div id="employee-info" class="section">
+            <div class="section-header">
+                <i class="fas fa-user-tie"></i>
+                <h2>Информация о сотруднике</h2>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Найдите сотрудника</div>
+                    <div class="step-text">Используйте поиск или найдите сотрудника в общем табеле.</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Откройте карточку</div>
+                    <div class="step-text">Используйте соответствующую кнопку для просмотра детальной информации.</div>
+                    <img src="screenshots/infosotrudnik.png" alt="кнопка просмотра информации о сотруднике" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Просмотр данных</div>
+                    <div class="step-text">В карточке сотрудника вы увидите основную информацию</div>
+                    <img src="screenshots/infosotrudnik2.png" alt="информация о сотруднике" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            
+            <div class="tip">
+                <div class="tip-title"><i class="fas fa-info-circle"></i> Подсказка</div>
+                <p>Некоторые данные могут быть доступны только для просмотра без возможности редактирования.</p>
+            </div>
+        </div>
+
+        <div id="other-functions" class="section">
+            <div class="section-header">
+                <i class="fas fa-cog"></i>
+                <h2>Другие функции</h2>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Доступ к справке</div>
+                    <div class="step-text">Нажмите кнопку "Помощь" в правом верхнем углу для получения дополнительной информации.</div>
+                </div>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Выход из системы</div>
+                    <div class="step-text">Для завершения работы нажмите кнопку "Выход" в меню пользователя.</div>
+                    <img src="screenshots/exit.png" alt="выход из системы" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <div class="step-title">Защита от несвоеременного ответа от сервера при вводе данных</div>
+                    <div class="step-text">Если при вводе последующих данных, ответ от сервер не пришел, то система не даст ввести данные, пока не будет получен ответ от сервера, при этом появится уведомление в правом верхнем углу</div>
+                    <img src="screenshots/zashita.png" alt="защита от несвоеременного ответа от сервера при вводе данных" style="max-width:2200px; border-radius:8px; box-shadow:0 2px 12px #0002;">
+                </div>
+            </div>
+
+            <div class="warning">
+                <div class="warning-title"><i class="fas fa-exclamation-triangle"></i> Важно</div>
+                <p>Система оптимизирована для работы на компьютерах. На маленьких экранах смартфонов некоторые функции могут быть недоступны или работать некорректно.</p>
+            </div>
+        </div>
+
+        <div id="other-functions1" class="section">
+            <div class="section-header">
+                <i class="fas fa-cog"></i>
+                <h2>Выделение ячеек имеет несколько вариантов</h2>
+            </div>
+
+            <div class="step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <div class="step-title">Выделение ячеек через мышь</div>
+                    <div class="step-text step-text-1">1. Есть возможность выделить ячейку простым кликом левой кнопкой мыши</div>
+                    <div class="step-text step-text-2">2. Есть возможность выделить группу ячеек, для этого необходимо нажать на первую ячейку и протянуть мышь до последней ячейки</div>
+                </div>
+            </div>
+            <div class="step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <div class="step-title">Выделение ячеек через клавиатуру</div>
+                    <div class="step-text step-text-1">1. Есть возможность перемещения выделения по ячейкам, для этого необходимо нажать нажимать на стрелки на клавиатуре</div>
+                    <div class="step-text step-text-2">2. Есть возможность выделить группу ячеек, для этого необходимо на клавиатуре нажать shift выделить первую ячейку и с зажатой клавишей shift выделить последнюю ячейку</div>
+                    <div class="step-text step-text-3">3. Есть возможность выделить ячейки в разном месте, для этого необходимо нажать нажать ctr и нажать на ячейку, с зажатой клавишей ctr выделить последующие ячейки</div>
+                </div>
+            </div>
+            
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const menuLinks = document.querySelectorAll('.sidebar-menu a');
+            const sections = document.querySelectorAll('.section');
+        
+            menuLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    // Удаляем активный класс у всех ссылок и секций
+                    menuLinks.forEach(l => l.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+                    // Добавляем активный класс к выбранной ссылке и секции
+                    this.classList.add('active');
+                    const targetId = this.getAttribute('href').replace('#', '');
+                    const targetSection = document.getElementById(targetId);
+                    if (targetSection) {
+                        targetSection.classList.add('active');
+                        targetSection.scrollIntoView({ behavior: 'smooth' });
+                    }
+                });
+            });
+        });
+        </script>
