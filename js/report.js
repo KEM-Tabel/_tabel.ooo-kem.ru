@@ -13,11 +13,11 @@ let CANVASES 		= [];
 let wShortDays		= ["пн","вт","ср","чт","пт","сб","вс"];
 let selectedCells 	= [];
 let symbolsDi 		= ['0','1','2','3','4','5','6','7','8','9'];
-let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г'];
+let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к'];
 let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u'];
 let codesDi 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
-let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В'];
-let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В'];
+let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К'];
+let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К'];
 let mFullDays		= ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 let mouseUp 		= false;
 let mouseDown 		= false;
@@ -106,8 +106,29 @@ $(document).ready(function() {
       `);
     }
 
-
-
+    // === Модальное окно для переноса сотрудника ===
+    if ($('#move-worker-modal').length === 0) {
+      $('body').append(`
+        <div id="move-worker-modal" style="display:none;position:fixed;z-index:10001;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.25);" class="reports-modal-center">
+          <div id="move-worker-modal-content" style="background:#fff;padding:24px 36px;border-radius:12px;box-shadow:0 4px 24px #0002;min-width:320px;max-width:96vw;position:relative;">
+            <div style="font-size:20px;font-weight:bold;margin-bottom:18px;" id="move-worker-modal-title">Последняя дата работы на объекте</div>
+            <div style="margin-bottom:18px;">
+              <p style="margin-bottom: 10px;">Сотрудник: <strong id="move-worker-name"></strong></p>
+              <label for="move-worker-date">Дата:</label>
+              <input type="date" id="move-worker-date" style="font-size:16px;padding:4px 6px;margin-left: 10px;">
+            </div>
+            <div style="margin-bottom:18px;">
+              <label style="display:block;"><input type="checkbox" id="split-hours-checkbox" checked> Разделить часы (поставить "ДО" на выбранную дату)</label>
+            </div>
+            <div style="display:flex;gap:18px;justify-content:flex-end;margin-top:18px;">
+              <button id="move-worker-save-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">Сохранить</button>
+              <button id="move-worker-cancel-btn" class="btn btn-secondary" style="padding:8px 24px;font-size:16px;">Отмена</button>
+            </div>
+            <button id="move-worker-modal-close" style="position:absolute;top:8px;right:12px;font-size:22px;background:none;border:none;color:#888;cursor:pointer;">&times;</button>
+          </div>
+        </div>
+      `);
+    }
 
     $('#menu-reports').off('click.reportsModal').on('click.reportsModal', function(e) {
       $('#reports-modal').fadeIn(120);
@@ -514,7 +535,14 @@ function createTabel(){
                     }
                     html += '<div id="'+worker_id+'-row" class="worker-row">';
                     html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
-                    html += '<div id="'+worker_id+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
+                    // --- ИЗМЕНЕНО: Проверяем наличие кода "ДО" перед блоком ФИО, но добавляем кнопку ВНУТРИ блока ФИО ---
+                    let hasDO = worker.days.some(day => day && day.vt === 'ДО');
+                    // --- ИЗМЕНЕНО: Добавлен атрибут data-uid к worker_lb ---
+                    html += '<div id="'+worker_id+'" data-uid="'+worker['uid']+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
+                    if (hasDO) {
+                        // --- ИЗМЕНЕНО: Передаем worker['uid'] в showWorkerObjectsTabel ---
+                        html += '<span class="show-info-plus" onclick="showWorkerObjectsTabel(\''+worker['uid']+'\', event)">+</span>';
+                    }
                     html += '<span id="'+worker_id+'-sp">'+worker['fio']+'</span>';
                     html += '<div id="'+worker_id+'-info-dv" onClick="showHideInfo(this, \''+worker_id+'\')" class="info-row"></div>';
                     html += '</div>';
@@ -641,76 +669,134 @@ function showConnectionError(message = "Потеряно соединение с
 
 async function sendDataTabel(full=true){
     let items  = [];
-    let arr_in = full ? TABEL : QUEUE.shift();
+    let arr_in = full ? TABEL : QUEUE.shift(); // Обрабатываем очередь или полный табель
+
+    // === ДОБАВЛЕНО: Если не полный режим (full=false), добавляем также изменения из changedCells ===
+    let currentChanged = {};
+    if (!full && Object.keys(changedCells).length > 0) {
+        // Копируем changedCells и затем очищаем его
+        currentChanged = changedCells;
+        changedCells = {}; // Очищаем changedCells сразу после копирования
+        console.log('[sendDataTabel] Добавлены изменения из changedCells для отправки:', JSON.stringify(currentChanged, null, 2));
+        // Объединяем текущую очередь (если есть) и changedCells для отправки
+        if (arr_in) { // arr_in будет объектом, если QUEUE.shift() вернул что-то
+            arr_in = {...arr_in, ...currentChanged};
+        } else { // QUEUE была пуста, отправляем только changedCells
+            arr_in = currentChanged;
+        }
+         console.log('[sendDataTabel] Общий объект для отправки (arr_in):', JSON.stringify(arr_in, null, 2));
+    }
+     // === КОНЕЦ ДОБАВЛЕНО ===
+
+
     for(let key in arr_in){
         let id_arr  = key.split('_');
         let no      = Number(id_arr[0]);
         let uid     = id_arr[1];
         let item            = {};
         item['uid']         = uid;
-        item['master_uid']  = WORKERS[no-1]['master_uid'];
-        item['tabel'] = [];
-        for(let d in arr_in[key]){
-            item['tabel'].push(arr_in[key][d]);
+        // Находим работника, чтобы получить master_uid. Более надежный способ, чем workers[no-1]
+        let worker = WORKERS.find(w => w.uid === uid);
+        item['master_uid']  = worker ? worker.master_uid : null;
+        if (item['master_uid'] === null) {
+             console.warn('[sendDataTabel] Не найден master_uid для worker uid:', uid);
         }
+
+        item['tabel'] = [];
+        // arr_in[key] здесь - это объект, где ключи - индексы дней, а значения - объекты дня {vt, hours, ...}
+        // Нужно преобразовать его в массив объектов дней, отсортированный по индексу дня
+        let daysArray = Object.keys(arr_in[key]).sort((a, b) => Number(a) - Number(b)).map(dayIndex => {
+             // Добавляем информацию о дне (год, месяц, день) из глобального массива DAYS
+             let dayInfo = DAYS[Number(dayIndex)];
+             return {
+                 ...arr_in[key][dayIndex],
+                 year: dayInfo ? dayInfo.year : null,
+                 month: dayInfo ? dayInfo.month : null,
+                 day: dayInfo ? dayInfo.day : null,
+                 // Возможно, нужно добавить и другие поля дня из DAYS, если они нужны 1С
+                 // например, dow, today, weekend. Уточните формат данных для 1С.
+                 // Пока добавим только год, месяц, день как самые вероятные.
+             };
+        });
+        item['tabel'] = daysArray;
         items.push(item);
     }
     // Логируем отправляемые данные
     console.log('Отправка данных на сервер 1С:', JSON.stringify(items, null, 2));
-    if(items.length == 0) return;
+    if(items.length == 0) {
+        console.log('Нет данных для отправки.');
+        $('#loader').hide(); // Если лоадер был показан для этой отправки
+        if (!full && QUEUE.length > 0) {
+             // Если отправляли очередь, и в ней еще что-то есть (но не было changedCells),
+             // возможно, нужно вызвать sendDataTabel(false) снова для следующего элемента очереди.
+             // Но текущая логика QUEUE.shift() уже взяла элемент из очереди.
+             // Если QUEUE пуста, ничего не делаем.
+        }
+        return; // Выходим, если нет items для отправки
+    }
     let data;
     try {
-        data = await getData(full, !full, "ЗаписатьЗначенияТабеля", [UID, curDate.format("yyyymmddHHMMss"), items]);
+        // Передаем items в массиве, как ожидается сервером
+        data = await getData(full, !full, "ЗаписатьЗначенияТабеля", [UID, DATATIME, items]);
     } catch (e) {
-        showConnectionError("Ошибка соединения с сервером! Попробуйте позже.");
-        return;
+        showConnectionError("Ошибка соединения с сервером при отправке табеля! Попробуйте позже.");
+        // === ДОБАВЛЕНО: Если отправка changedCells не удалась, нужно вернуть их обратно! ===
+         if (!full && Object.keys(currentChanged).length > 0) {
+             // Если changedCells были очищены и отправка не удалась, возвращаем их в changedCells.
+             // Это может привести к дублированию в QUEUE, если unselectCells() сработал,
+             // но более безопасно, чем потерять изменения. Лучше продумать более сложную логику
+             // с очередью повторной отправки. Пока просто добавляем обратно.
+             // Более безопасный способ: добавить обратно в QUEUE начало
+             QUEUE.unshift(currentChanged);
+             console.warn('[sendDataTabel] Ошибка отправки changedCells, возвращено в QUEUE:', JSON.stringify(currentChanged, null, 2));
+         }
+        return; // Прерываем выполнение при ошибке
     }
     // Логируем ответ сервера
     console.log('Ответ сервера 1С:', data);
     if(!data || data.error || !data.valid) {
-        showConnectionError("Изменения не сохранены! Проверьте соединение с сервером.");
+        showConnectionError("Изменения табеля не сохранены! Проверьте соединение с сервером или обратитесь к администратору.");
         $('#loader_dv').hide();
         $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
         $('#loader_des').append(data && data.des ? data.des : "Нет ответа от сервера");
         $('#loader_des').show();
-        $('#loader').show();
+        // $('#loader').show(); // Не показываем полный лоадер при ошибке частичной отправки
+
         console.log(data && data.des ? data.des : "Нет ответа от сервера");
-        return;
-    }
-    
-    if(full){	
-        if(!data.error && data.valid){
-            location.reload();
-        }else{
-            $('#loader_dv').hide();
-            $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
-            $('#loader_des').append(data.des);
-            $('#loader_des').show();
-            $('#loader').show();
-            
-            console.log(data.des);
-        }	
-    }else{
-        if(!data.error && data.valid){
-            
-            $('#loader').hide();
-            
-            TIMESTAMP_SESSION 	= Math.floor(Date.now() / 1000);
-            TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
-            
-            if(QUEUE.length > 0) sendDataTabel(false);
-            
-        }else{
-            $('#loader_dv').hide();
-            $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
-            $('#loader_des').append(data.des);
-            $('#loader_des').show();
-            $('#loader').show();
-            
-            console.log(data.des);
+
+        // === ДОБАВЛЕНО: Если отправка changedCells не удалась (valid=false), нужно вернуть их обратно! ===
+        if (!full && Object.keys(currentChanged).length > 0) {
+             QUEUE.unshift(currentChanged);
+             console.warn('[sendDataTabel] Сервер вернул ошибку для changedCells, возвращено в QUEUE:', JSON.stringify(currentChanged, null, 2));
         }
+
+        return; // Прерываем выполнение при ошибке
     }
 
+    // === ДОБАВЛЕНО: Если отправка changedCells успешна (!full && currentChanged), очистка уже произошла выше ===
+
+    if(full){
+        if(!data.error && data.valid){
+            location.reload(); // Полное обновление после полной отправки
+        }
+        // Ошибки уже обработаны выше
+    }else{ // Частичная отправка (changedCells или элемент из QUEUE)
+        if(!data.error && data.valid){
+            $('#loader').hide(); // Если лоадер был показан для этой частичной отправки
+            TIMESTAMP_SESSION 	= Math.floor(Date.now() / 1000);
+            TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
+
+            // === ДОБАВЛЕНО: После успешной частичной отправки, если QUEUE не пуста, отправляем следующий элемент ===
+             if(QUEUE.length > 0) {
+                 console.log('[sendDataTabel] Очередь не пуста, отправляю следующий элемент.');
+                 sendDataTabel(false);
+             } else {
+                  console.log('[sendDataTabel] Очередь пуста, частичная отправка завершена.');
+             }
+
+        }
+        // Ошибки уже обработаны выше
+    }
 }
 
 async function changeData(...args){
@@ -1226,6 +1312,14 @@ function selectCell(indexRow, indexCol, shiftSelection=false){
 let startRow = -1;
 let startCol = -1;
 function startSelect(indexRow, indexCol, shiftSelection=false){
+    // === ИЗМЕНЕНО: Принудительно скрываем модальное окно объектов в начале функции ===
+    // Это гарантирует его закрытие при клике на ячейку, независимо от других условий
+    let $objectsModal = $('#worker-objects-modal');
+    if ($objectsModal.is(':visible')) {
+        console.log('[startSelect] Модальное окно объектов видимо, принудительно скрываем его.'); // Лог для отладки
+        closeWorkerObjectsModal();
+    }
+
     // Запрет выделения в режиме полного просмотра
     if (window.IS_FULL_READONLY) return;
     let $cell = $('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv');
@@ -1971,6 +2065,10 @@ function setCellVal(e){
 				updateInputIndicator();
 				setCells(code);
 				calcDays();
+				// === ИЗМЕНЕНО: Убираем остановку распространения события ===
+                // if (e.stopPropagation) e.stopPropagation();
+                // if (e.preventDefault) e.preventDefault();
+				return;
 				break;
 			case 16: case 17: case 18: //shift ctrl alt
 				
@@ -3952,50 +4050,339 @@ function changeChief(worker_id){
 }
 
 function changeMaster(worker_id){
-    let location_uid = $(':selected', $('#masters-sl')).parent().attr('value');
-    let chief_uid = "";
-    let master_uid = $('#masters-sl').val();
-    for(let l in LOCATIONS){
-        for(let m in LOCATIONS[l]['masters']){
-            if(master_uid == LOCATIONS[l]['masters'][m]['uid']){
-                chief_uid = LOCATIONS[l]['masters'][m]['chief_uid'];
+    let selectedOption = $(':selected', $('#masters-sl'));
+    let new_location_uid = selectedOption.parent().attr('value');
+    let new_master_uid = selectedOption.val();
+    let new_chief_uid = "";
+    let currentWorker = null;
+
+    // Находим chief_uid для нового мастера
+    for(let l of LOCATIONS){
+        if(l.uid === new_location_uid) {
+            for(let m of (l.masters || [])){
+                 if(m.uid === new_master_uid){
+                     new_chief_uid = m.chief_uid;
+                     break;
+                 }
             }
         }
+        if(new_chief_uid) break;
     }
-    for(let w in WORKERS){
-        let no = Number(w)+1;
-        let id = no+'_'+WORKERS[w]['uid'];
-        if(id == worker_id && w == no-1){
-            if(location_uid != WORKERS[w]['location_uid'] || (chief_uid != "" && WORKERS[w]['master_uid'] != master_uid)){
-                $('#info-dv .info-save-dv').show();
-                console.log('[info-save-dv] Отправка смены мастера:', {location_uid, chief_uid, master_uid, worker_uid: WORKERS[w]['uid']});
-                changeData("НазначитьРаботникуНовогоМастера", location_uid, chief_uid, master_uid, WORKERS[w]['uid']);
-                $('#info-dv .info-save-dv').hide();
-            }else{
-                $('#info-dv .info-save-dv').hide();
-            }
+
+
+    for(let w of WORKERS){
+        let no = Number(WORKERS.indexOf(w))+1; // Более надежный способ найти index
+        let id = no+'_'+w['uid'];
+        if(id == worker_id){
+            currentWorker = w;
+            break;
         }
     }
+
+    if (!currentWorker) {
+        console.error('Работник не найден для id:', worker_id);
+        return;
+    }
+
+    // Проверяем, изменились ли мастер ИЛИ начальник ИЛИ объект
+    let masterChanged = currentWorker.master_uid !== new_master_uid;
+    let chiefChanged = currentWorker.chief_uid !== new_chief_uid;
+    let locationChanged = currentWorker.location_uid !== new_location_uid;
+
+    let isTransfer = masterChanged || chiefChanged || locationChanged;
+
+    console.log('[changeMaster] Проверка переноса:', {
+        workerUid: currentWorker.uid,
+        oldLocation: currentWorker.location_uid,
+        newLocation: new_location_uid,
+        oldChief: currentWorker.chief_uid,
+        newChief: new_chief_uid,
+        oldMaster: currentWorker.master_uid,
+        newMaster: new_master_uid,
+        isTransfer
+    });
+
+
+    if (isTransfer) {
+        // Показываем модальное окно переноса
+        $('#move-worker-modal').fadeIn(120);
+        $('#move-worker-name').text(currentWorker.fio);
+        // Устанавливаем текущую дату в инпут
+        $('#move-worker-date').val(new Date().toISOString().slice(0,10));
+        // Убеждаемся, что чекбокс разделения часов отмечен по умолчанию
+        $('#split-hours-checkbox').prop('checked', true);
+
+
+        // Сохраняем данные для кнопки "Сохранить" в модалке
+        $('#move-worker-modal').data('worker_id', worker_id);
+        $('#move-worker-modal').data('method', "НазначитьРаботникуНовогоМастера");
+        $('#move-worker-modal').data('args', [
+            new_location_uid, // location_uid нового мастера
+            new_chief_uid, // chief_uid нового мастера
+            new_master_uid, // master_uid
+            currentWorker.uid // worker_uid
+            // Дата будет добавлена пятым аргументом при сохранении
+        ]);
+
+
+        // Обработчик кнопки "Сохранить" в модалке
+        $('#move-worker-save-btn').off('click').on('click', async function() {
+            let selectedDateStr = $('#move-worker-date').val();
+            let splitHours = $('#split-hours-checkbox').is(':checked');
+            let wId = $('#move-worker-modal').data('worker_id');
+            let method = $('#move-worker-modal').data('method');
+            let baseArgs = $('#move-worker-modal').data('args');
+
+            console.log('[move-worker-modal] Клик Сохранить:', { selectedDateStr, splitHours, wId, method, baseArgs });
+
+            $('#move-worker-modal').fadeOut(120, function() {
+                 isMoveWorkerModalOpen = false; // Снимаем флаг после завершения анимации скрытия
+            });
+            $('#info-dv').hide(); // Скрываем info-dv
+
+            let workerUid = wId.split('_')[1];
+            let workerIndex = WORKERS.findIndex(w => w.uid === workerUid);
+            console.log('[move-worker-modal] Найден работник:', { workerUid, workerIndex });
+
+
+            let dateToSend = null;
+            if (splitHours && selectedDateStr) {
+                 // Формат даты YYYYMMDD
+                 dateToSend = selectedDateStr.split('-').join('');
+                 console.log('[move-worker-modal] Дата для отправки:', dateToSend);
+
+
+                // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
+                 if (workerIndex !== -1) {
+                     let selectedDate = new Date(selectedDateStr);
+                     let selectedDayIndex = -1;
+                      for (let i = 0; i < DAYS.length; i++) {
+                         let dayObj = DAYS[i];
+                          // Учитываем, что month в Date начинается с 0, а в dayObj с 1
+                         if (dayObj.year == selectedDate.getFullYear() &&
+                             dayObj.month == selectedDate.getMonth() + 1 &&
+                             dayObj.day == selectedDate.getDate()) {
+                             selectedDayIndex = i;
+                             break;
+                         }
+                     }
+                      console.log('[move-worker-modal] Найден индекс дня:', { selectedDate, selectedDayIndex });
+
+                     if (selectedDayIndex !== -1) {
+                         let tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
+                         console.log('[move-worker-modal] ID табеля:', tabId);
+
+                         if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                            console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="ДО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'ДО' });
+                             TABEL[tabId][selectedDayIndex]['vt'] = 'ДО';
+                             // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
+                             // Помечаем ячейку как измененную
+                            if (!changedCells[tabId]) changedCells[tabId] = {};
+                            changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
+                             TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                             // Обновляем отображение ячейки
+                             let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
+                             console.log('[move-worker-modal] Обновление DOM ячейки:', cellSelector);
+                             let currentDayData = TABEL[tabId][selectedDayIndex];
+                             let htmlValue = '';
+                             let hoursNum = Number(currentDayData['hours']); // Используем существующие часы
+                             let dayValue = currentDayData['vt'];
+
+                             if(dayValue && !hoursNum){
+                                 // Только буквенный код, без часов
+                                 htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                             } else if(dayValue && hoursNum) {
+                                 // Есть и код, и часы
+                                 htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                             } else { // Случай без кода и без часов
+                                 htmlValue = '';
+                             }
+                             htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${currentDayData['comment']||''}"></div>`;
+
+                              $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                            // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
+                         }
+                     }
+                 } else {
+                      console.error('[move-worker-modal] workerIndex не найден для workerUid:', workerUid);
+                 }
+            } else {
+                 console.log('[move-worker-modal] Разделение часов не выбрано или дата не указана.');
+            }
+
+            console.log('[move-worker-modal] changedCells перед sendDataTabel(false):', JSON.stringify(changedCells, null, 2));
+
+
+             // Вызываем функцию отправки данных changedCells
+            await sendDataTabel(false); // Отправляем только измененные ячейки (включая ДО, если было)
+
+
+            // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
+             let finalArgs = [...baseArgs, dateToSend]; // Добавляем дату или null последним аргументом
+
+            console.log(`[move-worker-modal] Вызов changeData для ${method} с датой:`, finalArgs);
+            // Используем changeData для самой операции смены мастера/начальника
+            changeData(method, ...finalArgs);
+        });
+
+        // Обработчик кнопки "Отмена" в модалке
+        $('#move-worker-cancel-btn').off('click').on('click', function() {
+            $('#move-worker-modal').fadeOut(120, function() {
+                 isMoveWorkerModalOpen = false; // Снимаем флаг после завершения анимации
+                  unselectCells(); // Вызовем unselectCells, чтобы очистить changedCells, если они были добавлены
+            });
+             $('#info-dv').hide(); // Скрываем info-dv
+        });
+        // Обработчик крестика в модалке
+        $('#move-worker-modal-close').off('click').on('click', function() {
+            $('#move-worker-modal').fadeOut(120, function() {
+                isMoveWorkerModalOpen = false; // Снимаем флаг после завершения анимации
+                 unselectCells(); // Вызовем unselectCells, чтобы очистить changedCells, если они были добавлены
+            });
+             $('#info-dv').hide(); // Скрываем info-dv
+        });
+
+    } else {
+        // Ни мастер, ни начальник, ни объект не изменились - ничего не делаем
+                $('#info-dv .info-save-dv').hide();
+            }
 }
 
 function changeChief(worker_id){
-    let location_uid = $(':selected', $('#chiefs-sl')).parent().attr('value');
-    let chief_uid = $('#chiefs-sl').val();
-    for(let w in WORKERS){
-        let no = Number(w)+1;
-        let id = no+'_'+WORKERS[w]['uid'];
-        if(id == worker_id && w == no-1){
-            let old_location_uid = WORKERS[w]['location_uid'];
-            if(chief_uid != WORKERS[w]['chief_uid']){
-                $('#info-dv .info-save-dv').show();
-                console.log('[info-save-dv] Отправка смены начальника:', {location_uid, old_location_uid, chief_uid, worker_uid: WORKERS[w]['uid']});
-                changeData("НазначитьМастеруНовогоНачальника", location_uid, old_location_uid, chief_uid, WORKERS[w]['uid']);
-                $('#info-dv .info-save-dv').hide();
-            }else{
-                $('#info-dv .info-save-dv').hide();
-            }
+    let selectedOption = $(':selected', $('#chiefs-sl'));
+    let new_location_uid = selectedOption.parent().attr('value');
+    let new_chief_uid = selectedOption.val();
+    let currentWorker = null;
+
+    for(let w of WORKERS){
+        let no = Number(WORKERS.indexOf(w))+1; // Более надежный способ найти index
+        let id = no+'_'+w['uid'];
+        if(id == worker_id){
+            currentWorker = w;
             break;
         }
+    }
+
+    if (!currentWorker) {
+        console.error('Работник не найден для id:', worker_id);
+        return;
+    }
+
+    // Проверяем, изменился ли начальник ИЛИ объект
+    let chiefChanged = currentWorker.chief_uid !== new_chief_uid;
+    let locationChanged = currentWorker.location_uid !== new_location_uid;
+
+    let isTransfer = chiefChanged || locationChanged;
+
+    console.log('[changeChief] Проверка переноса:', {
+        workerUid: currentWorker.uid,
+        oldLocation: currentWorker.location_uid,
+        newLocation: new_location_uid,
+        oldChief: currentWorker.chief_uid,
+        newChief: new_chief_uid,
+        isTransfer
+    });
+
+    if (isTransfer) {
+         // Показываем модальное окно переноса
+        $('#move-worker-modal').fadeIn(120);
+        $('#move-worker-name').text(currentWorker.fio);
+         // Устанавливаем текущую дату в инпут
+        $('#move-worker-date').val(new Date().toISOString().slice(0,10));
+        // Убеждаемся, что чекбокс разделения часов отмечен по умолчанию
+        $('#split-hours-checkbox').prop('checked', true);
+
+
+        // Сохраняем данные для кнопки "Сохранить" в модалке
+        $('#move-worker-modal').data('worker_id', worker_id);
+        $('#move-worker-modal').data('method', "НазначитьМастеруНовогоНачальника");
+        $('#move-worker-modal').data('args', [
+            new_location_uid, // location_uid нового начальника
+            currentWorker.location_uid, // location_uid старого начальника (требуется для этой команды)
+            new_chief_uid, // chief_uid
+            currentWorker.uid // worker_uid
+            // Дата будет добавлена пятым аргументом при сохранении
+        ]);
+
+
+        // Обработчик кнопки "Сохранить" в модалке
+        $('#move-worker-save-btn').off('click').on('click', async function() {
+            let selectedDateStr = $('#move-worker-date').val();
+            let splitHours = $('#split-hours-checkbox').is(':checked');
+            let wId = $('#move-worker-modal').data('worker_id');
+            let method = $('#move-worker-modal').data('method');
+            let baseArgs = $('#move-worker-modal').data('args');
+
+            $('#move-worker-modal').fadeOut(120);
+            $('#info-dv').hide(); // Скрываем info-dv
+
+            let workerUid = wId.split('_')[1];
+            let workerIndex = WORKERS.findIndex(w => w.uid === workerUid);
+
+            let dateToSend = null;
+            if (splitHours && selectedDateStr) {
+                 // Формат даты YYYYMMDD
+                 dateToSend = selectedDateStr.split('-').join('');
+
+                // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
+                 if (workerIndex !== -1) {
+                     let selectedDate = new Date(selectedDateStr);
+                     let selectedDayIndex = -1;
+                      for (let i = 0; i < DAYS.length; i++) {
+                         let dayObj = DAYS[i];
+                         if (dayObj.year == selectedDate.getFullYear() &&
+                             dayObj.month == selectedDate.getMonth() + 1 &&
+                             dayObj.day == selectedDate.getDate()) {
+                             selectedDayIndex = i;
+                             break;
+                         }
+                     }
+                     if (selectedDayIndex !== -1) {
+                         let tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
+                         if (TABEL[tabId]) {
+                             TABEL[tabId][selectedDayIndex]['vt'] = 'ДО';
+                             TABEL[tabId][selectedDayIndex]['hours'] = 0;
+                             // Помечаем ячейку как измененную
+                            if (!changedCells[tabId]) changedCells[tabId] = {};
+                            changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
+                             TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                             // Обновляем отображение ячейки
+                             let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
+                             let htmlValue = `<span class="cell-code-big">ДО</span>`;
+                              htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${TABEL[tabId][selectedDayIndex]['comment']||''}"></div>`;
+                              $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                            // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
+                         }
+                     }
+                 }
+            }
+
+             // Вызываем функцию отправки данных changedCells
+            await sendDataTabel(false); // Отправляем только измененные ячейки (включая ДО, если было)
+
+
+            // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
+             let finalArgs = [...baseArgs, dateToSend]; // Добавляем дату или null последним аргументом
+
+            console.log(`[changeChief] Вызов changeData для ${method} с датой:`, finalArgs);
+            // Используем changeData для самой операции смены мастера/начальника
+            changeData(method, ...finalArgs);
+        });
+
+        // Обработчик кнопки "Отмена" в модалке
+        $('#move-worker-cancel-btn').off('click').on('click', function() {
+            $('#move-worker-modal').fadeOut(120);
+             $('#info-dv').hide(); // Скрываем info-dv
+        });
+        // Обработчик крестика в модалке
+        $('#move-worker-modal-close').off('click').on('click', function() {
+            $('#move-worker-modal').fadeOut(120);
+             $('#info-dv').hide(); // Скрываем info-dv
+        });
+
+    } else {
+         // Ни начальник, ни объект не изменились - ничего не делаем
+         $('#info-dv .info-save-dv').hide();
     }
 }
 
@@ -4410,6 +4797,216 @@ $(document).on('mouseleave', '#master-head', function() {
     // Снимаем обработчики scroll/resize
     $(window).off('scroll.masterTooltip resize.masterTooltip');
 });
+
+
+
+
+
+
+
+
+// --- ДОБАВЛЕНО: Новая функция для показа табеля по объектам ---
+// ... existing code ...
+async function showWorkerObjectsTabel(workerId, event) {
+    // === ДОБАВЛЕНО: Снимаем любое текущее выделение строки только для чтения ===
+    clearReadOnlyRowSelection();
+
+    // Предотвращаем всплытие события, чтобы не сработал selectRow на родительском div
+    event.stopPropagation();
+    console.log('[showWorkerObjectsTabel] Функция вызвана для сотрудника (UID):', workerId); // Отладочное сообщение
+    console.log('[showWorkerObjectsTabel] Объект события:', event); // Отладочное сообщение
+
+    // === ИЗМЕНЕНО: Используем текущую дату вместо начала месяца ===
+    const today = new Date();
+    const todayFormatted = today.format("yyyymmdd"); // Форматируем текущую дату как yyyymmdd
+
+    console.log('[showWorkerObjectsTabel] Текущая дата:', todayFormatted); // Отладочное сообщение
+    console.log('[showWorkerObjectsTabel] Вызов getData с методом "ПолучитьКоличествоЧасовПоУчасткам" и аргументами:', [workerId, todayFormatted]); // Отладочное сообщение
+
+    // === ИЗМЕНЕНО: Вызываем getData для получения табеля по объектам с текущей датой ===
+    $('#loader').show(); // Показываем лоадер
+    try {
+        const data = await getData(false, true, 'ПолучитьКоличествоЧасовПоУчасткам', [workerId, todayFormatted]);
+        $('#loader').hide(); // Скрываем лоадер
+
+        console.log('[showWorkerObjectsTabel] Получены данные по объектам:', data); // Отладочное сообщение
+
+        // Удаляем предыдущее модальное окно, если оно есть
+        $('#worker-objects-modal').remove();
+
+        // Создаем HTML для модального окна
+        let modalHtml = '<div id="worker-objects-modal" class="worker-objects-modal">';
+        // === ИЗМЕНЕНО: Получаем ФИО из элемента рядом с кнопкой "+" ===
+        // Находим span с ФИО, который находится сразу после кнопки "+" внутри .worker_lb
+        const workerFio = $(event.target).next('span').text();
+        // === ИЗМЕНЕНО: Кнопка закрытия теперь внутри modal-header ===
+        modalHtml += '<div class="modal-header">Сумма часов по объектам для ' + workerFio + '<button class="modal-close" onclick="closeWorkerObjectsModal()"><i class="fas fa-times"></i></button></div>';
+        modalHtml += '<div class="modal-content">';
+
+        // === ИЗМЕНЕНО: Оборачиваем заголовки и данные в контейнер для Grid ===
+        modalHtml += '<div class="object-table-container">';
+
+        // === ДОБАВЛЕНО: Заголовки столбцов (теперь прямые потомки object-table-container) ===
+        modalHtml += '<div class="object-name object-table-header">Объект</div>'; // Заголовок "Объект"
+        modalHtml += '<div class="object-hours-header object-table-header">Часы</div>'; // Заголовок "Часы"
+
+
+        // === ИЗМЕНЕНО: Проверяем наличие данных в data.result ===
+        if (data && data.valid && data.result && data.result.length > 0) { // Предполагаем, что данные приходят в data.result
+             let totalHours = 0; // === ДОБАВЛЕНО: Переменная для суммы часов ===
+             data.result.forEach(obj => { // Итерируем по массиву result
+                 // === ИЗМЕНЕНО: Теперь название объекта и часы - прямые потомки object-table-container ===
+                 modalHtml += '<div class="object-name">' + obj.location_name + '</div>'; // Используем location_name как название объекта
+                 modalHtml += '<div class="object-hours-cell">'; // Класс для ячейки часов
+                 if (obj.hours !== undefined && obj.hours !== null && obj.hours !== '') {
+                      const hours = parseFloat(obj.hours); // === ДОБАВЛЕНО: Парсим часы как число ===
+                      if (!isNaN(hours)) { // === ДОБАВЛЕНО: Проверяем, что это число ===
+                          modalHtml += hours; // Просто часы
+                          totalHours += hours; // === ДОБАВЛЕНО: Добавляем к сумме ===
+                      } else {
+                          modalHtml += '0'; // Отображаем 0 или прочерк, если часы не являются числом
+                      }
+                 } else {
+                      modalHtml += '0'; // Отображаем 0 или прочерк, если часов нет
+                 }
+                 modalHtml += '</div>'; // .object-hours-cell
+             });
+
+            // === ДОБАВЛЕНО: Добавляем строку с общей суммой часов и убираем лишние нули ===
+            modalHtml += '<div class="object-table-footer" style="grid-column: span 2; text-align: right; font-weight: bold; margin-top: 10px; padding-top: 5px; border-top: 1px solid #ccc;">Всего часов: ' + parseFloat(totalHours.toFixed(2)) + '</div>';
+
+        } else {
+            // Здесь можно добавить div, который будет занимать две колонки в случае отсутствия данных
+            modalHtml += '<div style="grid-column: span 2;"><p>Данные по объектам не найдены или произошла ошибка.</p>';
+             if(data && data.error) {
+                 modalHtml += '<p>Ошибка: ' + data.error + '</p>';
+             }
+        }
+
+        modalHtml += '</div>'; // .object-table-container
+        modalHtml += '</div>'; // .modal-content
+        // Используем иконку крестика для закрытия // Добавлена иконка
+        modalHtml += '</div>'; // .worker-objects-modal
+
+        // Добавляем модальное окно в DOM
+        $('body').append(modalHtml);
+
+        // === ИЗМЕНЕНО: Находим родительский элемент .worker-row, используя event.target ===
+        const $plusButton = $(event.target); // Элемент, на который кликнули (кнопка "+")
+        const $workerRow = $plusButton.closest('.worker-row'); // Находим ближайшего родителя с классом worker-row
+
+        if ($workerRow.length === 0) {
+             console.error('[showWorkerObjectsTabel] Не найден родительский элемент .worker-row для кнопки "+".');
+             $('#worker-objects-modal').remove(); // Удаляем модалку, если не можем найти строку
+             return; // Прерываем выполнение
+        }
+
+        const workerRowOffset = $workerRow.offset();
+        const workerRowHeight = $workerRow.outerHeight();
+
+        // === ИЗМЕНЕНО: Позиционируем модальное окно используя данные родительской строки ===
+        $('#worker-objects-modal').css({
+            top: workerRowOffset.top + workerRowHeight + 'px',
+            left: workerRowOffset.left + 'px',
+            width: $workerRow.outerWidth() + 'px' // Ширина по строке сотрудника
+        }).show(); // Показываем модальное окно
+
+        // === ИЗМЕНЕНО: Добавляем обработчик mousedown к модальному окну для закрытия по клику вне его ===
+        $('#worker-objects-modal').on('mousedown', function(e) {
+             // Проверяем, если клик был не внутри модального окна
+             // event.target - это элемент, на котором произошел клик
+             // $(this) - это элемент, на котором висит обработчик (модальное окно)
+             if (!$(e.target).closest('.worker-objects-modal .modal-content').length && !$(e.target).closest('.worker-objects-modal .modal-header').length) {
+                 console.log('[mousedown #worker-objects-modal] Клик вне контента и заголовка модального окна, закрываем.'); // Лог для отладки
+                 closeWorkerObjectsModal();
+             } else {
+                 console.log('[mousedown #worker-objects-modal] Клик внутри контента или заголовка модального окна.', e.target); // Лог для отладки
+             }
+         });
+
+         // === ДОБАВЛЕНО: Добавляем обработчик для закрытия по скролу к окну ===
+         $(window).on('scroll.objectsModal', function() {
+             if ($('#worker-objects-modal').is(':visible')) {
+                 console.log('[scroll.objectsModal] Прокрутка окна, закрываем модальное окно.');
+                 closeWorkerObjectsModal();
+             }
+         });
+
+        // === ДОБАВЛЕНО: Выделяем строку сотрудника для чтения ===
+        // Находим индекс строки по workerId
+        const rowIndex = WORKERS.findIndex(worker => worker.uid === workerId);
+
+        if (rowIndex !== -1) {
+            console.log('[showWorkerObjectsTabel] Выделяем строку сотрудника для чтения:', rowIndex);
+            const worker = WORKERS[rowIndex];
+            let rowId = (rowIndex+1)+'_'+worker.uid+'-row';
+            let dvId = (rowIndex+1)+'_'+worker.uid+'-dv';
+            let numId = (rowIndex+1)+'number-row';
+
+            $('#'+rowId).addClass('readonly-row-selected');
+            $('#'+dvId).addClass('readonly-row-selected');
+            $('#'+numId).addClass('readonly-row-selected');
+
+            // Также добавляем класс к ячейкам строки для единообразия со clearReadOnlyRowSelection
+            for (let j in DAYS) {
+                let col_no = Number(j) + 1;
+                let $cell = $('#'+Number(rowIndex+1)+'-'+col_no+'-day-dv');
+                 $cell.addClass('readonly-row-selected');
+                // Возможно, потребуется также изменить фон или другие стили ячеек здесь,
+                // в зависимости от того, как выглядит выделение в режиме только для чтения.
+                // Судя по clearReadOnlyRowSelection, фон ячеек тоже меняется.
+                // Применяем стили, как в clearReadOnlyRowSelection при снятии выделения
+                let dayType = DAYS[j]['weekend'] ? 'weekend' : 'work';
+                $cell.removeClass('days-work days-weekend');
+                $cell.addClass('days-' + dayType);
+                if (dayType === 'weekend') {
+                    $cell.css({"background": weekendBgd, "color": unselectedFnt});
+                } else {
+                    $cell.css({"background": unselectedBgd, "color": unselectedFnt});
+                }
+
+            }
+             $('#'+numId).css("background", selectedBgd); // Используем selectedBgd для номера строки как при обычном выделении
+
+            // === ДОБАВЛЕНО: Устанавливаем флаг и индекс для clearReadOnlyRowSelection ===
+            isReadOnlyRowSelected = true;
+            readOnlyRowIndex = rowIndex;
+        }
+
+    } catch (e) {
+        console.error('Ошибка при получении данных по объектам:', e);
+        $('#loader').hide(); // Скрываем лоадер
+        alert('Произошла ошибка при получении данных по объектам. Пожалуйста, попробуйте еще раз.');
+    }
+}
+
+// --- ДОБАВЛЕНО: Функция для закрытия модального окна ---
+function closeWorkerObjectsModal() {
+    let $modal = $('#worker-objects-modal');
+    // === ИЗМЕНЕНО: Проверяем, существует ли модальное окно перед попыткой его закрыть/удалить ===
+    if ($modal.length > 0) {
+        console.log('[closeWorkerObjectsModal] Закрытие и удаление модального окна объектов.'); // Лог для отладки
+        // === ИЗМЕНЕНО: Немедленно удаляем модальное окно ===
+        $modal.remove();
+
+        // === ИЗМЕНЕНО: Немедленно удаляем обработчики событий ===
+        $(document).off('mousedown.objectsModal'); // Удаляем обработчик клика с document
+        $(window).off('scroll.objectsModal'); // Удаляем обработчик скролла с окна
+         // Удаляем обработчик mousedown, который мог быть добавлен на само модальное окно в предыдущих попытках
+        $modal.off('mousedown');
+    } else {
+        console.log('[closeWorkerObjectsModal] Модальное окно объектов не найдено.'); // Лог для отладки
+    }
+
+    // Обработчик click на оверлее (если он был добавлен) удалится автоматически при удалении оверлея.
+    // Если используется оверлей, то удалять нужно его, а не только модальное окно.
+    // В текущей реализации без оверлея удаляем только модальное окно.
+
+    // === ДОБАВЛЕНО: Снимаем выделение строки только для чтения при закрытии модального окна ===
+    clearReadOnlyRowSelection();
+
+}
+
 
 
 

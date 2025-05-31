@@ -1273,7 +1273,19 @@ body {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 20px; font-weight: bold; margin-bottom: 24px;
 }
-.close-bt { cursor: pointer; font-size: 32px; }
+.close-bt { 
+    cursor: pointer; 
+    font-size: 32px; 
+    position: absolute; /* Позиционируем абсолютно */
+    top: 10px; /* Отступ сверху */
+    right: 15px; /* Отступ справа */
+    color: #888; /* Цвет крестика */
+    /* === ДОБАВЛЕНО: Улучшенные стили при наведении === */
+    transition: color 0.2s ease; /* Плавное изменение цвета */
+}
+.close-bt:hover {
+    color: #555; /* Изменение цвета при наведении */
+}
 #org-filter-list label { display: block; margin-bottom: 12px; font-size: 18px; cursor: pointer; }
 #org-filter-list input[type="radio"] { margin-right: 8px; }
 .filter-open-bt {
@@ -1351,3 +1363,156 @@ body {
     box-shadow: none !important;
     font-weight: normal !important;
 }	
+
+.show-info-plus {
+    font-weight: bold;
+    color: red;
+    margin-right: 5px; /* Добавьте небольшой отступ справа от плюса */
+    font-size: 1.2em; /* Увеличиваем размер шрифта */
+}
+
+
+.worker-objects-modal {
+    position: absolute; /* Позиционируем относительно родительского контейнера (body) */
+    z-index: 1001; /* Выше, чем другие элементы, чтобы быть на переднем плане */
+    background: #fff;
+    /* === ИЗМЕНЕНО: Улучшенные стили рамки и тени === */
+    border: 1px solid #a0a0a0; /* Более мягкая рамка */
+    box-shadow: 0 6px 12px rgba(0,0,0,0.25); /* Более выразительная тень */
+    border-radius: 8px;
+    padding: 0; /* Убираем общий padding, добавим внутренние отступы элементам */
+    display: none; /* Скрыто по умолчанию */
+    max-height: 300px; /* Пример максимальной высоты */
+    overflow-y: auto; /* Добавляем скролл, если содержимое больше maxHeight */
+    min-width: 300px; /* Минимальная ширина для читаемости */
+}
+
+.worker-objects-modal .modal-header {
+    font-size: 18px;
+    font-weight: bold;
+    margin-bottom: 0;
+    padding: 15px;
+    border-bottom: 1px solid #ddd;
+    background-color: #f0f0f0;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.worker-objects-modal .modal-header .modal-close {
+    position: static;
+    margin-left: 15px;
+    font-size: 24px;
+    background: none;
+    border: none;
+    padding: 0;
+    color: #888;
+    cursor: pointer;
+    transition: color 0.2s ease;
+}
+
+.worker-objects-modal .modal-header .modal-close:hover {
+    color: #555;
+}
+
+.worker-objects-modal .modal-content {
+    padding: 15px;
+    margin-bottom: 0;
+    /* Убедимся, что здесь нет стилей Grid */
+    /* display: grid; */
+    /* grid-template-columns: 1fr auto; */
+    /* gap: 1px; */
+}
+
+/* === Стили для контейнера таблицы Grid === */
+.worker-objects-modal .object-table-container {
+    display: grid;
+    grid-template-columns: 1fr auto; /* Один столбец для объекта (занимает все доступное место) и один для часов (авто ширина) */
+    gap: 1px; /* Уменьшаем или убираем gap, так как будем использовать границы */
+    border: 1px solid #ccc; /* Общая граница для контейнера */
+    border-radius: 4px;
+    overflow: hidden; /* Обрезаем содержимое по границам контейнера */
+}
+
+/* === ИЗМЕНЕНО: Стили для заголовков таблицы объектов === */
+/* Применяются напрямую к .object-name и .object-hours-header, когда у них есть класс .object-table-header */
+.worker-objects-modal .object-table-header {
+    font-weight: bold;
+    border-bottom: 1px solid #ccc; /* Нижняя граница заголовка */
+    padding: 8px 12px; /* Увеличиваем внутренние отступы */
+    background-color: #f7f7f7; /* Фон для заголовков */
+    text-align: center; /* Выравнивание текста заголовков */
+    justify-content: center; /* Центрируем текст в заголовках */
+}
+
+.worker-objects-modal .object-hours-header.object-table-header {
+    text-align: center; /* Заголовок "Часы" выравниваем по центру, как на скриншоте */
+     border-right: none; /* Убираем правую границу у последней ячейки заголовка */
+}
+
+
+/* === ИЗМЕНЕНО: Стили для ячеек с названием объекта === */
+.worker-objects-modal .object-name {
+     padding: 5px 8px; /* Внутренние отступы */
+     border-bottom: 1px dashed #eee; /* Разделитель между строками */
+     text-align: left; /* Выравниваем название объекта по левому краю */
+     border-right: 1px solid #eee;
+     background-color: #f0f0f0; /* Убираем фон, чтобы работало чередование */
+}
+/* Убираем нижний разделитель у последней ячейки в колонке "Объект" */
+.worker-objects-modal .object-table-container > .object-name:last-of-type { /* Более точный селектор */
+     border-bottom: none;
+}
+
+
+/* === УДАЛЕНО: Стили для обертки дней === */
+/*
+.worker-objects-modal .object-days {
+     display: none;
+}
+*/
+
+/* --- ИЗМЕНЕНО: Стили для ячейки часов --- */
+.worker-objects-modal .object-hours-cell {
+     text-align: right; /* Выравниваем часы по правому краю */
+     padding: 5px 8px; /* Внутренние отступы */
+     justify-content: flex-end; /* Прижимаем текст часов к правому краю */
+     /* background: #f9f9f9; Удаляем фиксированный фон */
+     font-size: 12px; /* Размер шрифта */
+     border-radius: 4px; /* Скругление углов */
+     min-width: 50px; /* Минимальная ширина для часов */
+     color: #0044ff; /* Синий цвет для часов */
+     font-weight: bold; /* Жирный шрифт */
+     border-left: 1px solid #eee; /* Разделитель между колонками */
+     background-color: #f0f0f0; /* Убираем фон, чтобы работало чередование */
+}
+/* Убираем нижний разделитель у последней ячейки в колонке "Часы" */
+.worker-objects-modal .object-table-container > .object-hours-cell:last-of-type { /* Более точный селектор */
+    border-bottom: none;
+}
+
+
+/* Пример стиля для пустой ячейки, если нужна визуализация отсутствия данных */
+.worker-objects-modal .object-hours-cell:empty {
+    background: #eee; /* Серый фон для пустой ячейки */
+    /* border-color: #ddd; */
+    color: #888;
+    font-weight: normal;
+    /* content: '-'; */ /* Убрал, т.k. '0' или '' лучше */
+}
+
+/* Styles for alternating row background (optional, for better readability) */
+.worker-objects-modal .object-table-container > .object-name:nth-child(4n+3),
+.worker-objects-modal .object-table-container > .object-hours-cell:nth-child(4n+4) {
+    background-color: #f0f0f0; /* Чуть более темный фон для каждой второй строки данных */
+}
+/* Убираем чередующийся фон для первой строки данных */
+.worker-objects-modal .object-table-container > .object-name:nth-child(4n+5),
+.worker-objects-modal .object-table-container > .object-hours-cell:nth-child(4n+6) {
+    background-color: #f0f0f0; /* Прозрачный фон для первой строки */
+}
