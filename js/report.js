@@ -844,14 +844,24 @@ function toPage(chapter=""){
 
 let changedCells = {};
 function setCells(value, isComment=false, isFullClear=false){
+    console.log('[DEBUG] setCells вызван', {value, isComment, isFullClear, selectedCells, isReadOnlyRowSelected: typeof isReadOnlyRowSelected !== 'undefined' ? isReadOnlyRowSelected : undefined, tabelIsSaving: window.tabelIsSaving});
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
         let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
+        let isCurrentMonth = false;
+let now = new Date();
+if (
+    DAYS && DAYS[TODAY] &&
+    DAYS[TODAY].year == now.getFullYear() &&
+    DAYS[TODAY].month == (now.getMonth() + 1)
+) {
+    isCurrentMonth = true;
+}
         // Если ячейка фиксирована, разрешаем только часы и комментарий
-        if ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') {
+        if (isCurrentMonth && ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1')) {
             if (!isComment && !isFullClear) {
                 // Разрешаем только изменение часов, если value — число или пусто (очистка)
-                if ((/^\d+$/.test(value) && value !== "") || value === "" || value === 0) {
+                if ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0) {
                     // Меняем только часы, не трогаем vt!
                     let uid = WORKERS[Number(cell['row'])]['uid'];
                     let day = Number(cell['col']);
@@ -889,6 +899,14 @@ function setCells(value, isComment=false, isFullClear=false){
                     return;
                 } else {
                     // Не часы и не пусто — ничего не делаем
+                    console.log('[setCells] Блокировка: фиксированная ячейка, value не число и не пусто', {
+                        value,
+                        isComment,
+                        isFullClear,
+                        isCurrentMonth,
+                        cellFixed: $cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1',
+                        cell: cell
+                    });
                     return;
                 }
             }
@@ -899,6 +917,16 @@ function setCells(value, isComment=false, isFullClear=false){
 	let uid = "";
 	let day = -1;
 	
+	// Определяем, выбран ли текущий месяц (один раз перед циклом)
+	let isCurrentMonth = false;
+	let now = new Date();
+	if (
+		DAYS && DAYS[TODAY] &&
+		DAYS[TODAY].year == now.getFullYear() &&
+		DAYS[TODAY].month == (now.getMonth() + 1)
+	) {
+		isCurrentMonth = true;
+	}
 	for(let key in selectedCells){
 		
 		let changed = false;
@@ -911,16 +939,18 @@ function setCells(value, isComment=false, isFullClear=false){
 		let no = Number(cell['row'])+1;
 		let id = no+'_'+uid;
 		
-		if($('#'+id+'-row').is(':hidden')) continue;
-		//if(!WORKERS[Number(cell['row'])]['days'][cell['col']]['enable']) continue;
-
-		if(TODAY == -1) continue;
-		//if((TODAY+1 >= 15 && Number(cell['col'])+1 <= 15) || Number(cell['col'])+1 < TODAY+1) continue;
-		
-		let matches = String(value).match(/(ПК|Б|ОТ|ОД|ДО|Р|УВ|ОЖ|У)/igu);
-		
-		if(Number(cell['col']) > TODAY && matches == null && !isComment && !isFullClear){
-			continue; // Просто пропускаем, не трогаем ячейку
+		// Проверка enable только для текущего месяца
+		if (isCurrentMonth && WORKERS[Number(cell['row'])]['days'][cell['col']]['enable'] === false) {
+			console.log('[DEBUG] return: enable==false', {cell, value, isCurrentMonth});
+			continue;
+		}
+        if(isCurrentMonth && TODAY == -1) {
+            console.log('[DEBUG] return: TODAY==-1', {cell, value, isCurrentMonth});
+            continue;
+        }
+		if(isCurrentMonth && Number(cell['col']) > TODAY && matches == null && !isComment && !isFullClear){
+			console.log('[DEBUG] return: future day', {cell, value, isCurrentMonth, TODAY});
+			continue;
 		}
 		
 		if(isComment || isFullClear){
@@ -958,6 +988,8 @@ function setCells(value, isComment=false, isFullClear=false){
 			}
 			TABEL[id][day]['vt']  = dayValue;
 			TABEL[id][day]['hours'] = dayHours == "" ? 0 : dayHours;
+			// ЛОГ после изменения данных
+			console.log('[DEBUG] После изменения TABEL', {id, day, vt: TABEL[id][day]['vt'], hours: TABEL[id][day]['hours']});
 			// Формируем красивый html
 			let hoursNum = Number(dayHours);
 			if(dayValue && !hoursNum){
@@ -974,13 +1006,13 @@ function setCells(value, isComment=false, isFullClear=false){
 				htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
 			}
 			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
-
+			// ЛОГ после изменения DOM
+			console.log('[DEBUG] После изменения DOM', $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html());
 			if(dayValue === "Я" && (!dayHours || dayHours == 0)){
 				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
 			}else{
 				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
 			}
-			
 			if(TABEL[id][day]['comment'] != ''){
 				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
 			}else{
@@ -1984,6 +2016,7 @@ function setMouseDownState(e) {
 
 let code = '';
 function setCellVal(e){
+    console.log('[DEBUG] setCellVal вызван', {event: e, selectedCells, isReadOnlyRowSelected: typeof isReadOnlyRowSelected !== 'undefined' ? isReadOnlyRowSelected : undefined, tabelIsSaving: window.tabelIsSaving});
 	
 	if($(document.activeElement).attr('id') == "fio-filter-in") return;
 	
@@ -3679,6 +3712,7 @@ function logUserAction(action, details = {}) {
   } catch (e) { /* ignore */ }
 }
 
+
 // === Встраиваем логирование в основные действия ===
 
 // 1. Изменение ячейки (setCells)
@@ -4181,8 +4215,10 @@ function changeMaster(worker_id){
             let dateToSend = null;
             if (splitHours && selectedDateStr) {
                  // Формат даты YYYYMMDD
-                 dateToSend = selectedDateStr.split('-').join('');
-                 console.log('[move-worker-modal] Дата для отправки:', dateToSend);
+                 let selectedDate = new Date(selectedDateStr);
+                 selectedDate.setDate(selectedDate.getDate() + 1); // Добавляем +1 день
+                 dateToSend = selectedDate.toISOString().slice(0,10).split('-').join('');
+                 console.log('[move-worker-modal] Дата для отправки (с +1 днем):', dateToSend);
 
 
                 // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
@@ -4355,7 +4391,10 @@ function changeChief(worker_id){
             let dateToSend = null;
             if (splitHours && selectedDateStr) {
                  // Формат даты YYYYMMDD
-                 dateToSend = selectedDateStr.split('-').join('');
+                 let selectedDate = new Date(selectedDateStr);
+                 selectedDate.setDate(selectedDate.getDate() + 1); // Добавляем +1 день
+                 dateToSend = selectedDate.toISOString().slice(0,10).split('-').join('');
+                 console.log('[changeChief] Дата для отправки (с +1 днем):', dateToSend);
 
                 // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
                  if (workerIndex !== -1) {
@@ -4424,6 +4463,7 @@ function isCellLocked(row, col) {
     let worker = WORKERS[row];
     if (!worker || !worker.days || !worker.days[col]) return false;
     return !!worker.days[col].lock;
+    
 }
 
 // --- Модификация setCells ---
@@ -4841,6 +4881,18 @@ $(document).on('mouseleave', '#master-head', function() {
 // --- ДОБАВЛЕНО: Новая функция для показа табеля по объектам ---
 // ... existing code ...
 async function showWorkerObjectsTabel(workerId, event) {
+
+    let dateForRequest;
+if (typeof curDate !== 'undefined' && curDate instanceof Date) {
+    const now = new Date();
+    if (curDate.getFullYear() === now.getFullYear() && curDate.getMonth() === now.getMonth()) {
+        dateForRequest = now.format("yyyymmdd"); // Текущий месяц — сегодня
+    } else {
+        dateForRequest = curDate.format("yyyymmdd"); // Прошлый месяц — последний день месяца
+    }
+} else {
+    dateForRequest = (new Date()).format("yyyymmdd");
+}
     // === ДОБАВЛЕНО: Снимаем любое текущее выделение строки только для чтения ===
     clearReadOnlyRowSelection();
 
@@ -4913,9 +4965,9 @@ async function showWorkerObjectsTabel(workerId, event) {
 
     // === ДОБАВЛЕНО: После показа модального окна делаем асинхронный запрос и заменяем содержимое ===
     const today = new Date();
-    const todayFormatted = today.format("yyyymmdd");
+    const todayFormatted = dateForRequest;
     try {
-        const data = await getData(false, true, 'ПолучитьКоличествоЧасовПоУчасткам', [workerId, todayFormatted]);
+        const data = await getData(false, true, 'ПолучитьКоличествоЧасовПоУчасткам', [workerId, dateForRequest]);
         // === ДОБАВЛЕНО: Формируем HTML с таблицей и суммой часов ===
         let contentHtml = '';
         contentHtml += '<div class="object-table-container">';
@@ -4993,6 +5045,9 @@ function closeWorkerObjectsModal() {
     clearReadOnlyRowSelection();
 
 }
+
+
+
 
 
 
