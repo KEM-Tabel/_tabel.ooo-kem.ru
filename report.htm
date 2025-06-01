@@ -58,15 +58,16 @@ $(document).ready(function () {
 		minDate: new Date(0),
 		maxDate: curDate,
 		timepicker: false,
+		minView: 'months',
+		view: 'months',
+		dateFormat: 'MM yyyy',
 		onSelect: function(formattedDate, date, inst) {
-			
-			curDate = !date ? curDate : date;
-			curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
-			
-			$('#datetext-head').html(mFullDays[curDate.getMonth()]+" "+curDate.getFullYear()+"г.");
-			
-			getDataTabel(true, false,  UID, curDate.format("yyyymmdd"), false);
-			
+			if (date) {
+				// Устанавливаем curDate на последний день выбранного месяца
+				curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+				$('#datetext-head').html(mFullDays[curDate.getMonth()] + " " + curDate.getFullYear() + "г.");
+				getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
+			}
 		},
 		onHide: function(inst, animationCompleted) {
 			
@@ -76,14 +77,7 @@ $(document).ready(function () {
 		},
 		onRenderCell: function (date, cellType) {
 			if (cellType == 'day') {
-				var day = date.getDay(),
-				isDisabled = [].indexOf(day) != -1;
-
-				return {
-				
-				disabled: isDisabled
-				
-				}
+				return { disabled: true };
 			}
 		}
 		
@@ -96,6 +90,9 @@ $(document).ready(function () {
 	$('#datetime_ti').datepicker().data('datepicker').view = 'months';
 	$('#datetime_ti').datepicker().data('datepicker').update();
 	$('#datetime_ti').datepicker().data('datepicker').selectDate(curDate);
+	// При загрузке страницы тоже используем последний день месяца
+	curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
+	getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
 
 	const searchWorkers = debounce(() => {changeFilter('fio');}, 300);
 	const inputField = document.getElementById('fio-filter-in');

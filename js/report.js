@@ -331,7 +331,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     if (window.IS_FULL_READONLY) unselectCells();
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
     if(!UID || !date) return;
-    let args = [UID, DATATIME, update];
+    let args = [UID, date, update];
     if (fullReadonly) args.push(true);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
     console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
@@ -3225,6 +3225,9 @@ function checkSelectedCellVisibility() {
 console.log('report.js debug: read-only режим по фамилии активен');
 let isReadOnlyRowSelected = false;
 let readOnlyRowIndex = -1;
+let readOnlyRowNum = null;
+
+
 
 function initReadOnlyHandlers() {
     // Клик по фамилии — только read-only выделение, обычное выделение по фамилии запрещено
@@ -3238,6 +3241,18 @@ function initReadOnlyHandlers() {
             if (!(isReadOnlyRowSelected && readOnlyRowIndex === rowIndex)) {
                 isReadOnlyRowSelected = true;
                 readOnlyRowIndex = rowIndex;
+                // --- ДОБАВЛЕНО: определяем и сохраняем rowNum ---
+                let rowNum = null;
+                let $workerRow = $(this).closest('.worker-row, .row-days-dv');
+                if ($workerRow.length > 0) {
+                    let id = $workerRow.attr('id');
+                    let matchNum = id && id.match(/^([0-9]+)_/);
+                    if (matchNum) {
+                        rowNum = parseInt(matchNum[1], 10);
+                    }
+                }
+                readOnlyRowNum = rowNum;
+                // --- конец добавления ---
                 console.log('[DEBUG] Выделяю строку', rowIndex);
                 selectRow(rowIndex, true); // true — readOnly
                 // Снимаем выделение со всех
@@ -3245,9 +3260,9 @@ function initReadOnlyHandlers() {
                 // Добавляем только нужным элементам по id
                 let worker = WORKERS[rowIndex];
                 if (worker) {
-                    let rowId = (rowIndex+1)+'_'+worker.uid+'-row';
-                    let dvId = (rowIndex+1)+'_'+worker.uid+'-dv';
-                    let numId = (rowIndex+1)+'number-row';
+                    let rowId = (rowNum !== null ? rowNum : (rowIndex+1))+'_'+worker.uid+'-row';
+                    let dvId = (rowNum !== null ? rowNum : (rowIndex+1))+'_'+worker.uid+'-dv';
+                    let numId = (rowNum !== null ? rowNum : (rowIndex+1))+'number-row';
                     $('#'+rowId).addClass('readonly-row-selected');
                     $('#'+dvId).addClass('readonly-row-selected');
                     $('#'+numId).addClass('readonly-row-selected');
@@ -3340,33 +3355,51 @@ if (!window._readonly_rowcell_handler_attached) {
 
 function clearReadOnlyRowSelection() {
     if (isReadOnlyRowSelected) {
-        console.log('[DEBUG] clearReadOnlyRowSelection: снимаю read-only');
+        console.log('[DEBUG] clearReadOnlyRowSelection: снимаю read-only', {row: readOnlyRowIndex, rowNum: readOnlyRowNum});
         let row = readOnlyRowIndex;
+        let rowNum = readOnlyRowNum; // <--- ДОБАВИТЬ!
         isReadOnlyRowSelected = false;
         readOnlyRowIndex = -1;
+        readOnlyRowNum = null; // <--- ДОБАВИТЬ!
         // Снимаем выделение только с нужных элементов
         let worker = WORKERS[row];
-        if (worker) {
-            let rowId = (row+1)+'_'+worker.uid+'-row';
-            let dvId = (row+1)+'_'+worker.uid+'-dv';
-            let numId = (row+1)+'number-row';
+        if (worker && rowNum !== null) {
+            let rowId = rowNum + '_' + worker.uid + '-row';
+            let dvId = rowNum + '_' + worker.uid + '-dv';
+            let numId = rowNum + 'number-row';
             $('#'+rowId).removeClass('readonly-row-selected');
             $('#'+dvId).removeClass('readonly-row-selected');
             $('#'+numId).removeClass('readonly-row-selected');
             // Восстанавливаем стили ячеек строки
             for (let j in DAYS) {
                 let col_no = Number(j) + 1;
-                let $cell = $('#'+Number(row+1)+'-'+col_no+'-day-dv');
+                let cellId = rowNum + '-' + col_no + '-day-dv';
+                let $cell = $('#' + cellId);
+                // ВОССТАНАВЛИВАЕМ inline-стиль background, если был сохранён
+                if ($cell.data('oldBg') !== undefined) {
+                    $cell[0].style.background = $cell.data('oldBg');
+                    $cell.removeData('oldBg');
+                }
                 let dayType = DAYS[j]['weekend'] ? 'weekend' : 'work';
                 $cell.removeClass('readonly-row-selected');
                 $cell.removeClass('days-work days-weekend');
                 $cell.addClass('days-' + dayType);
-                // Восстанавливаем фон
+                // Восстанавливаем фон (на случай, если не было inline-стиля)
                 if (dayType === 'weekend') {
                     $cell.css({"background": weekendBgd, "color": unselectedFnt});
                 } else {
                     $cell.css({"background": unselectedBgd, "color": unselectedFnt});
                 }
+                // === ЛОГИ ===
+                console.log('[clearReadOnlyRowSelection][ROW DEBUG]', {
+                    row,
+                    col_no,
+                    cellId,
+                    cellElem: $cell[0],
+                    restoredBg: $cell[0] ? $cell[0].style.background : undefined,
+                    classes: $cell.attr('class'),
+                    visible: $cell.is(':visible')
+                });
             }
             $('#'+numId).css("background", unselectedNoBgd);
         }
@@ -4816,168 +4849,122 @@ async function showWorkerObjectsTabel(workerId, event) {
     console.log('[showWorkerObjectsTabel] Функция вызвана для сотрудника (UID):', workerId); // Отладочное сообщение
     console.log('[showWorkerObjectsTabel] Объект события:', event); // Отладочное сообщение
 
-    // === ИЗМЕНЕНО: Используем текущую дату вместо начала месяца ===
+    // === ДОБАВЛЕНО: Сразу показываем модальное окно с локальным лоадером ===
+    // Получаем ФИО заранее
+    const workerFio = $(event.target).next('span').text();
+    let modalHtml = '<div id="worker-objects-modal" class="worker-objects-modal">';
+    modalHtml += '<div class="modal-header">Сумма часов по объектам для ' + workerFio + '<button class="modal-close" onclick="closeWorkerObjectsModal()"><i class="fas fa-times"></i></button></div>';
+    modalHtml += '<div class="modal-content">';
+    modalHtml += '<div class="object-table-container" style="text-align:center;padding:30px 0;">';
+    modalHtml += '<span class="object-loader">Загрузка...</span>';
+    modalHtml += '</div></div></div>';
+    // Удаляем предыдущее модальное окно, если оно есть
+    $('#worker-objects-modal').remove();
+    $('body').append(modalHtml);
+
+    // === ИЗМЕНЕНО: Находим родительский элемент .worker-row, используя event.target ===
+    const $plusButton = $(event.target); // Элемент, на который кликнули (кнопка "+")
+    // === Получаем реальный номер строки (rowNum) из DOM ===
+    let rowNum = null;
+    let $workerRow = $plusButton.closest('.worker-row, .row-days-dv');
+    if ($workerRow.length > 0) {
+        let id = $workerRow.attr('id');
+        let match = id && id.match(/^([0-9]+)_/);
+        if (match) {
+            rowNum = parseInt(match[1], 10);
+        }
+    }
+    const workerRowOffset = $workerRow.offset();
+    const workerRowHeight = $workerRow.outerHeight();
+    $('#worker-objects-modal').css({
+        top: workerRowOffset.top + workerRowHeight + 'px',
+        left: workerRowOffset.left + 'px',
+        width: $workerRow.outerWidth() + 'px'
+    }).show();
+
+    // === ДОБАВЛЕНО: Выделяем строку сотрудника для чтения ===
+    const rowIndex = WORKERS.findIndex(worker => worker.uid === workerId);
+    console.log('[showWorkerObjectsTabel] rowIndex:', rowIndex, 'workerId:', workerId, 'rowNum:', rowNum, 'WORKERS:', WORKERS.map(w=>w.uid));
+    if (rowIndex !== -1 && rowNum !== null) {
+        const worker = WORKERS[rowIndex];
+        let rowId = rowNum + '_' + worker.uid + '-row';
+        let dvId = rowNum + '_' + worker.uid + '-dv';
+        let numId = rowNum + 'number-row';
+        $('#'+rowId).addClass('readonly-row-selected');
+        $('#'+dvId).addClass('readonly-row-selected');
+        $('#'+numId).addClass('readonly-row-selected');
+        for (let j in DAYS) {
+            let col_no = Number(j) + 1;
+            let cellId = rowNum + '-' + col_no + '-day-dv';
+            let $cell = $('#' + cellId);
+            $cell.data('oldBg', $cell[0] ? $cell[0].style.background : undefined);
+            if ($cell[0]) $cell[0].style.background = '#6690EF';
+            $cell.addClass('readonly-row-selected');
+            let dayType = DAYS[j]['weekend'] ? 'weekend' : 'work';
+            $cell.removeClass('days-work days-weekend');
+            $cell.addClass('days-' + dayType);
+            $cell.css({"color": unselectedFnt});
+        }
+        $('#'+numId).css("background", selectedBgd);
+        isReadOnlyRowSelected = true;
+        readOnlyRowIndex = rowIndex;
+        readOnlyRowNum = rowNum;
+    }
+
+    // === ДОБАВЛЕНО: После показа модального окна делаем асинхронный запрос и заменяем содержимое ===
     const today = new Date();
-    const todayFormatted = today.format("yyyymmdd"); // Форматируем текущую дату как yyyymmdd
-
-    console.log('[showWorkerObjectsTabel] Текущая дата:', todayFormatted); // Отладочное сообщение
-    console.log('[showWorkerObjectsTabel] Вызов getData с методом "ПолучитьКоличествоЧасовПоУчасткам" и аргументами:', [workerId, todayFormatted]); // Отладочное сообщение
-
-    // === ИЗМЕНЕНО: Вызываем getData для получения табеля по объектам с текущей датой ===
-    $('#loader').show(); // Показываем лоадер
+    const todayFormatted = today.format("yyyymmdd");
     try {
         const data = await getData(false, true, 'ПолучитьКоличествоЧасовПоУчасткам', [workerId, todayFormatted]);
-        $('#loader').hide(); // Скрываем лоадер
-
-        console.log('[showWorkerObjectsTabel] Получены данные по объектам:', data); // Отладочное сообщение
-
-        // Удаляем предыдущее модальное окно, если оно есть
-        $('#worker-objects-modal').remove();
-
-        // Создаем HTML для модального окна
-        let modalHtml = '<div id="worker-objects-modal" class="worker-objects-modal">';
-        // === ИЗМЕНЕНО: Получаем ФИО из элемента рядом с кнопкой "+" ===
-        // Находим span с ФИО, который находится сразу после кнопки "+" внутри .worker_lb
-        const workerFio = $(event.target).next('span').text();
-        // === ИЗМЕНЕНО: Кнопка закрытия теперь внутри modal-header ===
-        modalHtml += '<div class="modal-header">Сумма часов по объектам для ' + workerFio + '<button class="modal-close" onclick="closeWorkerObjectsModal()"><i class="fas fa-times"></i></button></div>';
-        modalHtml += '<div class="modal-content">';
-
-        // === ИЗМЕНЕНО: Оборачиваем заголовки и данные в контейнер для Grid ===
-        modalHtml += '<div class="object-table-container">';
-
-        // === ДОБАВЛЕНО: Заголовки столбцов (теперь прямые потомки object-table-container) ===
-        modalHtml += '<div class="object-name object-table-header">Объект</div>'; // Заголовок "Объект"
-        modalHtml += '<div class="object-hours-header object-table-header">Часы</div>'; // Заголовок "Часы"
-
-
-        // === ИЗМЕНЕНО: Проверяем наличие данных в data.result ===
-        if (data && data.valid && data.result && data.result.length > 0) { // Предполагаем, что данные приходят в data.result
-             let totalHours = 0; // === ДОБАВЛЕНО: Переменная для суммы часов ===
-             data.result.forEach(obj => { // Итерируем по массиву result
-                 // === ИЗМЕНЕНО: Теперь название объекта и часы - прямые потомки object-table-container ===
-                 modalHtml += '<div class="object-name">' + obj.location_name + '</div>'; // Используем location_name как название объекта
-                 modalHtml += '<div class="object-hours-cell">'; // Класс для ячейки часов
-                 if (obj.hours !== undefined && obj.hours !== null && obj.hours !== '') {
-                      const hours = parseFloat(obj.hours); // === ДОБАВЛЕНО: Парсим часы как число ===
-                      if (!isNaN(hours)) { // === ДОБАВЛЕНО: Проверяем, что это число ===
-                          modalHtml += hours; // Просто часы
-                          totalHours += hours; // === ДОБАВЛЕНО: Добавляем к сумме ===
-                      } else {
-                          modalHtml += '0'; // Отображаем 0 или прочерк, если часы не являются числом
-                      }
-                 } else {
-                      modalHtml += '0'; // Отображаем 0 или прочерк, если часов нет
-                 }
-                 modalHtml += '</div>'; // .object-hours-cell
-             });
-
-            // === ДОБАВЛЕНО: Добавляем строку с общей суммой часов и убираем лишние нули ===
-            modalHtml += '<div class="object-table-footer" style="grid-column: span 2; text-align: right; font-weight: bold; margin-top: 10px; padding-top: 5px; border-top: 1px solid #ccc;">Всего часов: ' + parseFloat(totalHours.toFixed(2)) + '</div>';
-
-        } else {
-            // Здесь можно добавить div, который будет занимать две колонки в случае отсутствия данных
-            modalHtml += '<div style="grid-column: span 2;"><p>Данные по объектам не найдены или произошла ошибка.</p>';
-             if(data && data.error) {
-                 modalHtml += '<p>Ошибка: ' + data.error + '</p>';
-             }
-        }
-
-        modalHtml += '</div>'; // .object-table-container
-        modalHtml += '</div>'; // .modal-content
-        // Используем иконку крестика для закрытия // Добавлена иконка
-        modalHtml += '</div>'; // .worker-objects-modal
-
-        // Добавляем модальное окно в DOM
-        $('body').append(modalHtml);
-
-        // === ИЗМЕНЕНО: Находим родительский элемент .worker-row, используя event.target ===
-        const $plusButton = $(event.target); // Элемент, на который кликнули (кнопка "+")
-        const $workerRow = $plusButton.closest('.worker-row'); // Находим ближайшего родителя с классом worker-row
-
-        if ($workerRow.length === 0) {
-             console.error('[showWorkerObjectsTabel] Не найден родительский элемент .worker-row для кнопки "+".');
-             $('#worker-objects-modal').remove(); // Удаляем модалку, если не можем найти строку
-             return; // Прерываем выполнение
-        }
-
-        const workerRowOffset = $workerRow.offset();
-        const workerRowHeight = $workerRow.outerHeight();
-
-        // === ИЗМЕНЕНО: Позиционируем модальное окно используя данные родительской строки ===
-        $('#worker-objects-modal').css({
-            top: workerRowOffset.top + workerRowHeight + 'px',
-            left: workerRowOffset.left + 'px',
-            width: $workerRow.outerWidth() + 'px' // Ширина по строке сотрудника
-        }).show(); // Показываем модальное окно
-
-        // === ИЗМЕНЕНО: Добавляем обработчик mousedown к модальному окну для закрытия по клику вне его ===
-        $('#worker-objects-modal').on('mousedown', function(e) {
-             // Проверяем, если клик был не внутри модального окна
-             // event.target - это элемент, на котором произошел клик
-             // $(this) - это элемент, на котором висит обработчик (модальное окно)
-             if (!$(e.target).closest('.worker-objects-modal .modal-content').length && !$(e.target).closest('.worker-objects-modal .modal-header').length) {
-                 console.log('[mousedown #worker-objects-modal] Клик вне контента и заголовка модального окна, закрываем.'); // Лог для отладки
-                 closeWorkerObjectsModal();
-             } else {
-                 console.log('[mousedown #worker-objects-modal] Клик внутри контента или заголовка модального окна.', e.target); // Лог для отладки
-             }
-         });
-
-         // === ДОБАВЛЕНО: Добавляем обработчик для закрытия по скролу к окну ===
-         $(window).on('scroll.objectsModal', function() {
-             if ($('#worker-objects-modal').is(':visible')) {
-                 console.log('[scroll.objectsModal] Прокрутка окна, закрываем модальное окно.');
-                 closeWorkerObjectsModal();
-             }
-         });
-
-        // === ДОБАВЛЕНО: Выделяем строку сотрудника для чтения ===
-        // Находим индекс строки по workerId
-        const rowIndex = WORKERS.findIndex(worker => worker.uid === workerId);
-
-        if (rowIndex !== -1) {
-            console.log('[showWorkerObjectsTabel] Выделяем строку сотрудника для чтения:', rowIndex);
-            const worker = WORKERS[rowIndex];
-            let rowId = (rowIndex+1)+'_'+worker.uid+'-row';
-            let dvId = (rowIndex+1)+'_'+worker.uid+'-dv';
-            let numId = (rowIndex+1)+'number-row';
-
-            $('#'+rowId).addClass('readonly-row-selected');
-            $('#'+dvId).addClass('readonly-row-selected');
-            $('#'+numId).addClass('readonly-row-selected');
-
-            // Также добавляем класс к ячейкам строки для единообразия со clearReadOnlyRowSelection
-            for (let j in DAYS) {
-                let col_no = Number(j) + 1;
-                let $cell = $('#'+Number(rowIndex+1)+'-'+col_no+'-day-dv');
-                 $cell.addClass('readonly-row-selected');
-                // Возможно, потребуется также изменить фон или другие стили ячеек здесь,
-                // в зависимости от того, как выглядит выделение в режиме только для чтения.
-                // Судя по clearReadOnlyRowSelection, фон ячеек тоже меняется.
-                // Применяем стили, как в clearReadOnlyRowSelection при снятии выделения
-                let dayType = DAYS[j]['weekend'] ? 'weekend' : 'work';
-                $cell.removeClass('days-work days-weekend');
-                $cell.addClass('days-' + dayType);
-                if (dayType === 'weekend') {
-                    $cell.css({"background": weekendBgd, "color": unselectedFnt});
+        // === ДОБАВЛЕНО: Формируем HTML с таблицей и суммой часов ===
+        let contentHtml = '';
+        contentHtml += '<div class="object-table-container">';
+        contentHtml += '<div class="object-name object-table-header">Объект</div>';
+        contentHtml += '<div class="object-hours-header object-table-header">Часы</div>';
+        if (data && data.valid && data.result && data.result.length > 0) {
+            let totalHours = 0;
+            data.result.forEach(obj => {
+                contentHtml += '<div class="object-name">' + obj.location_name + '</div>';
+                contentHtml += '<div class="object-hours-cell">';
+                if (obj.hours !== undefined && obj.hours !== null && obj.hours !== '') {
+                    const hours = parseFloat(obj.hours);
+                    if (!isNaN(hours)) {
+                        contentHtml += hours;
+                        totalHours += hours;
+                    } else {
+                        contentHtml += '0';
+                    }
                 } else {
-                    $cell.css({"background": unselectedBgd, "color": unselectedFnt});
+                    contentHtml += '0';
                 }
-
+                contentHtml += '</div>';
+            });
+            contentHtml += '<div class="object-table-footer" style="grid-column: span 2; text-align: right; font-weight: bold; margin-top: 10px; padding-top: 5px; border-top: 1px solid #ccc;">Всего часов: ' + parseFloat(totalHours.toFixed(2)) + '</div>';
+        } else {
+            contentHtml += '<div style="grid-column: span 2;"><p>Данные по объектам не найдены или произошла ошибка.</p>';
+            if(data && data.error) {
+                contentHtml += '<p>Ошибка: ' + data.error + '</p>';
             }
-             $('#'+numId).css("background", selectedBgd); // Используем selectedBgd для номера строки как при обычном выделении
-
-            // === ДОБАВЛЕНО: Устанавливаем флаг и индекс для clearReadOnlyRowSelection ===
-            isReadOnlyRowSelected = true;
-            readOnlyRowIndex = rowIndex;
         }
-
+        contentHtml += '</div>';
+        // === Заменяем содержимое модального окна на таблицу ===
+        $('#worker-objects-modal .modal-content').html(contentHtml);
     } catch (e) {
+        $('#worker-objects-modal .modal-content').html('<div style="padding: 30px 0; text-align: center; color: #b00;">Ошибка при получении данных по объектам.</div>');
         console.error('Ошибка при получении данных по объектам:', e);
-        $('#loader').hide(); // Скрываем лоадер
-        alert('Произошла ошибка при получении данных по объектам. Пожалуйста, попробуйте еще раз.');
     }
+
+    // === ИЗМЕНЕНО: Добавляем обработчик mousedown к модальному окну для закрытия по клику вне его ===
+    $('#worker-objects-modal').on('mousedown', function(e) {
+         if (!$(e.target).closest('.worker-objects-modal .modal-content').length && !$(e.target).closest('.worker-objects-modal .modal-header').length) {
+             closeWorkerObjectsModal();
+         }
+     });
+    $(window).on('scroll.objectsModal', function() {
+        if ($('#worker-objects-modal').is(':visible')) {
+            closeWorkerObjectsModal();
+        }
+    });
 }
 
 // --- ДОБАВЛЕНО: Функция для закрытия модального окна ---
