@@ -347,19 +347,18 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 
     if (isPastMonth) {
         // Если это прошлый месяц, используем дату из LAST_SUCCESSFUL_DATE как основную
-        let savedDate = getCookie('LAST_SUCCESSFUL_DATE');
-        if (savedDate) {
-            date = savedDate;
-            args[1] = date;
-            console.log('[getDataTabel] Используем дату из LAST_SUCCESSFUL_DATE:', date);
-        }
-
-        // Добавляем последний день выбранного месяца как дополнительный параметр
         let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
         lastDayDate = lastDay.format("yyyymmddHHMMss");
         args[2] = lastDayDate;
         args[3] = update;
-        console.log('[getDataTabel] Добавлен параметр lastDayDate:', lastDayDate);
+        console.log('[getDataTabel] Добавлен параметр lastDayDate для прошлого месяца:', lastDayDate);
+    } else {
+        // Для текущего месяца тоже добавляем последний день месяца
+        let lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        lastDayDate = lastDay.format("yyyymmddHHMMss");
+        args[2] = lastDayDate;
+        args[3] = update;
+        console.log('[getDataTabel] Добавлен параметр lastDayDate для текущего месяца:', lastDayDate);
     }
 
     if (fullReadonly) args.push(true);
