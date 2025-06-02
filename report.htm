@@ -74,9 +74,15 @@ $(document).ready(function () {
         if (date.getFullYear() < year || (date.getFullYear() === year && date.getMonth() < month)) {
             // Если это прошлый месяц, используем последний день месяца
             curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+            // Сохраняем последний день месяца в куки
+            setCookie('LAST_DAY_OF_MONTH', curDate.format("yyyymmddHHMMss"), 365);
+            console.log('[onSelect] Сохранен последний день месяца:', curDate.format("yyyymmddHHMMss"));
         } else {
             // Если это текущий месяц, используем текущую дату
             curDate = new Date();
+            // Удаляем сохраненную дату последнего дня месяца
+            delCookie('LAST_DAY_OF_MONTH');
+            console.log('[onSelect] Удалена сохраненная дата последнего дня месяца');
         }
         
         $('#datetext-head').html(mFullDays[curDate.getMonth()] + " " + curDate.getFullYear() + "г.");

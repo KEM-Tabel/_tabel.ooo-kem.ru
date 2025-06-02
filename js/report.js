@@ -336,17 +336,35 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
     if(!UID || !date) return;
 
-    // Если это автообновление (update=true), используем сохраненную дату
-    if (update) {
+    let args = [UID, date, update];
+    let lastDayDate = null;
+
+    // Проверяем, является ли выбранный месяц прошлым
+    let selectedDate = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
+    let now = new Date();
+    let isPastMonth = selectedDate.getFullYear() < now.getFullYear() || 
+                     (selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() < now.getMonth());
+
+    if (isPastMonth) {
+        // Если это прошлый месяц, используем дату из LAST_SUCCESSFUL_DATE как основную
         let savedDate = getCookie('LAST_SUCCESSFUL_DATE');
         if (savedDate) {
             date = savedDate;
-            console.log('[getDataTabel] Используем сохраненную дату для автообновления:', date);
+            args[1] = date;
+            console.log('[getDataTabel] Используем дату из LAST_SUCCESSFUL_DATE:', date);
         }
+
+        // Добавляем последний день выбранного месяца как дополнительный параметр
+        let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+        lastDayDate = lastDay.format("yyyymmddHHMMss");
+        args[2] = lastDayDate;
+        args[3] = update;
+        console.log('[getDataTabel] Добавлен параметр lastDayDate:', lastDayDate);
     }
 
-    let args = [UID, date, update];
     if (fullReadonly) args.push(true);
+    
+    console.log('[getDataTabel] Итоговые параметры запроса:', args);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
     console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
     TIMESTAMP_SESSION = Math.floor(Date.now() / 1000);
@@ -3721,28 +3739,38 @@ function getReportUrl(groupby, type) {
   
       if (isCurrentMonth) {
         // Если выбран текущий месяц — удаляем куку
-        setCookie('DATE', '', -1); // удаление куки
+        delCookie('LAST_DAY_OF_MONTH');
         // Используем сегодняшнюю дату
         date = getTodayYMD();
       } else {
-        // Всегда используем последний день месяца
-        let lastDay = new Date(year, month + 1, 0).getDate();
-        date = `${year}${String(month + 1).padStart(2, '0')}${String(lastDay).padStart(2, '0')}`;
-        // Сохраняем последний день месяца в куки
-        setCookie('DATE', date, 365);
+        // Проверяем наличие даты в куке LAST_DAY_OF_MONTH
+        let lastDayDate = getCookie('LAST_DAY_OF_MONTH');
+        if (lastDayDate) {
+          date = lastDayDate;
+          console.log('[getReportUrl] Используем дату из куки LAST_DAY_OF_MONTH:', date);
+        } else {
+          // Если куки нет, используем последний день месяца
+          let lastDay = new Date(year, month + 1, 0).getDate();
+          date = `${year}${String(month + 1).padStart(2, '0')}${String(lastDay).padStart(2, '0')}`;
+          console.log('[getReportUrl] Используем последний день месяца:', date);
+        }
       }
-  
-      console.log('[getReportUrl] Используем дату:', date);
     } else {
-      // Если нет даты в URL, используем текущую дату
-      date = getCookie('DATE') || getTodayYMD();
-      console.log('[getReportUrl] Используем дату из куки или текущую:', date);
+      // Если нет даты в URL, проверяем куку LAST_DAY_OF_MONTH
+      let lastDayDate = getCookie('LAST_DAY_OF_MONTH');
+      if (lastDayDate) {
+        date = lastDayDate;
+        console.log('[getReportUrl] Используем дату из куки LAST_DAY_OF_MONTH:', date);
+      } else {
+        date = getTodayYMD();
+        console.log('[getReportUrl] Используем текущую дату:', date);
+      }
     }
     
     let url = `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
     console.log('[getReportUrl] Итоговый URL:', url);
     return url;
-  }
+}
 
 
 function getReportFileName(groupby, type) {
@@ -3751,19 +3779,45 @@ function getReportFileName(groupby, type) {
     let dateStr;
   
     if (dateParam) {
-      // Формат YYYYMMDD
+      // Разбираем дату из URL (формат YYYYMMDD)
       let year = parseInt(dateParam.substring(0, 4));
-      let month = parseInt(dateParam.substring(4, 6));
-      let day = parseInt(dateParam.substring(6, 8));
-      dateStr = `${day}.${month}.${year}`;
+      let month = parseInt(dateParam.substring(4, 6)) - 1; // месяцы в JS начинаются с 0
+      
+      // Проверяем, выбран ли текущий месяц
+      let now = new Date();
+      let isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
+      
+      if (isCurrentMonth) {
+        // Если выбран текущий месяц, используем текущую дату
+        const today = new Date();
+        const pad = n => n < 10 ? '0'+n : n;
+        dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
+      } else {
+        // Проверяем наличие даты в куке LAST_DAY_OF_MONTH
+        let lastDayDate = getCookie('LAST_DAY_OF_MONTH');
+        if (lastDayDate) {
+          // Форматируем дату из куки (формат YYYYMMDDHHMMSS)
+          let year = parseInt(lastDayDate.substring(0, 4));
+          let month = parseInt(lastDayDate.substring(4, 6));
+          let day = parseInt(lastDayDate.substring(6, 8));
+          dateStr = `${day}.${month}.${year}`;
+        } else {
+          // Если куки нет, используем последний день месяца
+          let lastDay = new Date(year, month + 1, 0).getDate();
+          dateStr = `${lastDay}.${month + 1}.${year}`;
+        }
+      }
     } else {
-      let dateFromCookie = getCookie('DATE');
-      if (dateFromCookie) {
-        let year = parseInt(dateFromCookie.substring(0, 4));
-        let month = parseInt(dateFromCookie.substring(4, 6));
-        let day = parseInt(dateFromCookie.substring(6, 8));
+      // Если нет даты в URL, проверяем куку LAST_DAY_OF_MONTH
+      let lastDayDate = getCookie('LAST_DAY_OF_MONTH');
+      if (lastDayDate) {
+        // Форматируем дату из куки (формат YYYYMMDDHHMMSS)
+        let year = parseInt(lastDayDate.substring(0, 4));
+        let month = parseInt(lastDayDate.substring(4, 6));
+        let day = parseInt(lastDayDate.substring(6, 8));
         dateStr = `${day}.${month}.${year}`;
       } else {
+        // Если куки нет, используем текущую дату
         const today = new Date();
         const pad = n => n < 10 ? '0'+n : n;
         dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
@@ -3776,7 +3830,7 @@ function getReportFileName(groupby, type) {
     else if (groupby === 'locations') base = 'Табель с группировкой по объектам';
     else base = 'Табель';
     return `${base} от ${dateStr}.${type === 'pdf' ? 'pdf' : 'xlsx'}`;
-  }
+}
 
 // --- Новый обработчик для скачивания отчёта с авторизацией ---
 async function downloadReportWithAuth(groupby, type) {
