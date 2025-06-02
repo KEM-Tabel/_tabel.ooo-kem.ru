@@ -62,13 +62,33 @@ $(document).ready(function () {
 		view: 'months',
 		dateFormat: 'MM yyyy',
 		onSelect: function(formattedDate, date, inst) {
-			if (date) {
-				// Устанавливаем curDate на последний день выбранного месяца
-				curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-				$('#datetext-head').html(mFullDays[curDate.getMonth()] + " " + curDate.getFullYear() + "г.");
-				getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
-			}
-		},
+    if (date) {
+        // Устанавливаем curDate на последний день выбранного месяца
+        curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+        // Проверяем, является ли выбранный месяц прошлым
+        let currentDate = new Date();
+        let currentMonth = currentDate.getMonth();
+        let currentYear = currentDate.getFullYear();
+
+        if (date.getFullYear() < currentYear || (date.getFullYear() === currentYear && date.getMonth() < currentMonth)) {
+            // Если это прошлый месяц, сохраняем последний день в куки
+            let lastDay = curDate.getDate();
+            let month = String(date.getMonth() + 1).padStart(2, '0');
+            let year = date.getFullYear();
+            let dateStr = `${year}${month}${String(lastDay).padStart(2, '0')}`;
+            setCookie('DATE', dateStr, 365);
+            console.log('[datepicker] Сохранен последний день месяца в куки:', dateStr);
+        } else {
+            // Если выбран текущий месяц, удаляем куку
+            setCookie('DATE', '', -1);
+            console.log('[datepicker] Кука DATE удалена (выбран текущий месяц)');
+        }
+        
+        $('#datetext-head').html(mFullDays[curDate.getMonth()] + " " + curDate.getFullYear() + "г.");
+        getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
+    }
+},
 		onHide: function(inst, animationCompleted) {
 			
 		},		
@@ -243,7 +263,7 @@ function dShow(){
 			<li onClick="cellAction('НВ')"><strong>НВ</strong> : Невыход по уважительной причине</li>
 			<li onClick="cellAction('НН')"><strong>НН</strong> : Невыход без причины</li>
 			<li onClick="cellAction('ОТ')"><strong>ОТ</strong> : Отпуск основной</li>
-			<li onClick="cellAction('ОД')"><strong>ОД</strong> : Отпуск без сохранения заработной платы</li>
+			<li onClick="cellAction('ОД')"><strong>ОД</strong> : Дополнительный отпуск</li>
 			<li onClick="cellAction('У')">&nbsp;&nbsp;<strong>У</strong> : Отпуск учебный</li>
 			<li onClick="cellAction('К')">&nbsp;&nbsp;<strong>К</strong> : Командировка</li>
 			<li onClick="cellAction('Р')">&nbsp;&nbsp;<strong>Р</strong> : Отпуск по беременности и родам</li>
@@ -252,7 +272,8 @@ function dShow(){
 			<li onClick="cellAction('ОБ')"><strong>ОБ</strong> : Обучение</li>
 			<li onClick="cellAction('ПК')"><strong>ПК</strong> : Перекомандировка</li>
 			<li onClick="cellAction('Д')">&nbsp;&nbsp;<strong>Д</strong> : Дорога</li>
-			<li onClick="cellAction('ДО')"><strong>ДО</strong> : Другой объект</li>			
+			<li onClick="cellAction('ДО')"><strong>ДО</strong> : Отпуск без сохранения заработной платы</li>			
+			<li onClick="cellAction('СО')"><strong>СО</strong> : Смена объекта</li>
 			<li onClick="cellAction('Г')">&nbsp;&nbsp;<strong>Г</strong> : Сдача крови, вызов в госорганы</li>
 			<li onClick="cellAction('УВ')">&nbsp;&nbsp;<strong>УВ</strong> : Уволен</li>		
 			<li onClick="cellAction('В')">&nbsp;&nbsp;<strong>В</strong> : Выходной</li>

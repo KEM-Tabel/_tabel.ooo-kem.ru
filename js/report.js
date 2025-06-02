@@ -13,11 +13,11 @@ let CANVASES 		= [];
 let wShortDays		= ["пн","вт","ср","чт","пт","сб","вс"];
 let selectedCells 	= [];
 let symbolsDi 		= ['0','1','2','3','4','5','6','7','8','9'];
-let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к'];
+let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к','с'];
 let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u'];
 let codesDi 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
-let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К'];
-let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','ДО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К'];
+let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО'];
+let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО'];
 let mFullDays		= ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 let mouseUp 		= false;
 let mouseDown 		= false;
@@ -39,6 +39,10 @@ let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
 let wasShift = false;
 
 window.AUTH_HEADER = 'Basic d2ViOkFTRHFhejEyMw==';
+
+function getAuthHeaderForReport() {
+    return window.AUTH_HEADER || null;
+  }
 
 
 document.addEventListener("mousedown", 	setMouseDownState);
@@ -118,7 +122,7 @@ $(document).ready(function() {
               <input type="date" id="move-worker-date" style="font-size:16px;padding:4px 6px;margin-left: 10px;">
             </div>
             <div style="margin-bottom:18px;">
-              <label style="display:block;"><input type="checkbox" id="split-hours-checkbox" checked> Разделить часы (поставить "ДО" на выбранную дату)</label>
+              <label style="display:block;"><input type="checkbox" id="split-hours-checkbox" checked> Разделить часы (поставить "СО" на выбранную дату)</label>
             </div>
             <div style="display:flex;gap:18px;justify-content:flex-end;margin-top:18px;">
               <button id="move-worker-save-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">Сохранить</button>
@@ -535,8 +539,8 @@ function createTabel(){
                     }
                     html += '<div id="'+worker_id+'-row" class="worker-row">';
                     html += '<div id="'+worker_no+'number-row" class="number-row">'+worker_no+'</div>';
-                    // --- ИЗМЕНЕНО: Проверяем наличие кода "ДО" перед блоком ФИО, но добавляем кнопку ВНУТРИ блока ФИО ---
-                    let hasDO = worker.days.some(day => day && day.vt === 'ДО');
+                    // --- ИЗМЕНЕНО: Проверяем наличие кода "СО" перед блоком ФИО, но добавляем кнопку ВНУТРИ блока ФИО ---
+                    let hasDO = worker.days.some(day => day && day.vt === 'СО');
                     // --- ИЗМЕНЕНО: Добавлен атрибут data-uid к worker_lb ---
                     html += '<div id="'+worker_id+'" data-uid="'+worker['uid']+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
                     if (hasDO) {
@@ -1153,7 +1157,7 @@ function calcDays(){
         let countB = 0;
         let countEmpty = 0;
         let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'ДО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0};
+        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
         let totalWorkers = 0;
         for(let i=0;i<workersArr.length;i++){
             let worker = workersArr[i];
@@ -2530,6 +2534,33 @@ $(document).on('mousedown', function(e) {
 let tooltipTimeoutId = null; // Глобальная переменная для таймера тултипа
 let tooltipHideTimeoutId = null; // Новая переменная для таймера скрытия тултипа
 
+// Функция для определения индекса дня для статистики
+function getStatsDayIndex() {
+    // Проверяем, является ли текущий месяц предыдущим
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+    
+    // Получаем дату из URL или из текущей даты
+    let urlParams = new URLSearchParams(window.location.search);
+    let dateParam = urlParams.get('date');
+    let viewDate = dateParam ? new Date(dateParam) : new Date();
+    let viewMonth = viewDate.getMonth();
+    let viewYear = viewDate.getFullYear();
+    
+    // Определяем индекс дня для статистики
+    let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
+    
+    // Если просматриваем предыдущий месяц, используем последний день этого месяца
+    if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
+        let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+        todayIndex = lastDay - 1; // -1 потому что индексация с 0
+    }
+    
+    return todayIndex;
+}
+
+// Обновляем функцию initTooltips
 function initTooltips() {
     const tooltip = $('#master-tooltip');
     if (!tooltip.length) {
@@ -2567,60 +2598,73 @@ function initTooltips() {
         const locationIdx = $head.data('location-idx');
         const chiefIdx = $head.data('chief-idx');
         const masterIdx = $head.data('master-idx');
-        tooltipTimeoutId = setTimeout(() => {
+        
+        tooltipTimeoutId = setTimeout(function() {
             let workersForTooltip = [];
-            let todayIndex = window.SAVED_TODAY;
-            if (todayIndex === -1 || todayIndex >= DAYS.length) {
-            for (let i = 0; i < DAYS?.length || 0; i++) {
-                if (DAYS[i]?.today) {
-                        todayIndex = i;
-                    break;
-                }
+            let savedData = window.SAVED_DATA;
+            let todayIndex = getStatsDayIndex();
+            
+            // Проверяем, является ли текущий месяц предыдущим
+            let currentDate = new Date();
+            let currentMonth = currentDate.getMonth();
+            let currentYear = currentDate.getFullYear();
+            
+            // Получаем дату из URL или из текущей даты
+            let urlParams = new URLSearchParams(window.location.search);
+            let dateParam = urlParams.get('date');
+            let viewDate = dateParam ? new Date(dateParam) : new Date();
+            let viewMonth = viewDate.getMonth();
+            let viewYear = viewDate.getFullYear();
+            
+            // Если просматриваем предыдущий месяц, используем последний день этого месяца
+            if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
+                let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+                todayIndex = lastDay - 1; // -1 потому что индексация с 0
             }
-                if (todayIndex === -1) todayIndex = 0;
-            }
-            const savedData = window.SAVED_DATA;
+            
+            // Собираем работников для тултипа
             if (elementType === 'master' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && typeof masterIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
-                        const location = savedData[locationIdx];
-                        if (location && location.chiefs && chiefIdx in location.chiefs) {
-                            const chief = location.chiefs[chiefIdx];
-                            if (chief && chief.masters && masterIdx in chief.masters) {
-                                const master = chief.masters[masterIdx];
-                                if (master && master.workers) {
-                                    workersForTooltip = [...master.workers];
+                const location = savedData[locationIdx];
+                if (location && location.chiefs && chiefIdx in location.chiefs) {
+                    const chief = location.chiefs[chiefIdx];
+                    if (chief && chief.masters && masterIdx in chief.masters) {
+                        const master = chief.masters[masterIdx];
+                        if (master && master.workers) {
+                            workersForTooltip.push(...master.workers);
                         }
-                                }
-                            }
-            } else if (elementType === 'chief' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
-                        const location = savedData[locationIdx];
-                        if (location && location.chiefs && chiefIdx in location.chiefs) {
-                            const chief = location.chiefs[chiefIdx];
-                            if (chief && chief.masters) {
-                                for (let m_key in chief.masters) {
-                                    const master = chief.masters[m_key];
-                                    if (master && master.workers) {
-                                        workersForTooltip.push(...master.workers);
-                                    }
-                                }
                     }
+                }
+            } else if (elementType === 'chief' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
+                const location = savedData[locationIdx];
+                if (location && location.chiefs && chiefIdx in location.chiefs) {
+                    const chief = location.chiefs[chiefIdx];
+                    if (chief && chief.masters) {
+                        for (let m_key in chief.masters) {
+                            const master = chief.masters[m_key];
+                            if (master && master.workers) {
+                                workersForTooltip.push(...master.workers);
                             }
+                        }
+                    }
+                }
             } else if (elementType === 'location' && typeof locationIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
-                        const location = savedData[locationIdx];
-                        if (location && location.chiefs) {
+                const location = savedData[locationIdx];
+                if (location && location.chiefs) {
                     for (let c_key in location.chiefs) {
                         const chief = location.chiefs[c_key];
-                                        if (chief.masters) {
+                        if (chief.masters) {
                             for (let m_key in chief.masters) {
                                 const master = chief.masters[m_key];
-                                                if (master.workers) {
-                                                    workersForTooltip.push(...master.workers);
-                                                }
-                                            }
-                                        }
-                                    }
+                                if (master.workers) {
+                                    workersForTooltip.push(...master.workers);
                                 }
+                            }
+                        }
+                    }
+                }
             }
-            // ... формирование statsTableHtml как раньше ...
+            
+            // Формируем статистику для тултипа
             let statsTableHtml = '';
             if (typeof DAYS !== 'undefined' && Array.isArray(DAYS) && DAYS.length > 0) {
                 const filteredWorkers = workersForTooltip.filter(
@@ -2630,13 +2674,15 @@ function initTooltips() {
                 let countB = 0;
                 let countEmpty = 0;
                 let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-                let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'ДО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0};
+                let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
                 let totalWorkers = 0;
+                
                 for(let w_idx in filteredWorkers){
                     let worker = filteredWorkers[w_idx];
                     let dayObj = worker.days && worker.days[todayIndex];
                     let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
                     let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
+                    
                     if (!dayObj || (typeof dayObj !== 'object')) {
                         countEmpty++;
                         totalWorkers++;
@@ -2662,11 +2708,13 @@ function initTooltips() {
                         countEmpty++;
                     }
                 }
+                
                 let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
                 let sumAbsent = 0;
                 for (const code in detailedAbsentCounts) {
                     sumAbsent += detailedAbsentCounts[code];
                 }
+                
                 statsTableHtml = `
                 <div class="master-tooltip-content">
                     <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
@@ -2700,10 +2748,11 @@ function initTooltips() {
                                 <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
                                 <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
                                 <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
+                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">СО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['СО']}</td></tr>
                                 <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
                                 <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
                                 <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
+                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
                             </table>
                         </div>
                     </div>
@@ -2717,13 +2766,13 @@ function initTooltips() {
                     </table>
                 </div>
                 `;
-            } else {
-                statsTableHtml = '<div style="color:#888; padding: 5px;">Нет данных на сегодня</div>';
             }
-            if (!statsTableHtml) { 
+            
+            if (!statsTableHtml) {
                 tooltip.hide();
                 return;
             }
+            
             tooltip.html(statsTableHtml);
             // Позиционирование тултипа относительно строки "Пустых"
             let $anchor = $hoveredElement;
@@ -3590,47 +3639,118 @@ contextAction = function() {
 
 
 function getTodayYMD() {
-  const d = new Date();
+  // Получаем дату из URL или из текущей даты
+  let urlParams = new URLSearchParams(window.location.search);
+  let dateParam = urlParams.get('date');
+  let viewDate = dateParam ? new Date(dateParam) : new Date();
+  
+  // Учитываем часовой пояс
+  let offset = -(viewDate.getTimezoneOffset()) / 60;
+  if(offset != 10) {
+    viewDate = new Date(viewDate.getTime() + ((10-offset)*60*60*1000));
+  }
+  
+  // Проверяем, является ли просматриваемый месяц прошлым
+  let currentDate = new Date();
+  let currentMonth = currentDate.getMonth();
+  let currentYear = currentDate.getFullYear();
+  let viewMonth = viewDate.getMonth();
+  let viewYear = viewDate.getFullYear();
+  
+  // Если месяц в URL отличается от текущего месяца, считаем его прошлым
+  let isPastMonth = viewMonth !== currentMonth || viewYear !== currentYear;
+  
+  let date;
+  if (isPastMonth) {
+    // Если просматриваем прошлый месяц, используем последний день этого месяца
+    let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+    date = new Date(viewYear, viewMonth, lastDay);
+  } else {
+    date = viewDate;
+  }
+  
   const pad = n => n < 10 ? '0'+n : n;
-  return d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
+  return date.getFullYear() + pad(date.getMonth()+1) + pad(date.getDate());
 }
 
 function getReportUrl(groupby, type) {
-  // SID, UID всегда брать из куков
-  let sid = getCookie('SID') || '';
-  let uid = getCookie('UID') || '';
-  let date = getTodayYMD();
-  return `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
-}
-
-
-function getAuthHeaderForReport() {
-  // 1. Если явно задано — используем
-  if (window.AUTH_HEADER) return window.AUTH_HEADER;
-  // 2. Пробуем взять из куки или переменных
-  // Обычно логин — это UID или LABEL, пароль — pass (но pass не хранится, поэтому не получится)
-  // Если в куках есть base64 строка или логин:пароль, используем
-  // Пример: если есть кука 'AUTH', где base64(login:pass)
-  var authCookie = getCookie('AUTH');
-  if (authCookie) {
-    return 'Basic ' + authCookie;
+    // SID, UID всегда брать из куков
+    let sid = getCookie('SID') || '';
+    let uid = getCookie('UID') || '';
+    
+    // Получаем дату из URL или из текущей даты
+    let urlParams = new URLSearchParams(window.location.search);
+    let dateParam = urlParams.get('date');
+    console.log('[getReportUrl] Исходная дата из URL:', dateParam);
+    
+    let date;
+    if (dateParam) {
+      // Разбираем дату из URL (формат YYYYMMDD)
+      let year = parseInt(dateParam.substring(0, 4));
+      let month = parseInt(dateParam.substring(4, 6)) - 1; // месяцы в JS начинаются с 0
+  
+      // Проверяем, выбран ли текущий месяц
+      let now = new Date();
+      let isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
+  
+      if (isCurrentMonth) {
+        // Если выбран текущий месяц — удаляем куку
+        setCookie('DATE', '', -1); // удаление куки
+        // Используем сегодняшнюю дату
+        date = getTodayYMD();
+      } else {
+        // Всегда используем последний день месяца
+        let lastDay = new Date(year, month + 1, 0).getDate();
+        date = `${year}${String(month + 1).padStart(2, '0')}${String(lastDay).padStart(2, '0')}`;
+        // Сохраняем последний день месяца в куки
+        setCookie('DATE', date, 365);
+      }
+  
+      console.log('[getReportUrl] Используем дату:', date);
+    } else {
+      // Если нет даты в URL, используем текущую дату
+      date = getCookie('DATE') || getTodayYMD();
+      console.log('[getReportUrl] Используем дату из куки или текущую:', date);
+    }
+    
+    let url = `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
+    console.log('[getReportUrl] Итоговый URL:', url);
+    return url;
   }
-  // 3. Пробуем взять из library.js (например, если есть функция base64_encode)
-  // Но пароль нигде не хранится после авторизации, поэтому если нет — возвращаем пусто
-  return '';
-}
+
 
 function getReportFileName(groupby, type) {
-  const today = new Date();
-  const pad = n => n < 10 ? '0'+n : n;
-  const dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
-  let base = '';
-  if (groupby === 'masters') base = 'Табель с группировкой по мастерам';
-  else if (groupby === 'firms') base = 'Табель с группировкой по организациям';
-  else if (groupby === 'locations') base = 'Табель с группировкой по объектам';
-  else base = 'Табель';
-  return `${base} от ${dateStr}.${type === 'pdf' ? 'pdf' : 'xlsx'}`;
-}
+    let urlParams = new URLSearchParams(window.location.search);
+    let dateParam = urlParams.get('date');
+    let dateStr;
+  
+    if (dateParam) {
+      // Формат YYYYMMDD
+      let year = parseInt(dateParam.substring(0, 4));
+      let month = parseInt(dateParam.substring(4, 6));
+      let day = parseInt(dateParam.substring(6, 8));
+      dateStr = `${day}.${month}.${year}`;
+    } else {
+      let dateFromCookie = getCookie('DATE');
+      if (dateFromCookie) {
+        let year = parseInt(dateFromCookie.substring(0, 4));
+        let month = parseInt(dateFromCookie.substring(4, 6));
+        let day = parseInt(dateFromCookie.substring(6, 8));
+        dateStr = `${day}.${month}.${year}`;
+      } else {
+        const today = new Date();
+        const pad = n => n < 10 ? '0'+n : n;
+        dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
+      }
+    }
+  
+    let base = '';
+    if (groupby === 'masters') base = 'Табель с группировкой по мастерам';
+    else if (groupby === 'firms') base = 'Табель с группировкой по организациям';
+    else if (groupby === 'locations') base = 'Табель с группировкой по объектам';
+    else base = 'Табель';
+    return `${base} от ${dateStr}.${type === 'pdf' ? 'pdf' : 'xlsx'}`;
+  }
 
 // --- Новый обработчик для скачивания отчёта с авторизацией ---
 async function downloadReportWithAuth(groupby, type) {
@@ -3656,7 +3776,7 @@ async function downloadReportWithAuth(groupby, type) {
     if (window.navigator && window.navigator.msSaveOrOpenBlob) {
       window.navigator.msSaveOrOpenBlob(blob, fileName);
       showReportSpinner(false);
-    } else {
+  } else {
       const link = document.createElement('a');
       link.href = window.URL.createObjectURL(blob);
       link.download = fileName;
@@ -4010,7 +4130,7 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
             if (hasVisible) {
                 $(this).css('display', 'flex'); // Явно flex, чтобы не было display: none
                 $('#'+id+'-canvas').show();
-            } else {
+    } else {
                 $(this).hide();
                 $('#'+id+'-canvas').hide();
             }
@@ -4030,7 +4150,7 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
                 if (hasVisible) {
                     $(this).css('display', 'flex');
                     $('#'+masterId+'-canvas').show();
-                } else {
+  } else {
                     $(this).hide();
                     $('#'+masterId+'-canvas').hide();
                 }
@@ -4221,7 +4341,7 @@ function changeMaster(worker_id){
                  console.log('[move-worker-modal] Дата для отправки (с +1 днем):', dateToSend);
 
 
-                // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
+                // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
                  if (workerIndex !== -1) {
                      let selectedDate = new Date(selectedDateStr);
                      let selectedDayIndex = -1;
@@ -4242,8 +4362,8 @@ function changeMaster(worker_id){
                          console.log('[move-worker-modal] ID табеля:', tabId);
 
                          if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
-                            console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="ДО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'ДО' });
-                             TABEL[tabId][selectedDayIndex]['vt'] = 'ДО';
+                            console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
+                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
                              // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
                              // Помечаем ячейку как измененную
                             if (!changedCells[tabId]) changedCells[tabId] = {};
@@ -4283,7 +4403,7 @@ function changeMaster(worker_id){
 
 
              // Вызываем функцию отправки данных changedCells
-            await sendDataTabel(false); // Отправляем только измененные ячейки (включая ДО, если было)
+            await sendDataTabel(false); // Отправляем только измененные ячейки (включая СО, если было)
 
 
             // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
@@ -4396,7 +4516,7 @@ function changeChief(worker_id){
                  dateToSend = selectedDate.toISOString().slice(0,10).split('-').join('');
                  console.log('[changeChief] Дата для отправки (с +1 днем):', dateToSend);
 
-                // Применяем "ДО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
+                // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
                  if (workerIndex !== -1) {
                      let selectedDate = new Date(selectedDateStr);
                      let selectedDayIndex = -1;
@@ -4412,7 +4532,7 @@ function changeChief(worker_id){
                      if (selectedDayIndex !== -1) {
                          let tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
                          if (TABEL[tabId]) {
-                             TABEL[tabId][selectedDayIndex]['vt'] = 'ДО';
+                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
                              TABEL[tabId][selectedDayIndex]['hours'] = 0;
                              // Помечаем ячейку как измененную
                             if (!changedCells[tabId]) changedCells[tabId] = {};
@@ -4420,7 +4540,7 @@ function changeChief(worker_id){
                              TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
                              // Обновляем отображение ячейки
                              let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
-                             let htmlValue = `<span class="cell-code-big">ДО</span>`;
+                             let htmlValue = `<span class="cell-code-big">СО</span>`;
                               htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${TABEL[tabId][selectedDayIndex]['comment']||''}"></div>`;
                               $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
                             // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
@@ -4430,7 +4550,7 @@ function changeChief(worker_id){
             }
 
              // Вызываем функцию отправки данных changedCells
-            await sendDataTabel(false); // Отправляем только измененные ячейки (включая ДО, если было)
+            await sendDataTabel(false); // Отправляем только измененные ячейки (включая СО, если было)
 
 
             // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
@@ -4757,11 +4877,13 @@ $(document).on('mouseenter', '#master-head', function(e) {
         workersForTooltip = workersForTooltip.filter(
             w => w && w.uid && w.fio && typeof w.fio === 'string' && !/^[<‹]/.test(w.fio.trim())
         );
-        let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
+        
+        let todayIndex = getStatsDayIndex();
+        
         // Формируем тултип аналогично tooltipStats
         let countY = 0, countB = 0, countEmpty = 0;
         let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'ДО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0};
+        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
         let totalWorkers = 0;
         for(let w_idx in workersForTooltip){
             let worker = workersForTooltip[w_idx];
@@ -4835,10 +4957,11 @@ $(document).on('mouseenter', '#master-head', function(e) {
                         <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОБ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОБ']}</td></tr>
                         <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ПК</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ПК']}</td></tr>
                         <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Д</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Д']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ДО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ДО']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">СО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['СО']}</td></tr>
                         <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">УВ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['УВ']}</td></tr>
                         <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Р</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Р']}</td></tr>
                         <tr><td style=\"padding: 1px 2px;\">ОЖ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОЖ']}</td></tr>
+                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;">ДО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ДО']}</td></tr>
                     </table>
                 </div>
             </div>
