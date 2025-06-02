@@ -335,6 +335,16 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     if (window.IS_FULL_READONLY) unselectCells();
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
     if(!UID || !date) return;
+
+    // Если это автообновление (update=true), используем сохраненную дату
+    if (update) {
+        let savedDate = getCookie('LAST_SUCCESSFUL_DATE');
+        if (savedDate) {
+            date = savedDate;
+            console.log('[getDataTabel] Используем сохраненную дату для автообновления:', date);
+        }
+    }
+
     let args = [UID, date, update];
     if (fullReadonly) args.push(true);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
@@ -349,6 +359,22 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             DAYS = data.result.days;
             LOCATIONS = data.result.locations;
             DATA = data.result.data;
+            
+            // Если пришли данные и это автообновление, обновляем сохраненную дату
+            if (update) {
+                console.log('[getDataTabel] Проверка условий для обновления даты:', {
+                    isUpdate: update,
+                    hasData: !!data.result.data,
+                    dataLength: data.result.data ? data.result.data.length : 0
+                });
+                
+                if (data.result.data && data.result.data.length > 0) {
+                    setCookie('LAST_SUCCESSFUL_DATE', date, 365);
+                    console.log('[getDataTabel] Обновлена сохраненная дата:', date);
+                } else {
+                    console.log('[getDataTabel] Не обновляем дату - нет данных');
+                }
+            }
             
             // Обработка поля readAll
             if ('readAll' in data.result) {

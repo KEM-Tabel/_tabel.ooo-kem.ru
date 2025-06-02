@@ -43,13 +43,16 @@ document.oncontextmenu = function() {return false;};
 
 $(document).ready(function () {
 	
-	curDate 	= new Date();
-	curDate 	= new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
-
-	var offset 	= -(curDate.getTimezoneOffset()) / 60;
+	curDate = new Date();
 	
-	if(offset != 10){
-		curDate = new Date(curDate.getTime() + ((10-offset)*60*60*1000)); 
+	// Проверяем, является ли текущий месяц прошлым
+	let currentDate = new Date();
+	let currentMonth = currentDate.getMonth();
+	let currentYear = currentDate.getFullYear();
+	
+	if (curDate.getFullYear() < currentYear || (curDate.getFullYear() === currentYear && curDate.getMonth() < currentMonth)) {
+		// Если это прошлый месяц, используем последний день месяца
+		curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
 	}
 	
 	$('#datetime_ti').datepicker({
@@ -63,26 +66,17 @@ $(document).ready(function () {
 		dateFormat: 'MM yyyy',
 		onSelect: function(formattedDate, date, inst) {
     if (date) {
-        // Устанавливаем curDate на последний день выбранного месяца
-        curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+        // Проверяем, является ли выбранный месяц текущим
+        let now = new Date();
+        let month = now.getMonth();
+        let year = now.getFullYear();
 
-        // Проверяем, является ли выбранный месяц прошлым
-        let currentDate = new Date();
-        let currentMonth = currentDate.getMonth();
-        let currentYear = currentDate.getFullYear();
-
-        if (date.getFullYear() < currentYear || (date.getFullYear() === currentYear && date.getMonth() < currentMonth)) {
-            // Если это прошлый месяц, сохраняем последний день в куки
-            let lastDay = curDate.getDate();
-            let month = String(date.getMonth() + 1).padStart(2, '0');
-            let year = date.getFullYear();
-            let dateStr = `${year}${month}${String(lastDay).padStart(2, '0')}`;
-            setCookie('DATE', dateStr, 365);
-            console.log('[datepicker] Сохранен последний день месяца в куки:', dateStr);
+        if (date.getFullYear() < year || (date.getFullYear() === year && date.getMonth() < month)) {
+            // Если это прошлый месяц, используем последний день месяца
+            curDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
         } else {
-            // Если выбран текущий месяц, удаляем куку
-            setCookie('DATE', '', -1);
-            console.log('[datepicker] Кука DATE удалена (выбран текущий месяц)');
+            // Если это текущий месяц, используем текущую дату
+            curDate = new Date();
         }
         
         $('#datetext-head').html(mFullDays[curDate.getMonth()] + " " + curDate.getFullYear() + "г.");
@@ -110,8 +104,22 @@ $(document).ready(function () {
 	$('#datetime_ti').datepicker().data('datepicker').view = 'months';
 	$('#datetime_ti').datepicker().data('datepicker').update();
 	$('#datetime_ti').datepicker().data('datepicker').selectDate(curDate);
-	// При загрузке страницы тоже используем последний день месяца
-	curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
+	
+	// Проверяем, является ли текущий месяц выбранным
+	let now = new Date();
+	let month = now.getMonth();
+	let year = now.getFullYear();
+	
+	if (curDate.getFullYear() < year || (curDate.getFullYear() === year && curDate.getMonth() < month)) {
+		// Если это прошлый месяц, используем последний день месяца
+		curDate = new Date(curDate.getFullYear(), curDate.getMonth() + 1, 0);
+	} else {
+		// Если это текущий месяц, используем текущую дату
+		curDate = new Date();
+		// Сохраняем дату последнего успешного получения данных
+		setCookie('LAST_SUCCESSFUL_DATE', curDate.format("yyyymmddHHMMss"), 365);
+	}
+	
 	getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
 
 	const searchWorkers = debounce(() => {changeFilter('fio');}, 300);
