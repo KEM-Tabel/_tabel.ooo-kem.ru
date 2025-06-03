@@ -1,4 +1,4 @@
-﻿let TODAY			= -1;
+let TODAY			= -1;
 let DATATIME 		= (new Date()).format("yyyymmddHHMMss");
 let DATA			= [];
 let sessionIntervalId = null;
@@ -13,11 +13,11 @@ let CANVASES 		= [];
 let wShortDays		= ["пн","вт","ср","чт","пт","сб","вс"];
 let selectedCells 	= [];
 let symbolsDi 		= ['0','1','2','3','4','5','6','7','8','9'];
-let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к','с'];
-let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u'];
+let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к','с','п','ч'];
+let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u','g','x'];
 let codesDi 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
-let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО'];
-let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО'];
+let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО','ПЧ'];
+let codesRu 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16','Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО','ПЧ'];
 let mFullDays		= ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
 let mouseUp 		= false;
 let mouseDown 		= false;
@@ -70,7 +70,7 @@ $(document).ready(function() {
         sessionIntervalId = setInterval(() => checkSession(), 60*1000);
     }
     if (!activityIntervalId) {
-        activityIntervalId = setInterval(() => checkActivity(), 1*1000);
+        activityIntervalId = setInterval(() => checkActivity(), 10*1000);
     }
     checkTabelWindowSize();
     $(window).on('resize', checkTabelWindowSize);
@@ -324,7 +324,7 @@ function checkActivity(){
             if(args.length >= 5) args[4] = true;  // update = true
             getDataTabel.apply(null, args);
         } else {
-            getDataTabel(false, false, UID, DATATIME, true);
+            getDataTabel(false, false, UID, DATATIME, lastDayDate, true);
         }
     }
 }
@@ -334,7 +334,16 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     window.IS_FULL_READONLY = !!fullReadonly;
     if (window.IS_FULL_READONLY) unselectCells();
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
-    if(!UID || !date) return;
+    if(!UID) return;
+
+    // 1. Если дата не указана (первая загрузка) — берем текущую дату
+    if (!date) {
+        date = new Date().format("yyyymmddHHMMss");
+        console.log('[getDataTabel] Первая загрузка, используем текущую дату:', date);
+    } else {
+        // 2. Если дата указана — это может быть дата из cookie (последний успешный запрос)
+        console.log('[getDataTabel] Используем переданную дату:', date);
+    }
 
     let args = [UID, date, update];
     let lastDayDate = null;
@@ -345,24 +354,35 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     let isPastMonth = selectedDate.getFullYear() < now.getFullYear() || 
                      (selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() < now.getMonth());
 
-    if (isPastMonth) {
-        // Если это прошлый месяц, используем дату из LAST_SUCCESSFUL_DATE как основную
-        let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-        lastDayDate = lastDay.format("yyyymmddHHMMss");
-        args[2] = lastDayDate;
-        args[3] = update;
-        console.log('[getDataTabel] Добавлен параметр lastDayDate для прошлого месяца:', lastDayDate);
-    } else {
-        // Для текущего месяца тоже добавляем последний день месяца
+                     if (isPastMonth) {
+                        // 1. Получаем дату последнего успешного получения данных (если есть)
+                        let lastSuccessfulDate = getCookie('LAST_SUCCESSFUL_DATE');
+                        if (!lastSuccessfulDate) {
+                            // Если нет — используем текущее время
+                            lastSuccessfulDate = new Date().format("yyyymmddHHMMss");
+                        }
+                        // 2. Получаем последний день месяца (из куки или вычисляем)
+                        let lastDayOfMonth = getCookie('LAST_DAY_OF_MONTH');
+                        if (!lastDayOfMonth) {
+                            let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+                            lastDayOfMonth = lastDay.format("yyyymmddHHMMss");
+                        }
+                        // 3. Формируем параметры
+                        args[1] = lastSuccessfulDate; // date
+                        args[2] = lastDayOfMonth;     // LastDayDate
+                        args[3] = update;
+                        console.log('[getDataTabel] Для прошлого месяца: date =', lastSuccessfulDate, ', LastDayDate =', lastDayOfMonth);
+                    } else {
+        // Для текущего месяца lastDayDate — последний день месяца
         let lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         lastDayDate = lastDay.format("yyyymmddHHMMss");
         args[2] = lastDayDate;
         args[3] = update;
-        console.log('[getDataTabel] Добавлен параметр lastDayDate для текущего месяца:', lastDayDate);
+        console.log('[getDataTabel] lastDayDate для текущего месяца:', lastDayDate);
     }
 
     if (fullReadonly) args.push(true);
-    
+
     console.log('[getDataTabel] Итоговые параметры запроса:', args);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
     console.log('Ответ сервера на ПолучитьДанныеТабеля:', data);
@@ -413,6 +433,10 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             let pageY = window.pageYOffset;
             saveSelection();
             createHead();
+            if (!DAYS || !Array.isArray(DAYS) || DAYS.length === 0) {
+                alert('Нет данных по дням!');
+                return;
+            }
             createTabel();
             restoreSelection();
             updateOrgFilterSelected();
@@ -452,6 +476,9 @@ function createHead(){
 	
 	let headDays = '';
 	for(let d in DAYS){
+
+        let dayObj = DAYS[d];
+        if (!dayObj) continue;
 		
 		let suffix = '';
 		let title = '';
@@ -461,7 +488,7 @@ function createHead(){
 			
 			TODAY = d;
 		}else{
-			suffix = DAYS[d]['weekend'] ? 'weekend' : 'work';
+			suffix = dayObj['weekend'] ? 'weekend' : 'work';
 		}
 		
 		headDays += '<div id="0_'+Number(d)+'-day-dv" '+title+' class="head-day-'+suffix+'" onClick="selectCol('+Number(d)+')">';
@@ -561,6 +588,11 @@ function createTabel(){
                 let htmlDays = '';
                 let htmlSumDays = '';
                 let htmlSumHours = '';
+                for (let worker of DATA) {
+                    if (!worker.days || !Array.isArray(worker.days)) {
+                        console.warn('У работника нет массива days!', worker);
+                    }
+                }
                 for(let w in master['workers']){
                     let worker      = master['workers'][w];
                     worker_no      = worker_no+1;
@@ -601,7 +633,15 @@ function createTabel(){
                         normIn = parseDateIn(dateIn);
                     }
                     for(let d in DAYS){
+                        let dayObj = DAYS[d];
+                        if (!dayObj) {
+                            console.warn('DAYS['+d+'] is undefined!', DAYS);
+                            continue;
+                        }
                         let day = worker['days'][d];
+                        if (!day) {
+                            console.warn('worker.days['+d+'] is undefined!', worker['days']);
+                        }
                         let days_id = worker_no+'-'+(Number(d)+1);
                         let dayHours = "";
                         let dayValue = "";
@@ -611,7 +651,7 @@ function createTabel(){
                                 dayHours = day['hours'];
                             }
                         }
-                        suffix = day['weekend'] ? 'weekend' : 'work';
+                        suffix = dayObj['weekend'] ? 'weekend' : 'work';
                         opacity = '1';
                         let isFixed = day && day.fixState;
                         let cellClass = 'days-' + suffix;
@@ -733,8 +773,6 @@ async function sendDataTabel(full=true){
         }
          console.log('[sendDataTabel] Общий объект для отправки (arr_in):', JSON.stringify(arr_in, null, 2));
     }
-     // === КОНЕЦ ДОБАВЛЕНО ===
-
 
     for(let key in arr_in){
         let id_arr  = key.split('_');
@@ -759,10 +797,7 @@ async function sendDataTabel(full=true){
                  ...arr_in[key][dayIndex],
                  year: dayInfo ? dayInfo.year : null,
                  month: dayInfo ? dayInfo.month : null,
-                 day: dayInfo ? dayInfo.day : null,
-                 // Возможно, нужно добавить и другие поля дня из DAYS, если они нужны 1С
-                 // например, dow, today, weekend. Уточните формат данных для 1С.
-                 // Пока добавим только год, месяц, день как самые вероятные.
+                 day: dayInfo ? dayInfo.day : null
              };
         });
         item['tabel'] = daysArray;
@@ -824,7 +859,7 @@ async function sendDataTabel(full=true){
 
     if(full){
         if(!data.error && data.valid){
-            location.reload(); // Полное обновление после полной отправки
+            getDataTabel(false, false, UID, date, lastDayDate,  true);  // Полное обновление после полной отправки
         }
         // Ошибки уже обработаны выше
     }else{ // Частичная отправка (changedCells или элемент из QUEUE)
@@ -2062,7 +2097,34 @@ function setMouseDownState(e) {
 }
 
 let code = '';
+function blockFunctionKeys(e) {
+    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        return false;
+    }
+}
+
+// Добавляем обработчики на разных уровнях
+window.addEventListener('keydown', blockFunctionKeys, true);
+document.addEventListener('keydown', blockFunctionKeys, true);
+$(document).on('keydown', blockFunctionKeys);
+
 function setCellVal(e){
+
+    window.lastKeyCode = e.keyCode;
+    // Блокировка функциональных клавиш в начале функции
+    if (
+        (typeof e.keyCode === 'number' && e.keyCode >= 112 && e.keyCode <= 123) ||
+        (typeof e.key === 'string' && /^F([1-9]|1[0-2])$/.test(e.key))
+    ) {
+        e.preventDefault && e.preventDefault();
+        e.stopPropagation && e.stopPropagation();
+        e.stopImmediatePropagation && e.stopImmediatePropagation();
+        return false;
+    }
+    
     console.log('[DEBUG] setCellVal вызван', {event: e, selectedCells, isReadOnlyRowSelected: typeof isReadOnlyRowSelected !== 'undefined' ? isReadOnlyRowSelected : undefined, tabelIsSaving: window.tabelIsSaving});
 	
 	if($(document.activeElement).attr('id') == "fio-filter-in") return;
@@ -2091,9 +2153,12 @@ function setCellVal(e){
 	
 	if(settingComment){
 		
-		switch(keynum){
-			default:
-				return;
+        switch(keynum){
+            default:
+                // Блокируем F1-F12 даже если дошли до сюда
+                if (keynum >= 112 && keynum <= 123) {
+                    return;
+                }
 				break;
 			case 13: //enter
 				setComment(false);
@@ -2110,7 +2175,12 @@ function setCellVal(e){
 			return;
 		}
 		switch(keynum){
-			default:
+            default:
+                // Блокируем F1-F12 даже если дошли до сюда
+                if (keynum >= 112 && keynum <= 123) {
+                    return;
+                }
+
 				let key = String(e.key).toLowerCase();
 				
 				if(symbolsDi.includes(key)){
@@ -3892,6 +3962,7 @@ function showReportSpinner(show) {
 
 
 // === Универсальная функция логирования действий пользователя ===
+/*
 function logUserAction(action, details = {}) {
   try {
     const fio = getCookie('LABEL') || getCookie('UID') || 'unknown';
@@ -3908,8 +3979,8 @@ function logUserAction(action, details = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-  } catch (e) { /* ignore */ }
-}
+  } catch (e) { /* ignore */ 
+
 
 
 // === Встраиваем логирование в основные действия ===
@@ -3917,18 +3988,34 @@ function logUserAction(action, details = {}) {
 // 1. Изменение ячейки (setCells)
 let orig_setCells_log = setCells;
 setCells = function(value, isComment=false, isFullClear=false) {
+
+    if (
+        typeof value === 'string' &&
+        /^F([1-9]|1[0-2])$/.test(value)
+    ) {
+        return;
+    }
+
+    if (
+        (typeof value === 'string' && value === '') &&
+        window.lastKeyCode && window.lastKeyCode >= 112 && window.lastKeyCode <= 123
+    ) {
+        return;
+    }
   if (!isComment && !isFullClear) {
     for (let cell of selectedCells) {
       let worker = WORKERS[cell.row] || {};
-      logUserAction('setCell', {
-        fio: worker.fio,
-        uid: worker.uid,
-        row: cell.row,
-        col: cell.col,
-        value
-      });
+      // logUserAction('setCell', {
+      //   fio: worker.fio,
+      //   uid: worker.uid,
+      //   row: cell.row,
+      //   col: cell.col,
+      //   value
+      // });
     }
   }
+
+
   return orig_setCells_log.apply(this, arguments);
 };
 
@@ -3937,13 +4024,13 @@ let orig_cellAction_log = cellAction;
 cellAction = function(vt) {
   let cell = selectedCells[0] || {};
   let worker = WORKERS[cell.row] || {};
-  logUserAction('cellAction', {
-    fio: worker.fio,
-    uid: worker.uid,
-    row: cell.row,
-    col: cell.col,
-    vt
-  });
+  // logUserAction('cellAction', {
+  //   fio: worker.fio,
+  //   uid: worker.uid,
+  //   row: cell.row,
+  //   col: cell.col,
+  //   vt
+  // });
   return orig_cellAction_log.apply(this, arguments);
 };
 
@@ -3952,20 +4039,20 @@ let orig_contextAction_log = contextAction;
 contextAction = function(act) {
   let cell = selectedCells[0] || {};
   let worker = WORKERS[cell.row] || {};
-  logUserAction('contextAction', {
-    fio: worker.fio,
-    uid: worker.uid,
-    row: cell.row,
-    col: cell.col,
-    act
-  });
+  // logUserAction('contextAction', {
+  //   fio: worker.fio,
+  //   uid: worker.uid,
+  //   row: cell.row,
+  //   col: cell.col,
+  //   act
+  // });
   return orig_contextAction_log.apply(this, arguments);
 };
 
 // 4. Фильтры (changeFilter)
 let orig_changeFilter_log = changeFilter;
 changeFilter = function(type) {
-  logUserAction('changeFilter', { type });
+  // logUserAction('changeFilter', { type });
   return orig_changeFilter_log.apply(this, arguments);
 };
 
@@ -3973,43 +4060,41 @@ changeFilter = function(type) {
 let orig_selectCell_log = selectCell;
 selectCell = function(indexRow, indexCol, shiftSelection) {
   let worker = WORKERS[indexRow] || {};
-  logUserAction('selectCell', {
-    fio: worker.fio,
-    uid: worker.uid,
-    row: indexRow,
-    col: indexCol,
-    shiftSelection
-  });
+  // logUserAction('selectCell', {
+  //   fio: worker.fio,
+  //   uid: worker.uid,
+  //   row: indexRow,
+  //   col: indexCol,
+  //   shiftSelection
+  // });
   return orig_selectCell_log.apply(this, arguments);
 };
 
 // 6. Открытие/закрытие модального окна отчёта
 $(document).on('click', '#menu-reports', function() {
-  logUserAction('openReportsModal');
+  // logUserAction('openReportsModal');
 });
 $(document).on('click', '#reports-modal-close', function() {
-  logUserAction('closeReportsModal');
+  // logUserAction('closeReportsModal');
 });
 $(document).on('click', '#report-pdf-btn', function() {
-  logUserAction('downloadReport', { type: 'pdf' });
+  // logUserAction('downloadReport', { type: 'pdf' });
 });
 $(document).on('click', '#report-xlsx-btn', function() {
-  logUserAction('downloadReport', { type: 'xlsx' });
+  // logUserAction('downloadReport', { type: 'xlsx' });
 });
 
 // 7. Применение фильтра организаций
 $(document).on('click', '#org-filter-apply', function() {
-  logUserAction('applyOrgFilter');
+  // logUserAction('applyOrgFilter');
 });
-
-
 
 // 8. Логирование удаления (очистки) ячейки
 let orig_showConfirmClearModal = showConfirmClearModal;
 showConfirmClearModal = function(onConfirm) {
-  logUserAction('showConfirmClearModal');
+  // logUserAction('showConfirmClearModal');
   return orig_showConfirmClearModal.call(this, function() {
-    logUserAction('cellClearConfirmed');
+    // logUserAction('cellClearConfirmed');
     if (typeof onConfirm === 'function') onConfirm();
   });
 };
@@ -4017,31 +4102,42 @@ showConfirmClearModal = function(onConfirm) {
 // 9. Логирование нажатий по всем кнопкам
 $(document).on('click', 'button, .btn, .filter-act-clear-bt, .filter-act-apply-bt, .toggle-bt, input[type=button], input[type=submit]', function(e) {
   let $btn = $(this);
-  logUserAction('buttonClick', {
-    text: $btn.text() || $btn.val() || '',
-    id: $btn.attr('id') || '',
-    class: $btn.attr('class') || '',
-    name: $btn.attr('name') || '',
-    value: $btn.val() || '',
-    tag: this.tagName
-  });
+  // logUserAction('buttonClick', {
+  //   text: $btn.text() || $btn.val() || '',
+  //   id: $btn.attr('id') || '',
+  //   class: $btn.attr('class') || '',
+  //   name: $btn.attr('name') || '',
+  //   value: $btn.val() || '',
+  //   tag: this.tagName
+  // });
 });
 
 // 10. Логирование нажатий клавиш на клавиатуре
 $(document).on('keydown', function(e) {
-  logUserAction('keyDown', {
-    key: e.key,
-    code: e.code,
-    keyCode: e.keyCode,
-    ctrlKey: e.ctrlKey,
-    shiftKey: e.shiftKey,
-    altKey: e.altKey,
-    metaKey: e.metaKey,
-    target: e.target && e.target.id ? e.target.id : '',
-    tag: e.target && e.target.tagName ? e.target.tagName : ''
-  });
+    // Блокировка функциональных клавиш F1-F12
+    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
 });
 
+// Дополнительная блокировка функциональных клавиш
+window.addEventListener('keydown', function(e) {
+    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+}, true);
+
+document.addEventListener('keydown', function(e) {
+    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+    }
+}, true);
 
 // В setCells и startSelect запретить редактирование cell-before-ob
 let orig_setCells3 = setCells;
