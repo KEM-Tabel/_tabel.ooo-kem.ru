@@ -354,25 +354,33 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     let isPastMonth = selectedDate.getFullYear() < now.getFullYear() || 
                      (selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() < now.getMonth());
 
-                     if (isPastMonth) {
-                        // 1. Получаем дату последнего успешного получения данных (если есть)
-                        let lastSuccessfulDate = getCookie('LAST_SUCCESSFUL_DATE');
-                        if (!lastSuccessfulDate) {
-                            // Если нет — используем текущее время
-                            lastSuccessfulDate = new Date().format("yyyymmddHHMMss");
-                        }
-                        // 2. Получаем последний день месяца (из куки или вычисляем)
-                        let lastDayOfMonth = getCookie('LAST_DAY_OF_MONTH');
-                        if (!lastDayOfMonth) {
-                            let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-                            lastDayOfMonth = lastDay.format("yyyymmddHHMMss");
-                        }
-                        // 3. Формируем параметры
-                        args[1] = lastSuccessfulDate; // date
-                        args[2] = lastDayOfMonth;     // LastDayDate
-                        args[3] = update;
-                        console.log('[getDataTabel] Для прошлого месяца: date =', lastSuccessfulDate, ', LastDayDate =', lastDayOfMonth);
-                    } else {
+    if (isPastMonth) {
+        // Для lastDayDate пробуем взять дату из cookie, если она относится к этому месяцу
+        let lastSuccessfulDate = getCookie('LAST_SUCCESSFUL_DATE');
+        let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
+        if (lastSuccessfulDate) {
+            let lastDateObj = new Date(
+                lastSuccessfulDate.substring(0, 4),
+                parseInt(lastSuccessfulDate.substring(4, 6)) - 1,
+                lastSuccessfulDate.substring(6, 8)
+            );
+            if (
+                lastDateObj.getFullYear() === selectedDate.getFullYear() &&
+                lastDateObj.getMonth() === selectedDate.getMonth()
+            ) {
+                lastDayDate = lastSuccessfulDate;
+                console.log('[getDataTabel] lastDayDate для прошлого месяца из cookie:', lastDayDate);
+            } else {
+                lastDayDate = lastDay.format("yyyymmddHHMMss");
+                console.log('[getDataTabel] lastDayDate для прошлого месяца — последний день месяца:', lastDayDate);
+            }
+        } else {
+            lastDayDate = lastDay.format("yyyymmddHHMMss");
+            console.log('[getDataTabel] lastDayDate для прошлого месяца — последний день месяца:', lastDayDate);
+        }
+        args[2] = lastDayDate;
+        args[3] = update;
+    } else {
         // Для текущего месяца lastDayDate — последний день месяца
         let lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         lastDayDate = lastDay.format("yyyymmddHHMMss");
@@ -433,10 +441,6 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             let pageY = window.pageYOffset;
             saveSelection();
             createHead();
-            if (!DAYS || !Array.isArray(DAYS) || DAYS.length === 0) {
-                alert('Нет данных по дням!');
-                return;
-            }
             createTabel();
             restoreSelection();
             updateOrgFilterSelected();
@@ -476,9 +480,6 @@ function createHead(){
 	
 	let headDays = '';
 	for(let d in DAYS){
-
-        let dayObj = DAYS[d];
-        if (!dayObj) continue;
 		
 		let suffix = '';
 		let title = '';
@@ -488,7 +489,7 @@ function createHead(){
 			
 			TODAY = d;
 		}else{
-			suffix = dayObj['weekend'] ? 'weekend' : 'work';
+			suffix = DAYS[d]['weekend'] ? 'weekend' : 'work';
 		}
 		
 		headDays += '<div id="0_'+Number(d)+'-day-dv" '+title+' class="head-day-'+suffix+'" onClick="selectCol('+Number(d)+')">';
@@ -588,11 +589,6 @@ function createTabel(){
                 let htmlDays = '';
                 let htmlSumDays = '';
                 let htmlSumHours = '';
-                for (let worker of DATA) {
-                    if (!worker.days || !Array.isArray(worker.days)) {
-                        console.warn('У работника нет массива days!', worker);
-                    }
-                }
                 for(let w in master['workers']){
                     let worker      = master['workers'][w];
                     worker_no      = worker_no+1;
@@ -633,15 +629,7 @@ function createTabel(){
                         normIn = parseDateIn(dateIn);
                     }
                     for(let d in DAYS){
-                        let dayObj = DAYS[d];
-                        if (!dayObj) {
-                            console.warn('DAYS['+d+'] is undefined!', DAYS);
-                            continue;
-                        }
                         let day = worker['days'][d];
-                        if (!day) {
-                            console.warn('worker.days['+d+'] is undefined!', worker['days']);
-                        }
                         let days_id = worker_no+'-'+(Number(d)+1);
                         let dayHours = "";
                         let dayValue = "";
@@ -651,7 +639,7 @@ function createTabel(){
                                 dayHours = day['hours'];
                             }
                         }
-                        suffix = dayObj['weekend'] ? 'weekend' : 'work';
+                        suffix = day['weekend'] ? 'weekend' : 'work';
                         opacity = '1';
                         let isFixed = day && day.fixState;
                         let cellClass = 'days-' + suffix;
