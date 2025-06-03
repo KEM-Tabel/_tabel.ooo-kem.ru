@@ -345,8 +345,8 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
         console.log('[getDataTabel] Используем переданную дату:', date);
     }
 
-    let args = [UID, date, update];
     let lastDayDate = null;
+    let args = [UID, date];
 
     // Проверяем, является ли выбранный месяц прошлым
     let selectedDate = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
@@ -355,39 +355,27 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
                      (selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() < now.getMonth());
 
     if (isPastMonth) {
-        // Для lastDayDate пробуем взять дату из cookie, если она относится к этому месяцу
-        let lastSuccessfulDate = getCookie('LAST_SUCCESSFUL_DATE');
-        let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
-        if (lastSuccessfulDate) {
-            let lastDateObj = new Date(
-                lastSuccessfulDate.substring(0, 4),
-                parseInt(lastSuccessfulDate.substring(4, 6)) - 1,
-                lastSuccessfulDate.substring(6, 8)
-            );
-            if (
-                lastDateObj.getFullYear() === selectedDate.getFullYear() &&
-                lastDateObj.getMonth() === selectedDate.getMonth()
-            ) {
-                lastDayDate = lastSuccessfulDate;
-                console.log('[getDataTabel] lastDayDate для прошлого месяца из cookie:', lastDayDate);
-            } else {
-                lastDayDate = lastDay.format("yyyymmddHHMMss");
-                console.log('[getDataTabel] lastDayDate для прошлого месяца — последний день месяца:', lastDayDate);
-            }
-        } else {
+        // Для прошлого месяца берем lastDayDate из cookie LAST_DAY_OF_MONTH
+        lastDayDate = getCookie('LAST_DAY_OF_MONTH');
+        if (!lastDayDate) {
+            // Если в cookie нет, вычисляем последний день месяца
+            let lastDay = new Date(selectedDate.getFullYear(), selectedDate.getMonth() + 1, 0);
             lastDayDate = lastDay.format("yyyymmddHHMMss");
-            console.log('[getDataTabel] lastDayDate для прошлого месяца — последний день месяца:', lastDayDate);
         }
-        args[2] = lastDayDate;
-        args[3] = update;
+        console.log('[getDataTabel] lastDayDate для прошлого месяца:', lastDayDate);
+        
+        // Для прошлого месяца используем текущую дату в date
+        date = new Date().format("yyyymmddHHMMss");
+        args[1] = date;
     } else {
         // Для текущего месяца lastDayDate — последний день месяца
         let lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         lastDayDate = lastDay.format("yyyymmddHHMMss");
-        args[2] = lastDayDate;
-        args[3] = update;
         console.log('[getDataTabel] lastDayDate для текущего месяца:', lastDayDate);
     }
+
+    args.push(lastDayDate);
+    args.push(update);
 
     if (fullReadonly) args.push(true);
 
@@ -406,19 +394,9 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             DATA = data.result.data;
             
             // Если пришли данные и это автообновление, обновляем сохраненную дату
-            if (update) {
-                console.log('[getDataTabel] Проверка условий для обновления даты:', {
-                    isUpdate: update,
-                    hasData: !!data.result.data,
-                    dataLength: data.result.data ? data.result.data.length : 0
-                });
-                
-                if (data.result.data && data.result.data.length > 0) {
-                    setCookie('LAST_SUCCESSFUL_DATE', date, 365);
-                    console.log('[getDataTabel] Обновлена сохраненная дата:', date);
-                } else {
-                    console.log('[getDataTabel] Не обновляем дату - нет данных');
-                }
+            if (update && data.result.data && data.result.data.length > 0) {
+                setCookie('LAST_SUCCESSFUL_DATE', date, 365);
+                console.log('[getDataTabel] Обновлена сохраненная дата:', date);
             }
             
             // Обработка поля readAll
@@ -480,7 +458,7 @@ function createHead(){
 	
 	let headDays = '';
 	for(let d in DAYS){
-		
+
 		let suffix = '';
 		let title = '';
 		if(DAYS[d]['today']){
@@ -630,6 +608,10 @@ function createTabel(){
                     }
                     for(let d in DAYS){
                         let day = worker['days'][d];
+                        console.log('DEBUG: worker:', worker);
+                        console.log('DEBUG: worker.days:', worker['days']);
+                        console.log('DEBUG: current day index:', d);
+                        console.log('DEBUG: current day object:', day);
                         let days_id = worker_no+'-'+(Number(d)+1);
                         let dayHours = "";
                         let dayValue = "";
