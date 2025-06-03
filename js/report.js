@@ -608,10 +608,6 @@ function createTabel(){
                     }
                     for(let d in DAYS){
                         let day = worker['days'][d];
-                        console.log('DEBUG: worker:', worker);
-                        console.log('DEBUG: worker.days:', worker['days']);
-                        console.log('DEBUG: current day index:', d);
-                        console.log('DEBUG: current day object:', day);
                         let days_id = worker_no+'-'+(Number(d)+1);
                         let dayHours = "";
                         let dayValue = "";
