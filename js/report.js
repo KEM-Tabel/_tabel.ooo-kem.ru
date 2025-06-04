@@ -56,6 +56,14 @@ document.addEventListener('mousedown', function(e) {
 }, true);
 
 
+function setFullReadonlyCookie(value) {
+    setCookie('FULL_READONLY_MODE', value ? 'true' : 'false', 365);
+}
+
+function getFullReadonlyCookie() {
+    return getCookie('FULL_READONLY_MODE') === 'true';
+}
+
 function getReadAllCookie() {
     const match = document.cookie.match(/readAll=([^;]+)/);
     return match ? match[1] === 'true' : false;
@@ -173,15 +181,21 @@ $(document).ready(function() {
         if (!window.IS_FULL_READONLY) {
             // Входим в режим просмотра
             window.IS_FULL_READONLY = true;
+            setFullReadonlyCookie(true); // Устанавливаем куку при входе в режим просмотра
             $('#menu-fullreadonly').text('Изменить');
             // Вызываем getDataTabel с доп. true
+            // Убедитесь, что getDataTabel корректно обрабатывает параметр fullReadonly
+            // и/или считывает куку внутри себя перед запросом к серверу.
             getDataTabel(true, false, UID, DATATIME, false, true);
         } else {
             // Выходим из режима просмотра
             window.IS_FULL_READONLY = false;
+            setFullReadonlyCookie(false); // Сбрасываем куку при выходе из режима просмотра
             $('#menu-fullreadonly').text('Смотреть');
             // Обычный запрос
-            getDataTabel(true, false, UID, DATATIME, false);
+            // Убедитесь, что getDataTabel корректно обрабатывает параметр fullReadonly=false
+            // и/или считывает куку (которая теперь false) внутри себя перед запросом к серверу.
+            getDataTabel(true, false, UID, DATATIME, false, false);
         }
     });
 
@@ -377,7 +391,9 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     args.push(lastDayDate);
     args.push(update);
 
-    if (fullReadonly) args.push(true);
+    // Проверяем куку FULL_READONLY только если не передан параметр fullReadonly
+    let shouldAddFullReadonly = fullReadonly || window.IS_FULL_READONLY || getFullReadonlyCookie();
+    args.push(shouldAddFullReadonly); 
 
     console.log('[getDataTabel] Итоговые параметры запроса:', args);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
@@ -428,7 +444,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             window.SAVED_DATA = DATA;
             initTooltips();
             if(window.organizations) applyOrgFilter();
-        }else{
+        } else {
             console.log(data.des);
             $('#loader_dv').hide();
             $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
@@ -440,7 +456,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             delAllCookie();
             document.location.href="/auth.htm";
         }
-    }else{
+    } else {
         console.log(data.des);
         $('#loader_dv').hide();
         $('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
@@ -2941,10 +2957,19 @@ function initTooltips() {
 // а не после каждого вызова getDataTabel, так как сам getDataTabel
 // теперь вызывает initTooltips только после успешной загрузки данных
 $(document).ready(function() {
-    console.log('Document ready - calling initTooltips');
-    // Не нужно вызывать initTooltips здесь, так как он вызовется
-    // внутри getDataTabel после успешной загрузки данных
-    // initTooltips();
+    // --- ДОБАВЛЕНО: Сброс куки режима полного просмотра при загрузке страницы ---
+    setFullReadonlyCookie(false); // Убедитесь, что false корректно сбрасывает куку
+
+    $(document).on('mousedown.hideInfoDv', function(e) {
+        if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
+            $('#info-dv').hide();
+        }
+    });
+    $(window).on('scroll.hideInfoDv', function() {
+        if ($('#info-dv').is(':visible')) {
+            $('#info-dv').hide();
+        }
+    });
 });
 
 // Добавляем индикатор ввода при загрузке страницы
@@ -4348,12 +4373,17 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
 function forceShowUnassigned() {
     console.log('[forceShowUnassigned] Запуск функции');
     setTimeout(function() {
+        // Проверяем, является ли текущий месяц выбранным
+        const now = new Date();
+        const isCurrentMonth = curDate.getFullYear() === now.getFullYear() && curDate.getMonth() === now.getMonth();
+        
         $('.location-head').each(function() {
             let text = $(this).text().toUpperCase();
             if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
                 let id = $(this).attr('id').replace('-head', '');
                 let hasVisible = $('#'+id+'-canvas .worker-row:visible').length > 0;
-                if (hasVisible) {
+                // Показываем только если это текущий месяц или есть видимые сотрудники
+                if (isCurrentMonth || hasVisible) {
                     this.style.removeProperty('display');
                     this.style.setProperty('display', 'flex', 'important');
                     $(this).removeClass('collapsed');
@@ -4362,7 +4392,7 @@ function forceShowUnassigned() {
                     $('#'+id+'-canvas .master-head').each(function() {
                         let masterId = $(this).attr('id').replace('-head', '');
                         let hasVisible = $('#'+masterId+'-canvas .worker-row:visible').length > 0;
-                        if (hasVisible) {
+                        if (isCurrentMonth || hasVisible) {
                             this.style.removeProperty('display');
                             this.style.setProperty('display', 'flex', 'important');
                             $(this).removeClass('collapsed');
@@ -4375,6 +4405,7 @@ function forceShowUnassigned() {
         console.log('[forceShowUnassigned] Завершено');
     }, 250);
 }
+
 
 // --- Обёртки для логирования ответа от сервера ---
 function changeChief(worker_id){
@@ -4917,16 +4948,23 @@ window.addEventListener('scroll', function() {
 
 // --- Принудительно показываем всех начальников (chief-head) в нераспределённых ---
 function showAllChiefsInUnassigned() {
+    // Проверяем, является ли текущий месяц выбранным
+    const now = new Date();
+    const isCurrentMonth = curDate.getFullYear() === now.getFullYear() && curDate.getMonth() === now.getMonth();
+    
     $('.location-head').each(function() {
         let text = $(this).text().toUpperCase();
         if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
             let id = $(this).attr('id').replace('-head', '');
-            // Для каждого chief-head внутри этого location
-            $('#'+id+'-canvas .chief-head').each(function() {
-                $(this).css('display', 'flex');
-                let chiefId = $(this).attr('id').replace('-head', '');
-                $('#'+chiefId+'-canvas').show();
-            });
+            // Показываем только если это текущий месяц
+            if (isCurrentMonth) {
+                // Для каждого chief-head внутри этого location
+                $('#'+id+'-canvas .chief-head').each(function() {
+                    $(this).css('display', 'flex');
+                    let chiefId = $(this).attr('id').replace('-head', '');
+                    $('#'+chiefId+'-canvas').show();
+                });
+            }
         }
     });
 }
