@@ -2080,13 +2080,21 @@ function setMouseDownState(e) {
 
 let code = '';
 function blockFunctionKeys(e) {
-    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
-        e.preventDefault();
-        e.stopPropagation();
-        e.stopImmediatePropagation();
-        return false;
+    // Если открыто модальное окно переноса, блокируем все клавиши для табеля
+    if ($('#move-worker-modal').is(':visible')) {
+        // Разрешаем ввод только в поле даты модального окна
+        if (!$(e.target).is('#move-worker-date')) {
+            e.preventDefault();
+            return false;
+        }
     }
+    return true;
 }
+
+// Добавляем обработчик клавиатуры
+$(document).on('keydown', function(e) {
+    return blockFunctionKeys(e);
+});
 
 // Добавляем обработчики на разных уровнях
 window.addEventListener('keydown', blockFunctionKeys, true);
@@ -2094,6 +2102,14 @@ document.addEventListener('keydown', blockFunctionKeys, true);
 $(document).on('keydown', blockFunctionKeys);
 
 function setCellVal(e){
+    // Если открыто модальное окно переноса, блокируем ввод в ячейки
+    if ($('#move-worker-modal').is(':visible')) {
+        return;
+    }
+    
+    if(settingComment){
+        return;
+    }
 
     window.lastKeyCode = e.keyCode;
     // Блокировка функциональных клавиш в начале функции
