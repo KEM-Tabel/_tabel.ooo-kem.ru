@@ -1901,7 +1901,23 @@ function showHideInfo(element, id){
 		for(let w in WORKERS){
 			let worker = WORKERS[w];
 			if(uid == worker['uid'] && w == no-1){
-				$('#info-dv .info-fio-dv').html("<strong>ФИО: </strong>"+worker['fio'].toUpperCase());
+				// ... existing code ...
+				$('#info-dv .info-fio-dv').html("<strong>ФИО: </strong>"+worker['fio'].toUpperCase()+' <span class="copy-fio-btn" title="Копировать ФИО"><i class="fa fa-copy"></i></span>');
+				
+				// Добавляем обработчик копирования
+				$('.copy-fio-btn').off('click').on('click', function(e) {
+					e.stopPropagation();
+					const fio = worker['fio'].toUpperCase();
+					navigator.clipboard.writeText(fio).then(() => {
+						const $btn = $(this);
+						$btn.addClass('copied');
+						setTimeout(() => {
+							$btn.removeClass('copied');
+							$('#info-dv').hide(); // Закрываем модальное окно после копирования
+						}, 1000);
+					});
+				});
+				
 				$('#info-dv .info-organization-dv').html("<strong>Организация: </strong>"+worker['firm_name']);
 				$('#info-dv .info-location-dv').html("<strong>Участок: </strong>"+worker['location_name']);
 				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief(\"'+id+'\")\"'+(window.IS_FULL_READONLY ? ' disabled' : '')+'>';

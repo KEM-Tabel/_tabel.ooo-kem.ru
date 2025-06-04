@@ -25,6 +25,41 @@
   align-items: center;
   justify-content: center;
 }
+
+.copy-fio-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-left: 8px;
+  border-radius: 4px;
+  background: #f5f5f5;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.copy-fio-btn:hover {
+  background: #e0e0e0;
+}
+
+.copy-fio-btn:active {
+  transform: scale(0.95);
+  background: #d0d0d0;
+}
+
+.copy-fio-btn i {
+  font-size: 14px;
+  color: #666;
+}
+
+.copy-fio-btn.copied {
+  background: #4CAF50;
+}
+
+.copy-fio-btn.copied i {
+  color: white;
+}
 </style>
 
 </head>
@@ -254,7 +289,7 @@ function dShow(){
 		
 		<div id="info-dv">
 			<div class="info-save-dv" title="Сохранить"></div>
-			<div class="info-fio-dv">ФИО:</div>
+			<div class="info-fio-dv">ФИО: <span class="copy-fio-btn" title="Копировать ФИО"><i class="fa fa-copy"></i></span></div>
 			<div class="info-organization-dv">Организация:</div>
 			<div class="info-location-dv">Участок:</div>
 			<div class="info-master-dv">Мастер:</div>
