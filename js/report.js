@@ -908,210 +908,158 @@ function toPage(chapter=""){
 
 let changedCells = {};
 function setCells(value, isComment=false, isFullClear=false){
-    console.log('[DEBUG] setCells вызван', {value, isComment, isFullClear, selectedCells, isReadOnlyRowSelected: typeof isReadOnlyRowSelected !== 'undefined' ? isReadOnlyRowSelected : undefined, tabelIsSaving: window.tabelIsSaving});
-    if(selectedCells.length > 0) {
-        let cell = selectedCells[0];
-        let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
-        let isCurrentMonth = false;
-let now = new Date();
-if (
-    DAYS && DAYS[TODAY] &&
-    DAYS[TODAY].year == now.getFullYear() &&
-    DAYS[TODAY].month == (now.getMonth() + 1)
-) {
-    isCurrentMonth = true;
-}
-        // Если ячейка фиксирована, разрешаем только часы и комментарий
-        if (isCurrentMonth && ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1')) {
-            if (!isComment && !isFullClear) {
-                // Разрешаем только изменение часов, если value — число или пусто (очистка)
-                if ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0) {
-                    // Меняем только часы, не трогаем vt!
-                    let uid = WORKERS[Number(cell['row'])]['uid'];
-                    let day = Number(cell['col']);
-                    let no = Number(cell['row'])+1;
-                    let id = no+'_'+uid;
-                    let hoursVal = value === "" ? 0 : Number(value);
-                    TABEL[id][day]['hours'] = hoursVal;
-					// === ДОБАВЛЕНО: фиксируем изменение для отправки на сервер ===
-					if (!changedCells[id]) changedCells[id] = {};
-					changedCells[id][day] = TABEL[id][day];
-					TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-                    // Обновляем отображение
-                    let htmlValue = '';
-                    let dayValue = TABEL[id][day]['vt'];
-                    let hoursNum = hoursVal;
-                    if(dayValue && !hoursNum){
-                        htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
-                    } else if(dayValue && hoursNum) {
-                        htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
-                    } else {
-                        htmlValue = '';
-                    }
-                    htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
-                    if(hoursNum == 0) {
-                        htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
-                    }
-                    $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
-                    // Цвета и стили
-                    if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
-                        $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
-                    }else{
-                        $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
-                    }
-                    // Не трогаем vt!
-                    return;
-                } else {
-                    // Не часы и не пусто — ничего не делаем
-                    console.log('[setCells] Блокировка: фиксированная ячейка, value не число и не пусто', {
-                        value,
-                        isComment,
-                        isFullClear,
-                        isCurrentMonth,
-                        cellFixed: $cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1',
-                        cell: cell
-                    });
-                    return;
-                }
-            }
-            // Комментарии разрешены ниже
+    console.log('[DEBUG] setCells вызван', value, selectedCells);
+
+    const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
+    let matches = value.match(/^[0-9]+$/);
+    let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
+
+    for(let key in selectedCells){
+        let changed = false;
+        let cell = selectedCells[key];
+        let uid = WORKERS[Number(cell['row'])]['uid'];
+        let day = Number(cell['col']);
+        let no = Number(cell['row'])+1;
+        let id = no+'_'+uid;
+
+        // Проверка enable только для текущего месяца
+        if (isCurrentMonth && WORKERS[Number(cell['row'])]['days'][cell['col']]['enable'] === false) {
+            console.log('[DEBUG] return: enable==false', {cell, value, isCurrentMonth});
+            continue;
         }
-    }
-	
-	let uid = "";
-	let day = -1;
-	
-	// Определяем, выбран ли текущий месяц (один раз перед циклом)
-	let isCurrentMonth = false;
-	let now = new Date();
-	if (
-		DAYS && DAYS[TODAY] &&
-		DAYS[TODAY].year == now.getFullYear() &&
-		DAYS[TODAY].month == (now.getMonth() + 1)
-	) {
-		isCurrentMonth = true;
-	}
-	for(let key in selectedCells){
-		
-		let changed = false;
-		
-		let cell = selectedCells[key];
-		
-		uid = WORKERS[Number(cell['row'])]['uid'];
-		day = Number(cell['col']);
-		
-		let no = Number(cell['row'])+1;
-		let id = no+'_'+uid;
-		
-		// Проверка enable только для текущего месяца
-		if (isCurrentMonth && WORKERS[Number(cell['row'])]['days'][cell['col']]['enable'] === false) {
-			console.log('[DEBUG] return: enable==false', {cell, value, isCurrentMonth});
-			continue;
-		}
         if(isCurrentMonth && TODAY == -1) {
             console.log('[DEBUG] return: TODAY==-1', {cell, value, isCurrentMonth});
             continue;
         }
-		if(isCurrentMonth && Number(cell['col']) > TODAY && matches == null && !isComment && !isFullClear){
-			console.log('[DEBUG] return: future day', {cell, value, isCurrentMonth, TODAY});
-			continue;
-		}
-		
-		if(isComment || isFullClear){
-			
-			if(TABEL[id][day]['comment'] != value) {
-				changed = true;
-			}
-			
-			TABEL[id][day]['comment'] = value;			
-			
-			if(value != ""){
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
-			}else{
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
-			}
-			
-			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').attr('title', value);			
-			
-		}
-		
-		if(!isComment || isFullClear){
-			
-			let htmlValue = '';
-			let dayHours = '';
-			let dayValue = String(TABEL[id][day]['vt']);
-			if(codesDi.includes(value)){
-				dayValue = dayValue == '' ? 'Я' : dayValue;
-				dayHours = dayValue != '' ?  Number(value) : 0;
-			}else{
-				dayValue = Number(value) != 0 || value == '' ? value : "Я";
-				dayHours = "";
-			}
-			if(TABEL[id][day]['vt'] != dayValue ||  Number(TABEL[id][day]['hours']) != Number(dayHours)) {
-				changed = true;
-			}
-			TABEL[id][day]['vt']  = dayValue;
-			TABEL[id][day]['hours'] = dayHours == "" ? 0 : dayHours;
-			// ЛОГ после изменения данных
-			console.log('[DEBUG] После изменения TABEL', {id, day, vt: TABEL[id][day]['vt'], hours: TABEL[id][day]['hours']});
-			// Формируем красивый html
-			let hoursNum = Number(dayHours);
-			if(dayValue && !hoursNum){
-				// Только буквенный код, без часов
-				htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
-			} else if(dayValue && hoursNum) {
-				// Есть и код, и часы
-				htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
-			} else {
-				htmlValue = '';
-			}
-			htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
-			if(hoursNum == 0) {
-				htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
-			}
-			$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
-			// ЛОГ после изменения DOM
-			console.log('[DEBUG] После изменения DOM', $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html());
-			if(dayValue === "Я" && (!dayHours || dayHours == 0)){
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
-			}else{
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
-			}
-			if(TABEL[id][day]['comment'] != ''){
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
-			}else{
-				$('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
-			}
-		}
-		
-		if(changed){
-			if (!changedCells[id]) changedCells[id] = {};
-			changedCells[id][day] = TABEL[id][day];
-			// Смещаем таймер активности на 10 секунд вперёд, если пользователь работает
-			TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-		}
-		
-		let col = Number(cell['col'])+1;
-		let $cell = $('#'+no+'-'+col+'-day-dv');
-		$cell.removeClass('cell-attendance-missing-hours');
-		if (col < Number(TODAY)+1) {
-			let val = TABEL[id][day]['vt'];
-			let hours = TABEL[id][day]['hours'];
-			if ((!val || val === "") && (!hours || hours == 0)) {
-				$cell.addClass('cell-attendance-missing-hours');
-				$cell.css({"color": YaFnt, "font-weight": "bold"});
-			} else if (val === "Я" && (!hours || hours == 0)) {
-				$cell.addClass('cell-attendance-missing-hours');
-				$cell.css({"color": YaFnt, "font-weight": "bold"});
-			} else {
-				$cell.css({"color": selectedFnt, "font-weight": "normal"});
-			}
-		} else {
-			$cell.css({"color": selectedFnt, "font-weight": "normal"});
-		}
+        // Разрешаем установку специальных кодов для будущих дней
+        if (
+            isCurrentMonth &&
+            Number(cell['col']) > TODAY &&
+            !isComment && !isFullClear
+        ) {
+            if (
+                value === "" // разрешаем очистку
+            ) {
+                // разрешаем очистку, ничего не делаем
+            } else if (
+                matches != null || // Число
+                (typeof value === "string" && !allowedFutureCodes.includes(value.trim().toUpperCase()))
+            ) {
+                console.log('[DEBUG] return: future day, not allowed code', {cell, value, isCurrentMonth, TODAY});
+                continue;
+            }
+            // Если value разрешён — пропускаем дальше!
+        }
 
-	}
-	
+        // --- Комментарии и очистка ---
+        if(isComment || isFullClear){
+            if ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0) {
+                let hoursVal = value === "" ? 0 : Number(value);
+                TABEL[id][day]['hours'] = hoursVal;
+                if (value === "" || value === 0) {
+                    TABEL[id][day]['vt'] = ""; // <--- СБРАСЫВАЕМ КОД!
+                }
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][day] = TABEL[id][day];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                // Обновляем отображение
+                let htmlValue = '';
+                let dayValue = TABEL[id][day]['vt'];
+                let hoursNum = hoursVal;
+                if(dayValue && !hoursNum){
+                    htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                } else if(dayValue && hoursNum) {
+                    htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                } else {
+                    htmlValue = '';
+                }
+                htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+                if(hoursNum == 0) {
+                    htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+                }
+                $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+                if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
+                    $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
+                }else{
+                    $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
+                }
+                continue;
+            } else {
+                // Не часы и не пусто — ничего не делаем
+                continue;
+            }
+        }
+
+        // --- Основная логика установки кода ---
+        let htmlValue = '';
+        let dayHours = '';
+        let dayValue = String(TABEL[id][day]['vt']);
+        if(codesDi.includes(value)){
+            dayValue = dayValue == '' ? 'Я' : dayValue;
+            dayHours = dayValue != '' ?  Number(value) : 0;
+        }else{
+            dayValue = Number(value) != 0 || value == '' ? value : "Я";
+            dayHours = "";
+        }
+        if(TABEL[id][day]['vt'] != dayValue ||  Number(TABEL[id][day]['hours']) != Number(dayHours)) {
+            changed = true;
+        }
+        TABEL[id][day]['vt']  = dayValue;
+        TABEL[id][day]['hours'] = dayHours == "" ? 0 : dayHours;
+        // ЛОГ после изменения данных
+        console.log('[DEBUG] После изменения TABEL', {id, day, vt: TABEL[id][day]['vt'], hours: TABEL[id][day]['hours']});
+        // Формируем красивый html
+        let hoursNum = Number(dayHours);
+        if(dayValue && !hoursNum){
+            htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+        } else if(dayValue && hoursNum) {
+            htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+        } else {
+            htmlValue = '';
+        }
+        htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+TABEL[id][day]['comment']+'"></div>';
+        if(hoursNum == 0) {
+            htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+        }
+        $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+        // ЛОГ после изменения DOM
+        console.log('[DEBUG] После изменения DOM', $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html());
+        if(dayValue === "Я" && (!dayHours || dayHours == 0)){
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
+        }else{
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
+        }
+        if(TABEL[id][day]['comment'] != ''){
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').show();
+        }else{
+            $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment').hide();
+        }
+
+        if(changed){
+            if (!changedCells[id]) changedCells[id] = {};
+            changedCells[id][day] = TABEL[id][day];
+            TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+        }
+
+        let col = Number(cell['col'])+1;
+        let $cell = $('#'+no+'-'+col+'-day-dv');
+        $cell.removeClass('cell-attendance-missing-hours');
+        if (col < Number(TODAY)+1) {
+            let val = TABEL[id][day]['vt'];
+            let hours = TABEL[id][day]['hours'];
+            if ((!val || val === "") && (!hours || hours == 0)) {
+                $cell.addClass('cell-attendance-missing-hours');
+                $cell.css({"color": YaFnt, "font-weight": "bold"});
+            } else if (val === "Я" && (!hours || hours == 0)) {
+                $cell.addClass('cell-attendance-missing-hours');
+                $cell.css({"color": YaFnt, "font-weight": "bold"});
+            } else {
+                $cell.css({"color": selectedFnt, "font-weight": "normal"});
+            }
+        } else {
+            $cell.css({"color": selectedFnt, "font-weight": "normal"});
+        }
+    }
 }
 
 function getCellValue(indexRow, indexCol){
@@ -1627,16 +1575,20 @@ function contextAction(act){
 			settingComment = true;
 			break;
 		case "clear":
-			showConfirmClearModal(function() {
-				setCells("", false);
-				setCells("", true);
-			});
+            showConfirmClearModal(function() {
+                setCells("", false, true); // Сначала очистка!
+                unselectCells();           // Потом снимаем выделение
+                calcDays();
+                code = '';
+                updateInputIndicator();
+            });
 			break;
 	}
 	 $("#context-menu").hide(50);
 }
 
 function cellAction(vt){
+    console.log('cellAction', selectedCells);
 	setCells(vt);
 	$("#cell-menu").hide(50);
 	unselectCells();
@@ -2227,7 +2179,7 @@ function setCellVal(e){
 				
 				if(code.length > 2) code = code.substring(code.length - 1);
 				updateInputIndicator();
-				setCells(code);
+				setCells(code.trim().toUpperCase());
 				calcDays();
 				// === ИЗМЕНЕНО: Убираем остановку распространения события ===
                 // if (e.stopPropagation) e.stopPropagation();
@@ -2252,13 +2204,13 @@ function setCellVal(e){
 				updateInputIndicator();
 				break;
 			case 8: case 32: case 46: //backspace space delete
-				showConfirmClearModal(function() {
-					setCells('', false, true);
-					unselectCells();
-					calcDays();
-					code = '';
-					updateInputIndicator();
-				});
+            showConfirmClearModal(function() {
+                setCells("", false, true); // Сначала очистка!
+                unselectCells();           // Потом снимаем выделение
+                calcDays();
+                code = '';
+                updateInputIndicator();
+            });
 				break;
 			case 37: //left
 				if(code != '' && codesRu.includes(code)) setCells(code);
@@ -2651,6 +2603,15 @@ function createHistory(data){
     }, 500);
 }
 
+$(document).on('mousedown', function(e) {
+    if (
+        !$(e.target).closest('#cell-menu').length &&
+        !$(e.target).closest('#confirm-clear-modal').length // <-- добавьте это!
+    ) {
+        unselectCells();
+    }
+});
+
 // Скрытие меню при клике вне его:
 $(document).on('mousedown', function(e) {
     if (!$(e.target).closest('#history-menu').length) {
@@ -2992,8 +2953,8 @@ function updateInputIndicator() {
 function showConfirmClearModal(onConfirm) {
     $('#confirm-clear-modal').show();
     $('#confirm-clear-yes').off('click').on('click', function() {
-        $('#confirm-clear-modal').hide();
-        if (typeof onConfirm === 'function') onConfirm();
+        if (typeof onConfirm === 'function') onConfirm(); // СНАЧАЛА очистка!
+        $('#confirm-clear-modal').hide();                 // ПОТОМ скрытие модалки
     });
     $('#confirm-clear-no').off('click').on('click', function() {
         $('#confirm-clear-modal').hide();
@@ -4783,7 +4744,21 @@ function changeChief(worker_id){
 }
 
 // === Проверка lock для ячеек ===
-function isCellLocked(row, col) {
+function isCellLocked(row, col, value) {
+    // Список разрешённых кодов
+    const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
+
+    // Проверяем, что это текущий месяц и день в будущем
+    let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
+    if (
+        isCurrentMonth &&
+        Number(col) > TODAY &&
+        typeof value === "string" &&
+        allowedFutureCodes.includes(value.trim().toUpperCase())
+    ) {
+        return false; // Разрешаем спецкод в будущем дне
+    }
+
     let worker = WORKERS[row];
     if (!worker || !worker.days || !worker.days[col]) return false;
     return !!worker.days[col].lock;
@@ -4795,7 +4770,7 @@ let orig_setCells_lock = setCells;
 setCells = function(value, isComment=false, isFullClear=false) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col)) return; // Блокируем редактирование
+        if (isCellLocked(cell.row, cell.col, value)) return; // Блокируем редактирование
     }
     return orig_setCells_lock.apply(this, arguments);
 };
@@ -4804,7 +4779,7 @@ let orig_setComment_lock = setComment;
 setComment = function(clear=false) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col)) return;
+        if (isCellLocked(cell.row, cell.col, value)) return;
     }
     return orig_setComment_lock.apply(this, arguments);
 };
@@ -4825,7 +4800,7 @@ let orig_cellAction_lock = cellAction;
 cellAction = function(vt) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col)) return;
+        if (isCellLocked(cell.row, cell.col, vt)) return; // vt — это и есть значение кода!
     }
     return orig_cellAction_lock.apply(this, arguments);
 };
@@ -4834,7 +4809,7 @@ let orig_contextAction_lock = contextAction;
 contextAction = function(act) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col)) return;
+        if (isCellLocked(cell.row, cell.col, value)) return;
     }
     return orig_contextAction_lock.apply(this, arguments);
 };
