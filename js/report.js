@@ -1,5 +1,20 @@
+function formatDate(date, format) {
+    const pad = (num) => String(num).padStart(2, '0');
+    
+    const replacements = {
+        'yyyy': date.getFullYear(),
+        'mm': pad(date.getMonth() + 1),
+        'dd': pad(date.getDate()),
+        'HH': pad(date.getHours()),
+        'MM': pad(date.getMinutes()),
+        'ss': pad(date.getSeconds())
+    };
+
+    return format.replace(/yyyy|mm|dd|HH|MM|ss/g, match => replacements[match]);
+}
+
 let TODAY			= -1;
-let DATATIME 		= (new Date()).format("yyyymmddHHMMss");
+let DATATIME 		= formatDate(new Date(), "yyyymmddHHMMss");
 let DATA			= [];
 let sessionIntervalId = null;
 let activityIntervalId = null;
@@ -33,6 +48,7 @@ let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
 let VER 			= "22";
 
+
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
 let TIMESTAMP_ACTIVITY 	= Math.floor(Date.now() / 1000);
 
@@ -56,12 +72,88 @@ document.addEventListener('mousedown', function(e) {
 }, true);
 
 
+function setViewMode(isReadonly) {
+    console.log('[DEBUG] Установка режима просмотра:', isReadonly);
+    
+    // Устанавливаем куку
+    setFullReadonlyCookie(isReadonly);
+    
+    // Обновляем глобальную переменную
+    window.IS_FULL_READONLY = isReadonly;
+    
+    // Обновляем текст кнопки
+    const viewButton = $('#menu-fullreadonly');
+    console.log('[DEBUG] Кнопка найдена:', viewButton.length > 0);
+    if (viewButton.length > 0) {
+        viewButton.text(isReadonly ? 'Изменить' : 'Смотреть');
+        console.log('[DEBUG] Текст кнопки изменен на:', isReadonly ? 'Изменить' : 'Смотреть');
+    } else {
+        console.log('[DEBUG] Кнопка не найдена в DOM');
+    }
+    
+    // Сохраняем текущую дату
+    const currentDate = getCookie('LAST_DAY_OF_MONTH');
+    
+    // Перезагружаем данные таблицы
+    getDataTabel(
+        true,  // loader
+        false, // hideAfter
+        window.UID,
+        currentDate, // date
+        false, // update
+        isReadonly  // fullReadonly
+    );
+}
+
+// Инициализация при загрузке страницы
+$(document).ready(function() {
+    console.log('[DEBUG] Инициализация при загрузке страницы');
+    
+    // Проверяем существование кнопки
+    if ($('#menu-fullreadonly').length === 0) {
+        console.log('[DEBUG] Создаем кнопку просмотра');
+        // Создаем кнопку, если её нет
+        $('<button>', {
+            id: 'menu-fullreadonly',
+            class: 'menu-button',
+            text: 'Смотреть'
+        }).appendTo('#menu-container'); // Замените #menu-container на правильный селектор
+    }
+    
+    // Инициализируем состояние кнопки
+    const currentMode = getFullReadonlyCookie();
+    console.log('[DEBUG] Текущий режим:', currentMode);
+    window.IS_FULL_READONLY = currentMode;
+    
+    const viewButton = $('#menu-fullreadonly');
+    if (viewButton.length > 0) {
+        viewButton.text(currentMode ? 'Изменить' : 'Смотреть');
+        console.log('[DEBUG] Установлен начальный текст кнопки:', currentMode ? 'Изменить' : 'Смотреть');
+    }
+    
+    // Обработчик клика по кнопке
+    $(document).on('click', '#menu-fullreadonly', function() {
+        console.log('[DEBUG] Клик по кнопке просмотра');
+        setViewMode(!window.IS_FULL_READONLY);
+    });
+});
+
+// Функция для установки куки
 function setFullReadonlyCookie(value) {
-    setCookie('FULL_READONLY_MODE', value ? 'true' : 'false', 365);
+    document.cookie = `FULL_READONLY_MODE=${value ? 'true' : 'false'}; path=/; max-age=31536000`;
+    console.log('[DEBUG] Установлена кука FULL_READONLY_MODE:', value);
 }
 
 function getFullReadonlyCookie() {
-    return getCookie('FULL_READONLY_MODE') === 'true';
+    const isReadonly = getCookie('FULL_READONLY_MODE') === 'true';
+    if (isReadonly) {
+        // При получении режима просмотра, восстанавливаем сохраненную дату
+        const savedDate = getCookie('LAST_READONLY_DATE');
+        if (savedDate) {
+            setCookie('LAST_DAY_OF_MONTH', savedDate, 365);
+        }
+    }
+    return isReadonly;
 }
 
 function getReadAllCookie() {
@@ -171,33 +263,6 @@ $(document).ready(function() {
         $('#menu-reports').after('<button id="menu-fullreadonly" class="menu-button" style="margin-left:12px; background:#999999;color:#fff;border:none;display:none;">Смотреть</button>');
     }
 
-    // Функция для работы с куки readAll
-   
-
-    // Флаг режима полного read-only
-    window.IS_FULL_READONLY = false;
-    // Обработчик нажатия на кнопку
-    $(document).on('click', '#menu-fullreadonly', function() {
-        if (!window.IS_FULL_READONLY) {
-            // Входим в режим просмотра
-            window.IS_FULL_READONLY = true;
-            setFullReadonlyCookie(true); // Устанавливаем куку при входе в режим просмотра
-            $('#menu-fullreadonly').text('Изменить');
-            // Вызываем getDataTabel с доп. true
-            // Убедитесь, что getDataTabel корректно обрабатывает параметр fullReadonly
-            // и/или считывает куку внутри себя перед запросом к серверу.
-            getDataTabel(true, false, UID, DATATIME, false, true);
-        } else {
-            // Выходим из режима просмотра
-            window.IS_FULL_READONLY = false;
-            setFullReadonlyCookie(false); // Сбрасываем куку при выходе из режима просмотра
-            $('#menu-fullreadonly').text('Смотреть');
-            // Обычный запрос
-            // Убедитесь, что getDataTabel корректно обрабатывает параметр fullReadonly=false
-            // и/или считывает куку (которая теперь false) внутри себя перед запросом к серверу.
-            getDataTabel(true, false, UID, DATATIME, false, false);
-        }
-    });
 
     // === МЕНЮ ДЛЯ FIXSTATE ===
     if ($('#fixstate-menu').length === 0) {
@@ -344,11 +409,39 @@ function checkActivity(){
 }
 
 async function getDataTabel(loader=true, hideAfter=false, UID, date, update=false, fullReadonly=false) {
+    // Проверяем режим только для чтения из куки, если параметр не передан
+    if (fullReadonly === false) {
+        fullReadonly = getFullReadonlyCookie();
+    }
+    
     window.lastTabelRequestArgs = {loader, hideAfter, UID, date, update, fullReadonly};
     window.IS_FULL_READONLY = !!fullReadonly;
+    setFullReadonlyCookie(fullReadonly);
+    
     if (window.IS_FULL_READONLY) unselectCells();
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
     if(!UID) return;
+
+    // Получаем дату из куки LAST_DAY_OF_MONTH если она есть
+    const lastDayOfMonth = getCookie('LAST_DAY_OF_MONTH');
+    if (lastDayOfMonth) {
+        date = lastDayOfMonth;
+    }
+    
+    // Форматируем дату для запроса
+    const formattedDate = formatDate(new Date(date), 'YYYYMMDDHHmmss');
+    const endOfMonth = formatDate(new Date(date), 'YYYYMMDD') + '235959';
+    
+    // Параметры запроса
+    const params = [
+        UID,
+        formattedDate,
+        endOfMonth,
+        update,
+        fullReadonly  // Используем проверенное значение fullReadonly
+    ];
+    
+    console.log('[getDataTabel] Итоговые параметры запроса:', params);
 
     // 1. Если дата не указана (первая загрузка) — берем текущую дату
     if (!date) {
@@ -3388,15 +3481,6 @@ function isCellTrulyVisible(cellSelector) {
     );
 }
 
-function checkSelectedCellVisibility() {
-    if (selectedCells.length > 0) {
-        let cell = selectedCells[0];
-        let selector = '#'+Number(cell.row+1)+'-'+Number(cell.col+1)+'-day-dv';
-        if (!isCellTrulyVisible(selector)) {
-            unselectCells();
-        }
-    }
-}
 
 
 
@@ -4368,38 +4452,6 @@ function forceShowUnassigned() {
 }
 
 
-// --- Обёртки для логирования ответа от сервера ---
-function changeChief(worker_id){
-	
-	let location_uid 	= $(':selected', $('#chiefs-sl')).parent().attr('value');
-	let chief_uid 		= "";
-	
-	for(let w in WORKERS){
-		
-		let no = Number(w)+1;
-		let id = no+'_'+WORKERS[w]['uid'];
-		
-		if(id == worker_id && w == no-1){
-			
-			//if(WORKERS[w]['location_uid'] != location_uid && chief_uid != $('#chiefs-sl').val()){
-			if($('#chiefs-sl').val() != WORKERS[w]['chief_uid']){
-			
-				$('#info-dv .info-save-dv').show();
-		
-				$('#info-dv .info-save-dv').click(function(){
-					changeData("НазначитьМастеруНовогоНачальника", location_uid, WORKERS[w]['location_uid'], $('#chiefs-sl').val(), WORKERS[w]['uid']);
-					
-					$('#info-dv .info-save-dv').hide();
-				});
-			
-			}else{
-				$('#info-dv .info-save-dv').hide();
-			}
-			
-			break;
-		}
-	}
-}
 
 function changeMaster(worker_id){
     let selectedOption = $(':selected', $('#masters-sl'));
@@ -5354,7 +5406,19 @@ function closeWorkerObjectsModal() {
     clearReadOnlyRowSelection();
 
 }
-
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        setFullReadonlyCookie,
+        getFullReadonlyCookie,
+        setReadAllCookie,
+        getReadAllCookie,
+        getTodayYMD,
+        parseDateIn,
+        checkSession,
+        checkActivity,
+        getDataTabel
+    };
+}
 
 
 
