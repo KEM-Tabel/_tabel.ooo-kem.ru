@@ -1516,3 +1516,7 @@ body {
 .worker-objects-modal .object-table-container > .object-hours-cell:nth-child(4n+6) {
     background-color: #f0f0f0; /* Прозрачный фон для первой строки */
 }
+
+#input-indicator {
+    display: none !important;
+}

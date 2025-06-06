@@ -46,6 +46,7 @@ let unselectedBgd	= '#f6f7f6';
 let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
+let lastSelectedCellForComment = null;
 let VER 			= "22";
 
 
@@ -593,6 +594,7 @@ function createHead(){
 }
 
 function createTabel(){
+    console.log('[createTabel] Начало построения таблицы');
     WORKERS = [];
     TABEL = [];
 
@@ -617,8 +619,10 @@ function createTabel(){
     let worker_no      = 0;
     
     let html = '<div style="width:'+$('#head').innerWidth()+'px;">';
+    console.log('[createTabel] DATA:', DATA);
     for(let l in DATA){
         let location = DATA[l];
+        console.log('[createTabel] Обработка локации:', location.name);
         location_no     = location_no+1;
         let location_id = location_no+'_'+location['uid'];
         let canvas      = {};
@@ -632,29 +636,27 @@ function createTabel(){
         html += '</div>';
         html += '<div id="l_'+location_id+'-canvas" style="width:'+$('#head').innerWidth()+'px;">';
         for(let c in location['chiefs']){
-            let chief      = location['chiefs'][c];
-            chief_no      = chief_no+1;
-            let chief_id  = chief_no+'_'+chief['uid'];
+            let chief = location['chiefs'][c];
+            console.log('[createTabel] Обработка начальника:', chief.name);
+            chief_no       = chief_no+1;
+            let chief_id   = chief_no+'_'+chief['uid'];
+            let canvas      = {};
+            canvas['id']    = 'c_'+chief_id;
+            canvas['state'] = getCookie(canvas['id']);
+            CANVASES.push(canvas);
+            let chief_name = '';
             let notChief = chief['name'].match(/(\=|\#|\<|\>)/ig);
-            if(notChief == null) {
-                html += '<div id="c_'+chief_id+'-head" class="chief-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" onclick="slideDiv(\'c\',\''+chief_id+'\')">';
-                html += '<div class="toggle-bt" onclick="slideDiv(\'c\',\''+chief_id+'\')"></div>';
-                html += '<span id="c_'+chief_id+'-sp">НАЧАЛЬНИК: '+chief['name']+'</span>';
-                html += '<div class="chief-count-workers"><span id="c_'+chief_id+'-empty-sp"></span></div>';
-                html += '</div>';
-                let canvas      = {};
-                canvas['id']    = 'c_'+chief_id;
-                canvas['state'] = getCookie(canvas['id']);
-                CANVASES.push(canvas);
-            }else{
-                let canvas      = {};
-                canvas['id']    = 'c_'+chief_id;
-                canvas['state'] = "show";
-                CANVASES.push(canvas);
-            }
-            html += '<div id="c_'+chief_id+'-canvas">';
+            if(notChief == null) chief_name = 'НАЧАЛЬНИК: ';
+            html += '<div id="c_'+chief_id+'-head" class="chief-head" data-location-idx="'+l+'" data-chief-idx="'+c+'" onclick="slideDiv(\'c\',\''+chief_id+'\')">';
+            html += '<div class="toggle-bt" onclick="slideDiv(\'c\',\''+chief_id+'\')"></div>';
+            html += '<span id="c_'+chief_id+'-short-sp" class="chief-text-short">'+chief_name+chief['name']+'</span>';
+            html += '<span id="c_'+chief_id+'-full-sp" class="chief-text-full">'+location['name']+' > '+chief_name+chief['name']+'</span>';
+            html += '<div class="chief-count-workers"><span id="c_'+chief_id+'-empty-sp"></span></div>';
+            html += '</div>';
+            html += '<div id="c_'+chief_id+'-canvas" class="masters">';
             for(let m in chief['masters']){
                 let master      = chief['masters'][m];
+                console.log('[createTabel] Обработка мастера:', master.name);
                 master_no      = master_no+1;
                 let master_id  = master_no+'_'+master['uid'];
                 Array.prototype.push.apply(WORKERS, master['workers']);
@@ -678,10 +680,14 @@ function createTabel(){
                 let htmlSumHours = '';
                 for(let w in master['workers']){
                     let worker      = master['workers'][w];
+                    console.log('[createTabel] Обработка работника:', worker.fio);
                     worker_no      = worker_no+1;
                     let worker_id  = worker_no+'_'+worker['uid'];
                     let notWorker  = worker['fio'].match(/(\=|\#|\<|\>)/ig);
-                    if(typeof notWorker === 'object' && notWorker != null) continue;
+                    if(typeof notWorker === 'object' && notWorker != null) {
+                        console.log('[createTabel] Пропуск работника из-за специальных символов:', worker.fio);
+                        continue;
+                    }
                     TABEL[worker_id] = worker['days'];
                     if(!firm_uid.includes(worker['firm_uid'])){
                         firm_uid.push(worker['firm_uid']);
@@ -869,11 +875,12 @@ async function sendDataTabel(full=true){
              // Добавляем информацию о дне (год, месяц, день) из глобального массива DAYS
              let dayInfo = DAYS[Number(dayIndex)];
              return {
-                 ...arr_in[key][dayIndex],
-                 year: dayInfo ? dayInfo.year : null,
-                 month: dayInfo ? dayInfo.month : null,
-                 day: dayInfo ? dayInfo.day : null
-             };
+                ...arr_in[key][dayIndex],
+                comment: arr_in[key][dayIndex].comment || "", // <-- добавлено!
+                year: dayInfo ? dayInfo.year : null,
+                month: dayInfo ? dayInfo.month : null,
+                day: dayInfo ? dayInfo.day : null
+            };
         });
         item['tabel'] = daysArray;
         items.push(item);
@@ -1001,6 +1008,9 @@ function toPage(chapter=""){
 
 let changedCells = {};
 function setCells(value, isComment=false, isFullClear=false){
+    if (selectedCells.length > 1 && isColSelection()) {
+        return;
+    }
     console.log('[DEBUG] setCells вызван', value, selectedCells);
 
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
@@ -1046,6 +1056,30 @@ function setCells(value, isComment=false, isFullClear=false){
 
         // --- Комментарии и очистка ---
         if(isComment || isFullClear){
+            if (isComment) {
+                TABEL[id][day]['comment'] = value;
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][day] = TABEL[id][day];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                sendDataTabel(false);
+            
+                // --- Полное обновление DOM ячейки ---
+                let htmlValue = '';
+                let dayValue = TABEL[id][day]['vt'];
+                let hoursNum = TABEL[id][day]['hours'];
+                if(dayValue && !hoursNum){
+                    htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                } else if(dayValue && hoursNum) {
+                    htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                } else {
+                    htmlValue = '';
+                }
+                htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-comment" class="days-comment" title="'+value+'" style="display:'+(value ? 'block' : 'none')+';"></div>';
+                if(hoursNum == 0) {
+                    htmlValue += '<div id="'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-hours" class="days-hours"></div>';
+                }
+                $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
+            }
             if ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0) {
                 let hoursVal = value === "" ? 0 : Number(value);
                 TABEL[id][day]['hours'] = hoursVal;
@@ -1177,6 +1211,10 @@ function getCellValue(indexRow, indexCol){
 }
 
 function setComment(clear=false){
+    if(selectedCells.length === 0 && lastSelectedCellForComment && lastSelectedCellForComment.length > 0) {
+        selectedCells = JSON.parse(JSON.stringify(lastSelectedCellForComment));
+    }
+    console.log('[DEBUG] setComment', selectedCells);
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
         let $cell = $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv');
@@ -1195,6 +1233,7 @@ function setComment(clear=false){
 	$('#add-comment-dv').removeClass('show');
 	
 	settingComment = false;
+    lastSelectedCellForComment = null;
 	
 }
 
@@ -1645,28 +1684,30 @@ function contextAction(act){
 			getDataHistory(UID, worker_uid, historyDate.format("yyyymmdd"));
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
-		case "comment":
-			// Позиционируем окно комментария рядом с выбранной ячейкой
-			let $cell = $('#' + Number(startRow+1) + '-' + Number(startCol+1) + '-day-dv');
-			let cellOffset = $cell.offset();
-			let cellHeight = $cell.outerHeight();
-			let menuWidth = $('#add-comment-dv').outerWidth();
-			let windowWidth = $(window).width();
-			let margin = 10;
-			let left = cellOffset.left + $cell.outerWidth() + 2;
-			if (left + menuWidth > windowWidth - margin) {
-				left = cellOffset.left - menuWidth - 2;
-				if (left < margin) left = margin;
-			}
-			let top = cellOffset.top;
-			$('#add-comment-dv').css({top: top + "px", left: left + "px"});
-			$('#add-comment-dv').addClass('show');
-			console.log('add-comment-dv должен быть видимым', $('#add-comment-dv').css('display'), $('#add-comment-dv').hasClass('show'));
-			let cellVal = getCellValue(startRow, startCol);
-			$('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
-			$('#add-comment-in').focus();
-			settingComment = true;
-			break;
+            case "comment":
+                if (selectedCells.length > 0) {
+                    lastSelectedCellForComment = JSON.parse(JSON.stringify(selectedCells));
+                }
+                // Позиционируем окно комментария рядом с выбранной ячейкой
+                let $cell = $('#' + Number(startRow+1) + '-' + Number(startCol+1) + '-day-dv');
+                let cellOffset = $cell.offset();
+                let cellHeight = $cell.outerHeight();
+                let menuWidth = $('#add-comment-dv').outerWidth();
+                let windowWidth = $(window).width();
+                let margin = 10;
+                let left = cellOffset.left + $cell.outerWidth() + 2;
+                if (left + menuWidth > windowWidth - margin) {
+                    left = cellOffset.left - menuWidth - 2;
+                    if (left < margin) left = margin;
+                }
+                let top = cellOffset.top;
+                $('#add-comment-dv').css({top: top + "px", left: left + "px"});
+                $('#add-comment-dv').addClass('show');
+                let cellVal = getCellValue(startRow, startCol);
+                $('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
+                $('#add-comment-in').focus();
+                settingComment = true;
+                break;
 		case "clear":
             showConfirmClearModal(function() {
                 setCells("", false, true); // Сначала очистка!
@@ -2096,25 +2137,24 @@ function showHideInfo(element, id){
 }
 
 function setMouseUpState(e) {
-		
-	let flags = e.buttons !== undefined ? e.buttons : e.which;
+    let flags = e.buttons !== undefined ? e.buttons : e.which;
 
-	mouseUp 	= (flags & 1) === 1;
-	mouseDown 	= false;
-	
-	if(settingComment && !$(e.target).parents("#add-comment-dv").length > 0){
-		setComment(true);
-	}
-		
-	if(settingFilter && ($(e.target).parents("#workers").length > 0 || $(e.target).parents("#field").length > 0)){
-		
-		$('#filter-dv').hide(50);
-	
-		settingFilter = false;
-	}
-	
-	TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-
+    mouseUp     = (flags & 1) === 1;
+    mouseDown   = false;
+    
+    // Убираем автоматическое закрытие модалки комментариев
+    // if(settingComment && !$(e.target).parents("#add-comment-dv").length > 0){
+    //     setTimeout(() => {
+    //         setComment(true);
+    //     }, 100);
+    // }
+    
+    if(settingFilter && ($(e.target).parents("#workers").length > 0 || $(e.target).parents("#field").length > 0)){
+        $('#filter-dv').hide(50);
+        settingFilter = false;
+    }
+    
+    TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
 }
 
 function setMouseDownState(e) {
@@ -4861,7 +4901,7 @@ let orig_contextAction_lock = contextAction;
 contextAction = function(act) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col, value)) return;
+        if (isCellLocked(cell.row, cell.col)) return;
     }
     return orig_contextAction_lock.apply(this, arguments);
 };
