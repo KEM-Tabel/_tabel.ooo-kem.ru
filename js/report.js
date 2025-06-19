@@ -3777,8 +3777,8 @@ if (typeof getDataTabel === 'function') {
 
 // === Проверка размера окна для табеля ===
 function checkTabelWindowSize() {
-  var minWidth = 900;
-  var minHeight = 500;
+  var minWidth = 500;
+  var minHeight = 300;
   if (window.innerWidth < minWidth || window.innerHeight < minHeight) {
     if ($('#tabel-size-warning').length === 0) {
       $('body').append('<div id="tabel-size-warning" style="position:fixed;z-index:99999;top:0;left:0;width:100vw;height:100vh;background:rgba(255,255,255,0.97);display:flex;align-items:center;justify-content:center;font-size:2.2em;color:#b00;text-align:center;"><div><b>Размер окна слишком маленький для корректного отображения табеля.<br>Пожалуйста, увеличьте размер окна.</b></div></div>');
