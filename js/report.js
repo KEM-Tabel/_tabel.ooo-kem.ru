@@ -1022,6 +1022,12 @@ function setCells(value, isComment=false, isFullClear=false){
     }
     console.log('[DEBUG] setCells вызван', value, selectedCells);
 
+    // === ЗАПРЕТ УСТАНОВКИ КОДА "СО" ===
+    if(value === 'СО' && !isComment && !isFullClear){
+        alert('Нельзя устанавливать код "СО"!');
+        return;
+    }
+
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
     let matches = value.match(/^[0-9]+$/);
     let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
@@ -1089,7 +1095,8 @@ function setCells(value, isComment=false, isFullClear=false){
                 }
                 $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
             }
-            if ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0) {
+            // Убираем проверку на числа для комментариев - комментарии не должны влиять на часы
+            if (isFullClear && ((/^[0-9]+$/.test(value) && value !== "") || value === "" || value === 0)) {
                 let hoursVal = value === "" ? 0 : Number(value);
                 TABEL[id][day]['hours'] = hoursVal;
                 if (value === "" || value === 0) {
@@ -1119,6 +1126,9 @@ function setCells(value, isComment=false, isFullClear=false){
                 }else{
                     $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
                 }
+                continue;
+            } else if (isComment) {
+                // Для комментариев просто продолжаем, не трогая часы
                 continue;
             } else {
                 // Не часы и не пусто — ничего не делаем
@@ -1728,6 +1738,23 @@ function contextAction(act){
                 settingComment = true;
                 break;
 		case "clear":
+            // === ЗАПРЕТ УДАЛЕНИЯ КОДА "СО" ===
+            let hasCO = false;
+            for(let key in selectedCells){
+                let cell = selectedCells[key];
+                let uid = WORKERS[Number(cell['row'])]['uid'];
+                let day = Number(cell['col']);
+                let no = Number(cell['row'])+1;
+                let id = no+'_'+uid;
+                if(TABEL[id][day]['vt'] === 'СО'){
+                    hasCO = true;
+                    break;
+                }
+            }
+            if(hasCO){
+                alert('Нельзя удалять код "СО"!');
+                return;
+            }
             showConfirmClearModal(function() {
                 setCells("", false, true); // Сначала очистка!
                 unselectCells();           // Потом снимаем выделение
@@ -1742,6 +1769,13 @@ function contextAction(act){
 
 function cellAction(vt){
     console.log('cellAction', selectedCells);
+    
+    // === ЗАПРЕТ УСТАНОВКИ КОДА "СО" ===
+    if(vt === 'СО'){
+        alert('Нельзя устанавливать код "СО"!');
+        return;
+    }
+    
 	setCells(vt);
 	$("#cell-menu").hide(50);
 	unselectCells();
@@ -2356,6 +2390,23 @@ function setCellVal(e){
 				updateInputIndicator();
 				break;
 			case 8: case 32: case 46: //backspace space delete
+            // === ЗАПРЕТ УДАЛЕНИЯ КОДА "СО" ===
+            let hasCO = false;
+            for(let key in selectedCells){
+                let cell = selectedCells[key];
+                let uid = WORKERS[Number(cell['row'])]['uid'];
+                let day = Number(cell['col']);
+                let no = Number(cell['row'])+1;
+                let id = no+'_'+uid;
+                if(TABEL[id][day]['vt'] === 'СО'){
+                    hasCO = true;
+                    break;
+                }
+            }
+            if(hasCO){
+                alert('Нельзя удалять код "СО"!');
+                return;
+            }
             showConfirmClearModal(function() {
                 setCells("", false, true); // Сначала очистка!
                 unselectCells();           // Потом снимаем выделение
@@ -2496,10 +2547,13 @@ function onRightClick(){
             startCol = parseInt(match[2], 10) - 1;
         }
     }
-    selectCell(startRow, startCol,null);
+    
+    // Выделяем ячейку под курсором, если она не выделена
+    if(selectedCells.length === 0) {
+        selectCell(startRow, startCol, null);
+    }
 
-    if(selectedCells.length != 1) return;
-
+    // Показываем контекстное меню независимо от количества выделенных ячеек
     $("#context-menu").finish().toggle(50);
 
     let X = (e.clientX+310 > $(window).width()) ? $(window).width()-310 : e.pageX+10;
@@ -4907,7 +4961,7 @@ let orig_setComment_lock = setComment;
 setComment = function(clear=false) {
     if(selectedCells.length > 0) {
         let cell = selectedCells[0];
-        if (isCellLocked(cell.row, cell.col, value)) return;
+        if (isCellLocked(cell.row, cell.col)) return;
     }
     return orig_setComment_lock.apply(this, arguments);
 };

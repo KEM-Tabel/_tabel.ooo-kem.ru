@@ -97,6 +97,10 @@ body {
     background-color: #DEF;
 }
 
+/* Скрываем пункт "СО" из контекстного меню */
+#cell-menu li[onClick*="'СО'"] {
+    display: none !important;
+}
 
 #history-menu {
     position: absolute;
