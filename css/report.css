@@ -1054,6 +1054,7 @@ body {
 	width: 32px;
 	height:32px;
 	text-align:center;
+	border-right: 1px solid #9f9f9f !important;
 	line-height: 32px;
 	background:#ddd;
 	font-weight:bold;

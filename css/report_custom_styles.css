@@ -75,3 +75,25 @@
 .row-days-dv.readonly-row-selected .days-weekend:last-child {
     border-right: 2px solid #6690EF !important; /* Последняя ячейка — как было */
 }
+
+
+#report-period {
+    padding: 6px 12px;
+    font-size: 15px;
+    border: 1px solid #b0b8c1;
+    border-radius: 6px;
+    background: #f8fafc;
+    color: #222;
+    outline: none;
+    transition: border 0.2s;
+    margin-left: 10px;
+}
+#report-period:focus {
+    border: 1.5px solid #0071c8;
+    background: #fff;
+}
+#reports-modal-content label[for="report-period"] {
+    margin-right: 8px;
+    font-weight: bold;
+    font-size: 15px;
+}
