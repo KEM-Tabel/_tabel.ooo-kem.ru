@@ -754,6 +754,8 @@ function createTabel(){
                             }
                         }
                         if (isFixed) cellClass += ' cell-fixed';
+                        // === Добавляем выделение для ПЧ ===
+                        if (String(dayValue).toUpperCase() === 'ПЧ') cellClass += ' cell-pch';
                         let docAttr = '';
                         if (isFixed && day && day['doc']) {
                             docAttr = ' data-doc="'+String(day['doc']).replace(/"/g, '&quot;')+'"';
@@ -772,11 +774,19 @@ function createTabel(){
                             }else if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
                                 extraClass = ' cell-attendance-missing-hours';
                                 extraStyle = 'color:'+YaFnt+';font-weight:bold;';
+                            }else if(String(dayValue).toUpperCase() === "ПЧ"){
+                                extraClass = ' cell-attendance-missing-hours';
+                                extraStyle = 'color:'+YaFnt+';font-weight:bold;';
                             }else{
                                 extraStyle = 'color:'+selectedFnt+';font-weight:normal;';
                             }
                         } else {
-                            extraStyle = 'color:'+selectedFnt+';font-weight:normal;';
+                            if(String(dayValue).toUpperCase() === "ПЧ"){
+                                extraClass = ' cell-attendance-missing-hours';
+                                extraStyle = 'color:'+YaFnt+';font-weight:bold;';
+                            }else{
+                                extraStyle = 'color:'+selectedFnt+';font-weight:normal;';
+                            }
                         }
                         if(dayValue && !hoursNum){
                             htmlCell = '<span class="cell-code-big">'+dayValue+'</span>';
@@ -1235,7 +1245,6 @@ function setCells(value, isComment=false, isFullClear=false){
 function getCellValue(indexRow, indexCol){
 	
 	for(let key in selectedCells){
-	
 		let cell = selectedCells[key];
 		
 		if(indexRow == cell['row'] && indexCol == cell['col']){
