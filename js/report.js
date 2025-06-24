@@ -232,9 +232,6 @@ $(document).ready(function() {
               <label for="move-worker-date">Дата:</label>
               <input type="date" id="move-worker-date" style="font-size:16px;padding:4px 6px;margin-left: 10px;">
             </div>
-            <div style="margin-bottom:18px;">
-              <label style="display:block;"><input type="checkbox" id="split-hours-checkbox" checked> Разделить часы (поставить "СО" на выбранную дату)</label>
-            </div>
             <div style="display:flex;gap:18px;justify-content:flex-end;margin-top:18px;">
               <button id="move-worker-save-btn" class="btn btn-primary" style="padding:8px 24px;font-size:16px;">Сохранить</button>
               <button id="move-worker-cancel-btn" class="btn btn-secondary" style="padding:8px 24px;font-size:16px;">Отмена</button>
@@ -4686,8 +4683,8 @@ function changeMaster(worker_id){
         $('#move-worker-name').text(currentWorker.fio);
         // Устанавливаем текущую дату в инпут
         $('#move-worker-date').val(new Date().toISOString().slice(0,10));
-        // Убеждаемся, что чекбокс разделения часов отмечен по умолчанию
-        $('#split-hours-checkbox').prop('checked', true);
+        // Убираем чекбокс - он больше не нужен
+        $('#split-hours-checkbox').hide();
 
 
         // Сохраняем данные для кнопки "Сохранить" в модалке
@@ -4705,12 +4702,11 @@ function changeMaster(worker_id){
         // Обработчик кнопки "Сохранить" в модалке
         $('#move-worker-save-btn').off('click').on('click', async function() {
             let selectedDateStr = $('#move-worker-date').val();
-            let splitHours = $('#split-hours-checkbox').is(':checked');
             let wId = $('#move-worker-modal').data('worker_id');
             let method = $('#move-worker-modal').data('method');
             let baseArgs = $('#move-worker-modal').data('args');
 
-            console.log('[move-worker-modal] Клик Сохранить:', { selectedDateStr, splitHours, wId, method, baseArgs });
+            console.log('[move-worker-modal] Клик Сохранить:', { selectedDateStr, wId, method, baseArgs });
 
             $('#move-worker-modal').fadeOut(120, function() {
                  isMoveWorkerModalOpen = false; // Снимаем флаг после завершения анимации скрытия
@@ -4719,7 +4715,11 @@ function changeMaster(worker_id){
 
             let workerUid = wId.split('_')[1];
             let workerIndex = WORKERS.findIndex(w => w.uid === workerUid);
-            console.log('[move-worker-modal] Найден работник:', { workerUid, workerIndex });
+            let tabId = null;
+            let selectedDayIndex = null;
+            if (workerIndex !== -1) {
+                tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
+            }
 
             let dateToSend = null;
             if (selectedDateStr) {
@@ -4730,29 +4730,37 @@ function changeMaster(worker_id){
                  console.log('[move-worker-modal] Дата для отправки (с +1 днем):', dateToSend);
 
                 // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
-                // ТОЛЬКО если чекбокс отмечен
-                if (splitHours && workerIndex !== -1) {
-                     let selectedDate = new Date(selectedDateStr);
-                     let selectedDayIndex = -1;
-                      for (let i = 0; i < DAYS.length; i++) {
-                         let dayObj = DAYS[i];
-                          // Учитываем, что month в Date начинается с 0, а в dayObj с 1
-                         if (dayObj.year == selectedDate.getFullYear() &&
-                             dayObj.month == selectedDate.getMonth() + 1 &&
-                             dayObj.day == selectedDate.getDate()) {
-                             selectedDayIndex = i;
-                             break;
-                         }
-                     }
-                      console.log('[move-worker-modal] Найден индекс дня:', { selectedDate, selectedDayIndex });
+                // ТОЛЬКО если это смена объекта
+                console.log('[DEBUG СО]', {
+                    locationChanged,
+                    workerIndex,
+                    selectedDateStr,
+                    DAYS,
+                    WORKERS,
+                    tabId,
+                    TABEL: tabId ? TABEL[tabId] : null
+                });
 
-                     if (selectedDayIndex !== -1) {
-                         let tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
-                         console.log('[move-worker-modal] ID табеля:', tabId);
-
-                         if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                if (locationChanged && workerIndex !== -1) {
+                    let selectedDate = new Date(selectedDateStr);
+                    selectedDayIndex = -1;
+                    for (let i = 0; i < DAYS.length; i++) {
+                        let dayObj = DAYS[i];
+                        if (dayObj.year == selectedDate.getFullYear() &&
+                            dayObj.month == selectedDate.getMonth() + 1 &&
+                            dayObj.day == selectedDate.getDate()) {
+                            selectedDayIndex = i;
+                            break;
+                        }
+                    }
+                    console.log('[move-worker-modal] Найден индекс дня:', { selectedDate, selectedDayIndex });
+                
+                    if (selectedDayIndex !== -1) {
+                        console.log('[move-worker-modal] ID табеля:', tabId);
+                
+                        if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
                             console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
-                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
+                            TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
                              // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
                              // Помечаем ячейку как измененную
                             if (!changedCells[tabId]) changedCells[tabId] = {};
@@ -4779,21 +4787,22 @@ function changeMaster(worker_id){
 
                               $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
                             // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
-                         }
-                     }
-                 } else if (workerIndex === -1) {
-                      console.error('[move-worker-modal] workerIndex не найден для workerUid:', workerUid);
-                 }
+                        }
+                        // Лог только тут!
+                        console.log('[DEBUG СО] Ставим СО:', {tabId, selectedDayIndex, TABEL: TABEL[tabId]});
+                    }
+                    console.log('[DEBUG СО] selectedDayIndex:', selectedDayIndex);
+                } else if (workerIndex === -1) {
+                    console.error('[move-worker-modal] workerIndex не найден для workerUid:', workerUid);
+                }
             } else {
                  console.log('[move-worker-modal] Дата не указана.');
             }
 
             console.log('[move-worker-modal] changedCells перед sendDataTabel(false):', JSON.stringify(changedCells, null, 2));
 
-
              // Вызываем функцию отправки данных changedCells
             await sendDataTabel(false); // Отправляем только измененные ячейки (включая СО, если было)
-
 
             // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
              let finalArgs = [...baseArgs, dateToSend]; // Добавляем дату или null последним аргументом
@@ -4867,8 +4876,8 @@ function changeChief(worker_id){
         $('#move-worker-name').text(currentWorker.fio);
          // Устанавливаем текущую дату в инпут
         $('#move-worker-date').val(new Date().toISOString().slice(0,10));
-        // Убеждаемся, что чекбокс разделения часов отмечен по умолчанию
-        $('#split-hours-checkbox').prop('checked', true);
+        // Убираем чекбокс - он больше не нужен
+        $('#split-hours-checkbox').hide();
 
 
         // Сохраняем данные для кнопки "Сохранить" в модалке
@@ -4886,7 +4895,6 @@ function changeChief(worker_id){
         // Обработчик кнопки "Сохранить" в модалке
         $('#move-worker-save-btn').off('click').on('click', async function() {
             let selectedDateStr = $('#move-worker-date').val();
-            let splitHours = $('#split-hours-checkbox').is(':checked');
             let wId = $('#move-worker-modal').data('worker_id');
             let method = $('#move-worker-modal').data('method');
             let baseArgs = $('#move-worker-modal').data('args');
@@ -4896,9 +4904,14 @@ function changeChief(worker_id){
 
             let workerUid = wId.split('_')[1];
             let workerIndex = WORKERS.findIndex(w => w.uid === workerUid);
+            let tabId = null;
+            let selectedDayIndex = null;
+            if (workerIndex !== -1) {
+                tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
+            }
 
             let dateToSend = null;
-            if (splitHours && selectedDateStr) {
+            if (selectedDateStr) {
                  // Формат даты YYYYMMDD
                  let selectedDate = new Date(selectedDateStr);
                  selectedDate.setDate(selectedDate.getDate() + 1); // Добавляем +1 день
@@ -4906,47 +4919,41 @@ function changeChief(worker_id){
                  console.log('[changeChief] Дата для отправки (с +1 днем):', dateToSend);
 
                 // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
-                 if (workerIndex !== -1) {
-                     let selectedDate = new Date(selectedDateStr);
-                     let selectedDayIndex = -1;
-                      for (let i = 0; i < DAYS.length; i++) {
-                         let dayObj = DAYS[i];
-                         if (dayObj.year == selectedDate.getFullYear() &&
-                             dayObj.month == selectedDate.getMonth() + 1 &&
-                             dayObj.day == selectedDate.getDate()) {
-                             selectedDayIndex = i;
-                             break;
-                         }
-                     }
-                     if (selectedDayIndex !== -1) {
-                         let tabId = (workerIndex + 1) + '_' + WORKERS[workerIndex].uid;
-                         if (TABEL[tabId]) {
-                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
-                             TABEL[tabId][selectedDayIndex]['hours'] = 0;
-                             // Помечаем ячейку как измененную
+                if (locationChanged && workerIndex !== -1) {
+                    let selectedDate = new Date(selectedDateStr);
+                    selectedDayIndex = -1;
+                    for (let i = 0; i < DAYS.length; i++) {
+                        let dayObj = DAYS[i];
+                        if (dayObj.year == selectedDate.getFullYear() &&
+                            dayObj.month == selectedDate.getMonth() + 1 &&
+                            dayObj.day == selectedDate.getDate()) {
+                            selectedDayIndex = i;
+                            break;
+                        }
+                    }
+                    if (selectedDayIndex !== -1) {
+                        if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                            TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
+                            TABEL[tabId][selectedDayIndex]['hours'] = 0;
                             if (!changedCells[tabId]) changedCells[tabId] = {};
                             changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
-                             TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-                             // Обновляем отображение ячейки
-                             let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
-                             let htmlValue = `<span class="cell-code-big">СО</span>`;
-                              htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${TABEL[tabId][selectedDayIndex]['comment']||''}"></div>`;
-                              $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
-                            // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
-                         }
-                     }
-                 }
+                            TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                            let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
+                            let htmlValue = `<span class="cell-code-big">СО</span>`;
+                            htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${TABEL[tabId][selectedDayIndex]['comment']||''}"></div>`;
+                            $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                        }
+                    }
+                }
             }
 
              // Вызываем функцию отправки данных changedCells
             await sendDataTabel(false); // Отправляем только измененные ячейки (включая СО, если было)
 
-
             // Теперь вызываем changeData для самой операции смены мастера/начальника, передавая дату
-             let finalArgs = [...baseArgs, dateToSend]; // Добавляем дату или null последним аргументом
+            let finalArgs = [...baseArgs, dateToSend]; // Добавляем дату или null последним аргументом
 
             console.log(`[changeChief] Вызов changeData для ${method} с датой:`, finalArgs);
-            // Используем changeData для самой операции смены мастера/начальника
             changeData(method, ...finalArgs);
         });
 
@@ -4969,6 +4976,12 @@ function changeChief(worker_id){
 
 // === Проверка lock для ячеек ===
 function isCellLocked(row, col, value) {
+    if (TABEL) {
+        let tabId = (row + 1) + '_' + WORKERS[row].uid;
+        if (TABEL[tabId] && TABEL[tabId][col] && TABEL[tabId][col]['vt'] === 'СО') {
+            return true;
+        }
+    }
     // Список разрешённых кодов
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
 
