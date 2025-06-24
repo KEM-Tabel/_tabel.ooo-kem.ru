@@ -28,7 +28,7 @@ let CANVASES 		= [];
 let wShortDays		= ["пн","вт","ср","чт","пт","сб","вс"];
 let selectedCells 	= [];
 let symbolsDi 		= ['0','1','2','3','4','5','6','7','8','9'];
-let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к','с','п','ч'];
+let symbolsRu 		= ['я','д','к','н','в','у','б','п','ж','о','т','м','р','г','к','п','ч'];
 let symbolsEn 		= ['z','l','r','y','d','e',',','g',';','j','n','v','h','u','g','x'];
 let codesDi 		= ['1','2','3','4','5','6','7','8','9','10','11','12','13','14','15','16'];
 let codesRu1 		= ['Я','Б','МО','Д','ОТ','ОБ','ОД','СО','ОЖ','НН','НВ','Г','Р','У','УВ','ПК','В','К','ДО','ПЧ'];
@@ -980,10 +980,15 @@ async function changeData(...args){
 	args.unshift(UID);
 	
 	let data = await getData(full, !full, method, args);
-	
-	if(!data.error && data.valid){
-		document.location.reload();
-	}else{
+    // Проверяем результат для смены мастера
+    if (data.result && data.result.successful === false && data.result.des) {
+        showCustomAlertFromDes(data.result.des);
+        return;
+    }
+    if (data.result && data.result.successful === true) {
+        document.location.reload();
+        return;
+    }
 		console.log(data.des);
 		
 		$('#loader_dv').hide();
@@ -991,7 +996,29 @@ async function changeData(...args){
 		$('#loader_des').append(data.des);
 		$('#loader_des').show();
 		$('#loader').show();
-	}
+}
+
+function showCustomAlertFromDes(des) {
+    // Пример des: "На данную дату назначен мастер Гордиенко Алексей Геннадьевич до 23.06.2025."
+    let dateMatch = des.match(/до\s([0-9]{2}\.[0-9]{2}\.[0-9]{4})/);
+    let masterMatch = des.match(/мастер\s(.+)\sдо/);
+    let date = dateMatch ? dateMatch[1] : '';
+    let master = masterMatch ? masterMatch[1].trim() : '';
+    let text = '';
+    if (date && master) {
+        text = `Извините, невозможно переместить сотрудника до <b>${date}</b>.<br>До этой даты он привязан к мастеру: <b>${master}</b>.`;
+    } else {
+        text = des; // fallback
+    }
+    showCustomAlert(text);
+}
+
+function showCustomAlert(message) {
+    $('#custom-alert-text').html(message);
+    $('#custom-alert-modal').fadeIn(120);
+    $('#custom-alert-ok').off('click').on('click', function() {
+        $('#custom-alert-modal').fadeOut(120);
+    });
 }
 
 function toPage(chapter=""){
@@ -1315,8 +1342,11 @@ function calcDays(){
         let countY = 0;
         let countB = 0;
         let countEmpty = 0;
-        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0, 'В': 0, 'К': 0, 'ПЧ':0};
+        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
+        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
+        let countK = 0;
+        let countPCH = 0;
+        let countSO = 0;
         let totalWorkers = 0;
         for(let i=0;i<workersArr.length;i++){
             let worker = workersArr[i];
@@ -1355,6 +1385,12 @@ function calcDays(){
                 countY++;
             } else if (vt === 'Б') {
                 countB++;
+            } else if (vt === 'К') {
+                countK++;
+            } else if (vt === 'ПЧ') {
+                countPCH++;
+            } else if (vt === 'СО') {
+                countSO++;
             } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
                 detailedNotPresentCounts[vt]++;
             } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
@@ -1363,13 +1399,13 @@ function calcDays(){
                 countEmpty++;
             }
         }
-        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
+        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
         let sumAbsent = 0;
         for (const code in detailedAbsentCounts) {
             sumAbsent += detailedAbsentCounts[code];
         }
         let onObject = totalWorkers - sumAbsent;
-        return {countEmpty, onObject, sumAbsent};
+        return {countEmpty, onObject, sumAbsent, countK, countPCH, countSO, detailedNotPresentCounts, detailedAbsentCounts, countY, countB, sumNotPresent, totalWorkers};
     }
     // Мастера
     for(let id in masterMap){
@@ -2052,7 +2088,7 @@ function showHideInfo(element, id){
 			left = Math.max((winW - infoW) / 2, 20);
 		}
 		infoDv.css({top: top + "px", left: left + "px"});
-		// --- ВОССТАНОВЛЕНО НАПОЛНЕНИЕ info-dv ---
+		// --- ВОСТАНОВЛЕНО НАПОЛНЕНИЕ info-dv ---
 		for(let w in WORKERS){
 			let worker = WORKERS[w];
 			if(uid == worker['uid'] && w == no-1){
@@ -2962,112 +2998,119 @@ function initTooltips() {
                 }
             }
             
-            // Формируем статистику для тултипа
-            let statsTableHtml = '';
-            if (typeof DAYS !== 'undefined' && Array.isArray(DAYS) && DAYS.length > 0) {
-                const filteredWorkers = workersForTooltip.filter(
-                    w => w && w.uid && w.fio && typeof w.fio === 'string' && !/^[<‹]/.test(w.fio.trim())
-                );
-                let countY = 0;
-                let countB = 0;
-                let countEmpty = 0;
-                let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-                let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0, 'В': 0, 'К': 0, 'ПЧ':0};
-                let totalWorkers = 0;
-                
-                for(let w_idx in filteredWorkers){
-                    let worker = filteredWorkers[w_idx];
-                    let dayObj = worker.days && worker.days[todayIndex];
-                    let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
-                    let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
-                    
-                    if (!dayObj || (typeof dayObj !== 'object')) {
-                        countEmpty++;
-                        totalWorkers++;
-                        continue;
-                    }
+            // Формируем тултип аналогично tooltipStats
+            let countY = 0, countB = 0, countEmpty = 0;
+            let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
+            let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
+            let countK = 0;
+            let countPCH = 0;
+            let countSO = 0;
+            let totalWorkers = 0;
+            for(let w_idx in workersForTooltip){
+                let worker = workersForTooltip[w_idx];
+                let vt = '';
+                if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
+                    countEmpty++;
                     totalWorkers++;
-                    if (
-                        (!('vt' in dayObj) && !('hours' in dayObj)) ||
-                        (vt === '' && hours === 0)
-                    ) {
-                        countEmpty++;
-                        continue;
-                    }
-                    if (vt === 'Я') {
-                        countY++;
-                    } else if (vt === 'Б') {
-                        countB++;
-                    } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
-                        detailedNotPresentCounts[vt]++;
-                    } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
-                        detailedAbsentCounts[vt]++;
-                    } else if (vt === '') {
-                        countEmpty++;
-                    }
+                    continue;
                 }
-                
-                let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
-                let sumAbsent = 0;
-                for (const code in detailedAbsentCounts) {
-                    sumAbsent += detailedAbsentCounts[code];
+                vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
+                let hours = ('hours' in worker.days[todayIndex]) ? Number(worker.days[todayIndex].hours) : 0;
+                totalWorkers++;
+                if (
+                    (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') && hours === 0
+                ) {
+                    countEmpty++;
+                    continue;
                 }
-                
-                statsTableHtml = `
-                <div class="master-tooltip-content">
-                    <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                        <tr>
-                             <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
-                             <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${totalWorkers - sumAbsent}</td>
-                        </tr>
-                    </table>
-                    <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                        <tr>
-                             <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
-                             <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
-                        </tr>
-                    </table>
-                    <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                        <div style="width: 48%;">
-                            <table style="width:100%; border-collapse: collapse;">
-                                <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
-                                <tr><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
-                            </table>
-                        </div>
-                        <div style="width: 48%;">
-                            <table style="width:100%; border-collapse: collapse;">
-                                <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">СО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['СО']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
-                                <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['В']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">К</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['К']}</td></tr>
-                                <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПЧ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПЧ']}</td></tr>
-                            </table>
-                        </div>
-                    </div>
-                    <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
-                         <tr>
-                            <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
-                            <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
-                            <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
-                            <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
-                        </tr>
-                    </table>
-                </div>
-                `;
+                if (vt === '' && hours === 0) {
+                    countEmpty++;
+                    continue;
+                }
+                vt = String(worker.days[todayIndex].vt).toUpperCase();
+                if (vt === 'Я') {
+                    countY++;
+                } else if (vt === 'Б') {
+                    countB++;
+                } else if (vt === 'К') {
+                    countK++;
+                } else if (vt === 'ПЧ') {
+                    countPCH++;
+                } else if (vt === 'СО') {
+                    countSO++;
+                } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
+                    detailedNotPresentCounts[vt]++;
+                } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
+                    detailedAbsentCounts[vt]++;
+                } else if (vt === '') {
+                    countEmpty++;
+                }
             }
+            
+            let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
+            let sumAbsent = 0;
+            for (const code in detailedAbsentCounts) {
+                sumAbsent += detailedAbsentCounts[code];
+            }
+            
+            let statsTableHtml = `
+            <div class="master-tooltip-content">
+                <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                    <tr>
+                         <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
+                         <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${totalWorkers - sumAbsent}</td>
+                    </tr>
+                </table>
+                <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                    <tr>
+                         <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
+                         <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
+                    </tr>
+                </table>
+                <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                    <div style="width: 48%;">
+                        <table style="width:100%; border-collapse: collapse;">
+                            <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
+                            <tr><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['В']}</td></tr>
+                        </table>
+                    </div>
+                    <div style="width: 48%;">
+                        <table style="width:100%; border-collapse: collapse;">
+                            <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
+                            <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
+                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
+                        </table>
+                    </div>
+                </div>
+                <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+                <table style='width:100%; border-collapse: collapse; margin-bottom: 2px;'>
+                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>К</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countK}</td></tr>
+                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>СО</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countSO}</td></tr>
+                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>ПЧ</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countPCH}</td></tr>
+                </table>
+                <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+                <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
+                     <tr>
+                        <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
+                        <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
+                        <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
+                        <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
+                    </tr>
+                </table>
+            </div>
+            `;
             
             if (!statsTableHtml) {
                 tooltip.hide();
@@ -4678,18 +4721,17 @@ function changeMaster(worker_id){
             let workerIndex = WORKERS.findIndex(w => w.uid === workerUid);
             console.log('[move-worker-modal] Найден работник:', { workerUid, workerIndex });
 
-
             let dateToSend = null;
-            if (splitHours && selectedDateStr) {
+            if (selectedDateStr) {
                  // Формат даты YYYYMMDD
                  let selectedDate = new Date(selectedDateStr);
                  selectedDate.setDate(selectedDate.getDate() + 1); // Добавляем +1 день
                  dateToSend = selectedDate.toISOString().slice(0,10).split('-').join('');
                  console.log('[move-worker-modal] Дата для отправки (с +1 днем):', dateToSend);
 
-
                 // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
-                 if (workerIndex !== -1) {
+                // ТОЛЬКО если чекбокс отмечен
+                if (splitHours && workerIndex !== -1) {
                      let selectedDate = new Date(selectedDateStr);
                      let selectedDayIndex = -1;
                       for (let i = 0; i < DAYS.length; i++) {
@@ -4739,11 +4781,11 @@ function changeMaster(worker_id){
                             // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
                          }
                      }
-                 } else {
+                 } else if (workerIndex === -1) {
                       console.error('[move-worker-modal] workerIndex не найден для workerUid:', workerUid);
                  }
             } else {
-                 console.log('[move-worker-modal] Разделение часов не выбрано или дата не указана.');
+                 console.log('[move-worker-modal] Дата не указана.');
             }
 
             console.log('[move-worker-modal] changedCells перед sendDataTabel(false):', JSON.stringify(changedCells, null, 2));
@@ -5250,8 +5292,11 @@ $(document).on('mouseenter', '#master-head', function(e) {
         
         // Формируем тултип аналогично tooltipStats
         let countY = 0, countB = 0, countEmpty = 0;
-        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'СО': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0, 'В': 0, 'К': 0, 'ПЧ':0};
+        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
+        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
+        let countK = 0;
+        let countPCH = 0;
+        let countSO = 0;
         let totalWorkers = 0;
         for(let w_idx in workersForTooltip){
             let worker = workersForTooltip[w_idx];
@@ -5279,6 +5324,12 @@ $(document).on('mouseenter', '#master-head', function(e) {
                 countY++;
             } else if (vt === 'Б') {
                 countB++;
+            } else if (vt === 'К') {
+                countK++;
+            } else if (vt === 'ПЧ') {
+                countPCH++;
+            } else if (vt === 'СО') {
+                countSO++;
             } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
                 detailedNotPresentCounts[vt]++;
             } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
@@ -5287,61 +5338,65 @@ $(document).on('mouseenter', '#master-head', function(e) {
                 countEmpty++;
             }
         }
-        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'];
+        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
         let sumAbsent = 0;
         for (const code in detailedAbsentCounts) {
             sumAbsent += detailedAbsentCounts[code];
         }
         let statsTableHtml = `
-        <div class=\"master-tooltip-content\">
-            <table style=\"width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
+        <div class="master-tooltip-content">
+            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
                 <tr>
-                     <td style=\"padding: 2px;font-weight: bold; font-size: 13px;\">На объекте</td>
-                     <td style=\"padding: 2px; text-align:right; font-weight: bold; font-size: 13px;\">${totalWorkers - sumAbsent}</td>
+                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
+                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${totalWorkers - sumAbsent}</td>
                 </tr>
             </table>
-            <table style=\"width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
+            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
                 <tr>
-                     <td style=\"padding: 2px;font-weight: bold; font-size: 13px;\">Явка</td>
-                     <td style=\"padding: 2px; text-align:right; font-weight: bold; font-size: 13px;\">${countY}</td>
+                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
+                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
                 </tr>
             </table>
-            <div style=\"display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;\">
-                <div style=\"width: 48%;\">
-                    <table style=\"width:100%; border-collapse: collapse;\">
-                        <tr><td style=\"padding: 1px 2px; font-weight: bold; font-size: 13px;\">Не выход</td><td style=\"padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px\"> ${sumNotPresent}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Б</td><td style=\"padding: 1px 2px; text-align:right;\">${countB}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">НВ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['НВ']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Г</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['Г']}</td></tr>
-                        <tr><td style=\"padding: 1px 2px;\">МО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedNotPresentCounts['МО']}</td></tr>
+            <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                <div style="width: 48%;">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
+                        <tr><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['В']}</td></tr>
                     </table>
                 </div>
-                <div style=\"width: 48%;\">
-                    <table style=\"width:100%; border-collapse: collapse;\">
-                        <tr><td style=\"padding: 1px 2px; font-weight: bold; font-size: 13px;\">Отсутствуют</td><td style=\"padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px\">${sumAbsent}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОТ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОТ']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОД</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОД']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">У</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['У']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ОБ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОБ']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ПК</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ПК']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Д</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Д']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">СО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['СО']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">УВ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['УВ']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">Р</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['Р']}</td></tr>
-                        <tr><td style=\"padding: 1px 2px;\">ОЖ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ОЖ']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;">ДО</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ДО']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">В</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['В']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">К</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['К']}</td></tr>
-                        <tr style=\"border-bottom: 1px dotted #eee;\"><td style=\"padding: 1px 2px;\">ПЧ</td><td style=\"padding: 1px 2px; text-align:right;\">${detailedAbsentCounts['ПЧ']}</td></tr>
+                <div style="width: 48%;">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
+                        <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
                     </table>
                 </div>
             </div>
-            <table style=\"width: 100%; margin-top: 5px; border-collapse: collapse;\">
+            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+            <table style='width:100%; border-collapse: collapse; margin-bottom: 2px;'>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>К</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countK}</td></tr>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>СО</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countSO}</td></tr>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>ПЧ</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countPCH}</td></tr>
+            </table>
+            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+            <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
                  <tr>
-                    <td style=\"padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;\">НН</td>
-                    <td style=\"padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;\">${detailedNotPresentCounts['НН']}</td>
-                    <td style=\"padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;\">Пусто</td>
-                    <td style=\"padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;\">${countEmpty}</td>
+                    <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
+                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
+                    <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
+                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
                 </tr>
             </table>
         </div>
