@@ -390,6 +390,22 @@ $(document).ready(function() {
             $('#fixstate-menu').hide();
         }
     });
+
+    // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при прокрутке ===
+    $(window).on('scroll.hideCommentDv', function() {
+        if ($('#add-comment-dv').hasClass('show')) {
+            console.log('[DEBUG] scroll.hideCommentDv: Прокрутка, скрываем окно комментариев');
+            setComment(true);
+        }
+    });
+    
+    // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при изменении размера окна ===
+    $(window).on('resize.hideCommentDv', function() {
+        if ($('#add-comment-dv').hasClass('show')) {
+            console.log('[DEBUG] resize.hideCommentDv: Изменение размера окна, скрываем окно комментариев');
+            setComment(true);
+        }
+    });
 });
 
 
@@ -1263,8 +1279,11 @@ function getCellValue(indexRow, indexCol){
 }
 
 function setComment(clear=false){
+    console.log('[DEBUG] setComment вызвана', {clear, selectedCells, settingComment});
+    
     if(selectedCells.length === 0 && lastSelectedCellForComment && lastSelectedCellForComment.length > 0) {
         selectedCells = JSON.parse(JSON.stringify(lastSelectedCellForComment));
+        console.log('[DEBUG] setComment: восстановлены selectedCells из lastSelectedCellForComment');
     }
     console.log('[DEBUG] setComment', selectedCells);
     if(selectedCells.length > 0) {
@@ -1276,17 +1295,21 @@ function setComment(clear=false){
         }
     }
 	if(clear){
+		console.log('[DEBUG] setComment: очистка комментария');
 		setCells("", true);
 	}else{
-		setCells($('#add-comment-in').val(), true);
+		let commentValue = $('#add-comment-in').val();
+		console.log('[DEBUG] setComment: сохранение комментария', commentValue);
+		setCells(commentValue, true);
 	}
 	
 	$('#add-comment-in').val("");
 	$('#add-comment-dv').removeClass('show');
+	console.log('[DEBUG] setComment: окно комментариев скрыто');
 	
 	settingComment = false;
     lastSelectedCellForComment = null;
-	
+	console.log('[DEBUG] setComment: завершена', {settingComment, lastSelectedCellForComment});
 }
 
 function calcDays(){
@@ -1487,6 +1510,13 @@ function selectCell(indexRow, indexCol, event) {
         console.trace('[TRACE] selectCell вызван с null');
     }
     console.log('[LOG] selectCell вызван', {indexRow, indexCol, event, ctrl: event && event.ctrlKey, shift: event && event.shiftKey, selectedCells: JSON.parse(JSON.stringify(selectedCells))});
+    
+    // === ДОБАВЛЕНО: Скрытие окна комментариев при клике на ячейки ===
+    if (settingComment && $('#add-comment-dv').hasClass('show')) {
+        console.log('[DEBUG] selectCell: клик на ячейку при открытом окне комментариев, скрываем окно');
+        setComment(true);
+    }
+    
     // Если уже выделена эта ячейка и выделено больше одной — не сбрасываем выделение
     if (!(event && event.shiftKey) && selectedCells.length > 1) {
         for (let cell of selectedCells) {
@@ -1756,6 +1786,7 @@ function contextAction(act){
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
             case "comment":
+                console.log('[DEBUG] contextAction: открытие окна комментариев', {selectedCells, startRow, startCol});
                 if (selectedCells.length > 0) {
                     lastSelectedCellForComment = JSON.parse(JSON.stringify(selectedCells));
                 }
@@ -1778,6 +1809,7 @@ function contextAction(act){
                 $('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
                 $('#add-comment-in').focus();
                 settingComment = true;
+                console.log('[DEBUG] contextAction: окно комментариев открыто', {left, top, settingComment});
                 break;
 		case "clear":
             // === ЗАПРЕТ УДАЛЕНИЯ КОДА "СО" ===
@@ -2165,8 +2197,15 @@ function showHideInfo(element, id){
 				if(worker['master_uid'] !== undefined && $('#masters-sl').length && $('#masters-sl').val() != worker['master_uid']) {
 					showSave = true;
 				}
-				if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) {
-					showSave = true;
+				// Для начальников проверяем не только uid, но и location_uid
+				if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length) {
+					let selectedChiefUid = $('#chiefs-sl').val();
+					let selectedLocationUid = $('#chiefs-sl option:selected').parent().attr('value');
+					
+					// Показываем кнопку, если изменился начальник ИЛИ объект
+					if(selectedChiefUid != worker['chief_uid'] || selectedLocationUid != worker['location_uid']) {
+						showSave = true;
+					}
 				}
 				if(showSave) {
 					console.log('[info-save-dv] show (условие выполнено)');
@@ -2180,7 +2219,12 @@ function showHideInfo(element, id){
 					$('#masters-sl').off('change.infoSave').on('change.infoSave', function() {
 						let showSave = false;
 						if(worker['master_uid'] !== undefined && $('#masters-sl').val() != worker['master_uid']) showSave = true;
-						if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) showSave = true;
+						// Для начальников проверяем не только uid, но и location_uid
+						if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length) {
+							let selectedChiefUid = $('#chiefs-sl').val();
+							let selectedLocationUid = $('#chiefs-sl option:selected').parent().attr('value');
+							if(selectedChiefUid != worker['chief_uid'] || selectedLocationUid != worker['location_uid']) showSave = true;
+						}
 						if(showSave) {
 							console.log('[info-save-dv] show (onchange)');
 							$('#info-dv .info-save-dv').show().css('display', 'block');
@@ -2192,7 +2236,12 @@ function showHideInfo(element, id){
 					$('#chiefs-sl').off('change.infoSave').on('change.infoSave', function() {
 						let showSave = false;
 						if(worker['master_uid'] !== undefined && $('#masters-sl').length && $('#masters-sl').val() != worker['master_uid']) showSave = true;
-						if(worker['chief_uid'] !== undefined && $('#chiefs-sl').val() != worker['chief_uid']) showSave = true;
+						// Для начальников проверяем не только uid, но и location_uid
+						if(worker['chief_uid'] !== undefined) {
+							let selectedChiefUid = $('#chiefs-sl').val();
+							let selectedLocationUid = $('#chiefs-sl option:selected').parent().attr('value');
+							if(selectedChiefUid != worker['chief_uid'] || selectedLocationUid != worker['location_uid']) showSave = true;
+						}
 						if(showSave) {
 							console.log('[info-save-dv] show (onchange)');
 							$('#info-dv .info-save-dv').show().css('display', 'block');
@@ -2211,11 +2260,16 @@ function showHideInfo(element, id){
 						changeMaster(id);
 						changed = true;
 					}
-					if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length && $('#chiefs-sl').val() != worker['chief_uid']) {
-						// Изменён начальник
-						console.log('[info-save-dv] Отправка изменения начальника', {worker_id: id, new_chief: $('#chiefs-sl').val()});
-						changeChief(id);
-						changed = true;
+					// Для начальников проверяем не только uid, но и location_uid
+					if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length) {
+						let selectedChiefUid = $('#chiefs-sl').val();
+						let selectedLocationUid = $('#chiefs-sl option:selected').parent().attr('value');
+						if(selectedChiefUid != worker['chief_uid'] || selectedLocationUid != worker['location_uid']) {
+							// Изменён начальник
+							console.log('[info-save-dv] Отправка изменения начальника', {worker_id: id, new_chief: selectedChiefUid, new_location: selectedLocationUid});
+							changeChief(id);
+							changed = true;
+						}
 					}
 					if(changed) {
 						$(this).hide();
@@ -2237,12 +2291,25 @@ function setMouseUpState(e) {
     mouseUp     = (flags & 1) === 1;
     mouseDown   = false;
     
-    // Убираем автоматическое закрытие модалки комментариев
-    // if(settingComment && !$(e.target).parents("#add-comment-dv").length > 0){
-    //     setTimeout(() => {
-    //         setComment(true);
-    //     }, 100);
-    // }
+    // === ИСПРАВЛЕНО: Добавляем логику скрытия окна комментариев при клике вне его ===
+if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
+    // Проверяем, не кликнули ли по пункту меню "Комментарий"
+    let isCommentMenuClick = $(e.target).closest('li').length > 0 &&
+                             $(e.target).closest('li').text().includes('Комментарий');
+    if (!isCommentMenuClick) {
+        console.log('[DEBUG] setMouseUpState: Клик вне окна комментариев, скрываем окно', {
+            target: e.target,
+            isAddCommentDv: $(e.target).closest("#add-comment-dv").length > 0,
+            settingComment: settingComment,
+            isCommentMenuClick: isCommentMenuClick
+        });
+        setTimeout(() => {
+            setComment(true);
+        }, 150); // Можно чуть увеличить задержку
+    } else {
+        console.log('[DEBUG] setMouseUpState: Клик по пункту меню \"Комментарий\", не скрываем окно');
+    }
+}
     
     if(settingFilter && ($(e.target).parents("#workers").length > 0 || $(e.target).parents("#field").length > 0)){
         $('#filter-dv').hide(50);
@@ -2617,7 +2684,7 @@ function onDoubleClick(){
     // Если выделено несколько ячеек — не трогаем выделение
     if (selectedCells.length > 1) {
         // только показываем меню
-    } else {
+        } else {
         // если выделена одна или ни одна — выделяем текущую
         let value = getCellValue(startRow, startCol);
         selectCell(startRow, startCol,null);
@@ -3191,6 +3258,22 @@ $(document).ready(function() {
     $(window).on('scroll.hideInfoDv', function() {
         if ($('#info-dv').is(':visible')) {
             $('#info-dv').hide();
+        }
+    });
+    
+    // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при прокрутке ===
+    $(window).on('scroll.hideCommentDv', function() {
+        if ($('#add-comment-dv').hasClass('show')) {
+            console.log('[DEBUG] scroll.hideCommentDv: Прокрутка, скрываем окно комментариев');
+            setComment(true);
+        }
+    });
+    
+    // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при изменении размера окна ===
+    $(window).on('resize.hideCommentDv', function() {
+        if ($('#add-comment-dv').hasClass('show')) {
+            console.log('[DEBUG] resize.hideCommentDv: Изменение размера окна, скрываем окно комментариев');
+            setComment(true);
         }
     });
 });
@@ -4378,14 +4461,6 @@ window.addEventListener('keydown', function(e) {
     }
 }, true);
 
-document.addEventListener('keydown', function(e) {
-    if (e.keyCode >= 112 && e.keyCode <= 123 || e.key.startsWith('F')) {
-        e.preventDefault();
-        e.stopPropagation();
-        return false;
-    }
-}, true);
-
 // В setCells и startSelect запретить редактирование cell-before-ob
 let orig_setCells3 = setCells;
 setCells = function(value, isComment=false, isFullClear=false) {
@@ -4868,6 +4943,8 @@ function changeChief(worker_id){
     let chiefChanged = currentWorker.chief_uid !== new_chief_uid;
     let locationChanged = currentWorker.location_uid !== new_location_uid;
 
+    // Если начальник не изменился (тот же uid), но изменился объект - это нормально
+    // Это означает, что начальник работает на другом объекте, но это тот же человек
     let isTransfer = chiefChanged || locationChanged;
 
     console.log('[changeChief] Проверка переноса:', {
@@ -4876,7 +4953,9 @@ function changeChief(worker_id){
         newLocation: new_location_uid,
         oldChief: currentWorker.chief_uid,
         newChief: new_chief_uid,
-        isTransfer
+        isTransfer,
+        chiefChanged,
+        locationChanged
     });
 
     if (isTransfer) {
@@ -5151,306 +5230,22 @@ createTabel = function() {
 };
 
 
-// --- Жёсткое скрытие fixstate-menu при любом клике вне него и при скролле (нативный обработчик) ---
-document.addEventListener('mousedown', function(e) {
-    const fixMenu = document.getElementById('fixstate-menu');
-    if (fixMenu && getComputedStyle(fixMenu).display !== 'none' && !e.target.closest('#fixstate-menu')) {
-        fixMenu.style.display = 'none';
-        console.log('[native] Скрыто fixstate-menu по клику вне меню');
-    }
-}, true);
-window.addEventListener('scroll', function() {
-    const fixMenu = document.getElementById('fixstate-menu');
-    if (fixMenu && getComputedStyle(fixMenu).display !== 'none') {
-        fixMenu.style.display = 'none';
-        console.log('[native] Скрыто fixstate-menu по скроллу');
-    }
-}, true);
-
-// --- Принудительно показываем всех начальников (chief-head) в нераспределённых ---
-function showAllChiefsInUnassigned() {
-    // Проверяем, является ли текущий месяц выбранным
-    const now = new Date();
-    const isCurrentMonth = curDate.getFullYear() === now.getFullYear() && curDate.getMonth() === now.getMonth();
-    
-    $('.location-head').each(function() {
-        let text = $(this).text().toUpperCase();
-        if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
-            let id = $(this).attr('id').replace('-head', '');
-            // Показываем только если это текущий месяц
-            if (isCurrentMonth) {
-                // Для каждого chief-head внутри этого location
-                $('#'+id+'-canvas .chief-head').each(function() {
-                    $(this).css('display', 'flex');
-                    let chiefId = $(this).attr('id').replace('-head', '');
-                    $('#'+chiefId+'-canvas').show();
-                });
-            }
-        }
-    });
-}
-// После applyOrgFilter и forceShowUnassigned вызываем showAllChiefsInUnassigned
-let oldApplyOrgFilter = window.applyOrgFilter;
-window.applyOrgFilter = function() {
-    oldApplyOrgFilter();
-    setTimeout(function() {
-        if (typeof forceShowUnassigned === 'function') forceShowUnassigned();
-        showAllChiefsInUnassigned();
-    }, 300);
-};
-
-
-// Скрытие окна детального просмотра при клике вне его
-$(document).on('mousedown.hideInfoDv', function(e) {
-    if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
-        $('#info-dv').hide();
+// === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при прокрутке ===
+$(window).on('scroll.hideCommentDv', function() {
+    if ($('#add-comment-dv').hasClass('show')) {
+        console.log('[DEBUG] scroll.hideCommentDv: Прокрутка, скрываем окно комментариев');
+        setComment(true);
     }
 });
 
-
-
-// Функция для навешивания обработчиков скрытия info-dv
-function attachInfoDvHideHandler() {
-    $(document).off('mousedown.hideInfoDv').on('mousedown.hideInfoDv', function(e) {
-        if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
-            $('#info-dv').hide();
-        }
-    });
-    $(window).off('scroll.hideInfoDv').on('scroll.hideInfoDv', function() {
-        if ($('#info-dv').is(':visible')) {
-            $('#info-dv').hide();
-        }
-    });
-}
-// Навешиваем обработчик при загрузке
-$(document).ready(function() {
-    attachInfoDvHideHandler();
-});
-// После любого глобального .off('mousedown') или .off() — снова навешиваем
-// В режиме только для чтения
-$(document).ready(function() {
-  if (IS_READONLY) {
-    $(document).off('mousedown');
-    attachInfoDvHideHandler();
-  }
-});
-// После крупных обновлений
-if (typeof getDataTabel === 'function') {
-    let orig_getDataTabel_attachInfo = getDataTabel;
-    getDataTabel = function() {
-        let res = orig_getDataTabel_attachInfo.apply(this, arguments);
-        attachInfoDvHideHandler();
-        return res;
-    };
-}
-if (typeof createTabel === 'function') {
-    let orig_createTabel_attachInfo = createTabel;
-    createTabel = function() {
-        let res = orig_createTabel_attachInfo.apply(this, arguments);
-        attachInfoDvHideHandler();
-        return res;
-    };
-}
-
-
-
-// Обработчики скрытия info-dv — только один раз при загрузке
-$(document).ready(function() {
-    $(document).on('mousedown.hideInfoDv', function(e) {
-        if ($('#info-dv').is(':visible') && !$(e.target).closest('#info-dv').length && !$(e.target).hasClass('info-row')) {
-            $('#info-dv').hide();
-        }
-    });
-    $(window).on('scroll.hideInfoDv', function() {
-        if ($('#info-dv').is(':visible')) {
-            $('#info-dv').hide();
-        }
-    });
-});
-
-// Тултип по всем сотрудникам при наведении на #master-head
-let masterHeadTooltipTimeout = null;
-
-function positionMasterTooltip() {
-    let $this = $('#master-head');
-    let $tooltip = $('#master-tooltip');
-    if (!$this.length || !$tooltip.length || !$tooltip.is(':visible')) return;
-    let offset = $this.offset();
-    let tooltipW = $tooltip.outerWidth();
-    let tooltipH = $tooltip.outerHeight();
-    let left = offset.left + $this.outerWidth() + 10;
-    let top = offset.top;
-    let winW = $(window).width();
-    let winH = $(window).height();
-    let scrollTop = $(window).scrollTop();
-
-    // Если не помещается справа — показываем слева
-    if (left + tooltipW > winW - 10) {
-        left = offset.left - tooltipW - 10;
-        if (left < 10) left = 10;
+// === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при изменении размера окна ===
+$(window).on('resize.hideCommentDv', function() {
+    if ($('#add-comment-dv').hasClass('show')) {
+        console.log('[DEBUG] resize.hideCommentDv: Изменение размера окна, скрываем окно комментариев');
+        setComment(true);
     }
-
-    // --- КОРРЕКТНОЕ ПОВЕДЕНИЕ ПО ВЕРТИКАЛИ ---
-    // Если тултип не помещается снизу — показываем строго над #master-head
-    if (top + tooltipH > winH + scrollTop - 10) {
-        top = offset.top - tooltipH;
-        if (top < scrollTop + 10) top = scrollTop + 10; // не выше окна
-    }
-
-    $tooltip.css({top: top + 'px', left: left + 'px'});
-}
-
-$(document).on('mouseenter', '#master-head', function(e) {
-    if (masterHeadTooltipTimeout) clearTimeout(masterHeadTooltipTimeout);
-    const $this = $(this);
-    masterHeadTooltipTimeout = setTimeout(function() {
-        let workersForTooltip = Array.isArray(WORKERS) ? WORKERS.slice() : [];
-        // Фильтрация "несотрудников"
-        workersForTooltip = workersForTooltip.filter(
-            w => w && w.uid && w.fio && typeof w.fio === 'string' && !/^[<‹]/.test(w.fio.trim())
-        );
-        
-        let todayIndex = getStatsDayIndex();
-        
-        // Формируем тултип аналогично tooltipStats
-        let countY = 0, countB = 0, countEmpty = 0;
-        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
-        let countK = 0;
-        let countPCH = 0;
-        let countSO = 0;
-        let totalWorkers = 0;
-        for(let w_idx in workersForTooltip){
-            let worker = workersForTooltip[w_idx];
-            let vt = '';
-            if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
-                countEmpty++;
-                totalWorkers++;
-                continue;
-            }
-            vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
-            let hours = ('hours' in worker.days[todayIndex]) ? Number(worker.days[todayIndex].hours) : 0;
-            totalWorkers++;
-            if (
-                (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') && hours === 0
-            ) {
-                countEmpty++;
-                continue;
-            }
-            if (vt === '' && hours === 0) {
-                countEmpty++;
-                continue;
-            }
-            vt = String(worker.days[todayIndex].vt).toUpperCase();
-            if (vt === 'Я') {
-                countY++;
-            } else if (vt === 'Б') {
-                countB++;
-            } else if (vt === 'К') {
-                countK++;
-            } else if (vt === 'ПЧ') {
-                countPCH++;
-            } else if (vt === 'СО') {
-                countSO++;
-            } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
-                detailedNotPresentCounts[vt]++;
-            } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
-                detailedAbsentCounts[vt]++;
-            } else if (vt === '') {
-                countEmpty++;
-            }
-        }
-        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
-        let sumAbsent = 0;
-        for (const code in detailedAbsentCounts) {
-            sumAbsent += detailedAbsentCounts[code];
-        }
-        let statsTableHtml = `
-        <div class="master-tooltip-content">
-            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                <tr>
-                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
-                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${totalWorkers - sumAbsent}</td>
-                </tr>
-            </table>
-            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                <tr>
-                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
-                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
-                </tr>
-            </table>
-            <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                <div style="width: 48%;">
-                    <table style="width:100%; border-collapse: collapse;">
-                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
-                        <tr><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['В']}</td></tr>
-                    </table>
-                </div>
-                <div style="width: 48%;">
-                    <table style="width:100%; border-collapse: collapse;">
-                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
-                        <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
-                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
-                    </table>
-                </div>
-            </div>
-            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
-            <table style='width:100%; border-collapse: collapse; margin-bottom: 2px;'>
-                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>К</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countK}</td></tr>
-                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>СО</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countSO}</td></tr>
-                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>ПЧ</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countPCH}</td></tr>
-            </table>
-            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
-            <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
-                 <tr>
-                    <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
-                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
-                    <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
-                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
-                </tr>
-            </table>
-        </div>
-        `;
-        let $tooltip = $('#master-tooltip');
-        if ($tooltip.length === 0) {
-            $('body').append('<div id="master-tooltip" class="tooltip-popup" style="position: absolute; z-index: 9999; background: white; border: 1px solid #788cad; box-shadow: 0 3px 8px rgba(0,0,0,0.3); border-radius: 5px; padding: 10px; display: none; max-width: 400px;"></div>');
-            $tooltip = $('#master-tooltip');
-        }
-        $tooltip.html(statsTableHtml);
-        $tooltip.show();
-        positionMasterTooltip();
-        // Навешиваем обработчики scroll/resize для прилипания
-        $(window).on('scroll.masterTooltip resize.masterTooltip', positionMasterTooltip);
-    }, 0); // 0 секунд задержка
-});
-$(document).on('mouseleave', '#master-head', function() {
-    if (masterHeadTooltipTimeout) clearTimeout(masterHeadTooltipTimeout);
-    $('#master-tooltip').hide();
-    // Снимаем обработчики scroll/resize
-    $(window).off('scroll.masterTooltip resize.masterTooltip');
 });
 
-
-
-
-
-
-
-
-// --- ДОБАВЛЕНО: Новая функция для показа табеля по объектам ---
-// ... existing code ...
 async function showWorkerObjectsTabel(workerId, event) {
 
     let dateForRequest;
@@ -5616,6 +5411,8 @@ function closeWorkerObjectsModal() {
     clearReadOnlyRowSelection();
 
 }
+
+
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = {
         setFullReadonlyCookie,
@@ -5629,13 +5426,3 @@ if (typeof module !== 'undefined' && module.exports) {
         getDataTabel
     };
 }
-
-
-
-
-
-
-
-
-
-
