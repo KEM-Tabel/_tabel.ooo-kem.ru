@@ -1,3 +1,145 @@
+// Функция для генерации HTML тултипа по статистике
+function generateTooltipHtml(stats) {
+    if (!stats) return '';
+    let {countEmpty, onObject, sumAbsent, countK, countPCH, countSO, detailedNotPresentCounts, detailedAbsentCounts, countY, countB, sumNotPresent, totalWorkers} = stats;
+    return `
+        <div class="master-tooltip-content">
+            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                <tr>
+                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
+                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${onObject}</td>
+                </tr>
+            </table>
+            <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                <tr>
+                     <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
+                     <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
+                </tr>
+            </table>
+            <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
+                <div style="width: 48%;">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
+                        <tr><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['В']}</td></tr>
+                    </table>
+                </div>
+                <div style="width: 48%;">
+                    <table style="width:100%; border-collapse: collapse;">
+                        <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
+                        <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
+                        <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
+                    </table>
+                </div>
+            </div>
+            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+            <table style='width:100%; border-collapse: collapse; margin-bottom: 2px;'>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>К</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countK}</td></tr>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>СО</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countSO}</td></tr>
+                <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>ПЧ</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countPCH}</td></tr>
+            </table>
+            <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
+            <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
+                 <tr>
+                    <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
+                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
+                    <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
+                    <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
+                </tr>
+            </table>
+        </div>
+    `;
+}
+
+// Глобальная функция для расчёта статистики по работникам для тултипа
+function tooltipStats(workersArr) {
+    let todayIndex = getStatsDayIndex();
+    let countY = 0;
+    let countB = 0;
+    let countEmpty = 0;
+    let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
+    let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
+    let countK = 0;
+    let countPCH = 0;
+    let countSO = 0;
+    let totalWorkers = 0;
+    for(let i=0;i<workersArr.length;i++){
+        let worker = workersArr[i];
+        if (
+            !worker ||
+            !worker.uid ||
+            !worker.fio ||
+            typeof worker.fio !== 'string' ||
+            worker.fio.trim().startsWith('‹')
+        ) {
+            // Невалидный сотрудник — пропускаем
+            continue;
+        }
+        totalWorkers++;
+        if (
+            !worker.days ||
+            !Array.isArray(worker.days) ||
+            worker.days.length <= todayIndex ||
+            !worker.days[todayIndex] ||
+            typeof worker.days[todayIndex] !== 'object'
+        ) {
+            countEmpty++;
+            continue;
+        }
+        let dayObj = worker.days[todayIndex];
+        let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
+        let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
+        if (
+            (!('vt' in dayObj) && !('hours' in dayObj)) ||
+            (vt === '' && hours === 0)
+        ) {
+            countEmpty++;
+            continue;
+        }
+        if (vt === 'Я') {
+            countY++;
+        } else if (vt === 'Б') {
+            countB++;
+        } else if (vt === 'К') {
+            countK++;
+        } else if (vt === 'ПЧ') {
+            countPCH++;
+        } else if (vt === 'СО') {
+            countSO++;
+        } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
+            detailedNotPresentCounts[vt]++;
+        } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
+            detailedAbsentCounts[vt]++;
+        } else if (vt === '') {
+            countEmpty++;
+        }
+    }
+    let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
+    let sumAbsent = 0;
+    for (const code in detailedAbsentCounts) {
+        sumAbsent += detailedAbsentCounts[code];
+    }
+    let onObject = totalWorkers - sumAbsent;
+    return {countEmpty, onObject, sumAbsent, countK, countPCH, countSO, detailedNotPresentCounts, detailedAbsentCounts, countY, countB, sumNotPresent, totalWorkers};
+}
+
+// Функция для генерации HTML тултипа по всем сотрудникам (мастеру)
+function getMasterTooltipHtml(workersArr) {
+    let stats = tooltipStats(workersArr);
+    return generateTooltipHtml(stats);
+}
+
 function formatDate(date, format) {
     const pad = (num) => String(num).padStart(2, '0');
     
@@ -782,7 +924,8 @@ function createTabel(){
                         let extraClass = '';
                         let extraStyle = '';
                         let col_no = Number(d)+1;
-                        let isToday = (typeof TODAY !== 'undefined' && col_no < Number(TODAY)+1);
+                        let todayIndexForHighlighting = getTodayIndexForHighlighting();
+                        let isToday = (col_no <= Number(todayIndexForHighlighting)+1);
                         if(isToday) {
                             if((!dayValue || dayValue === "") && (!hoursNum || hoursNum == 0)){
                                 extraClass = ' cell-attendance-missing-hours';
@@ -858,7 +1001,7 @@ function createTabel(){
 
 // ACTION ===========================
 
-// Функция для показа уведомления о потере соединения
+// Функция для показа уведомления о потеряно соединение
 function showConnectionError(message = "Потеряно соединение с сервером! Изменения не сохранены.") {
     if ($('#connection-error-notify').length === 0) {
         $('body').append('<div id="connection-error-notify" style="position:fixed;top:30px;right:30px;z-index:99999;background:#ffdddd;border:1px solid #c00;padding:15px 25px;border-radius:8px;box-shadow:0 2px 8px #0002;font-size:18px;display:none;"></div>');
@@ -1220,7 +1363,7 @@ function setCells(value, isComment=false, isFullClear=false){
         $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html(htmlValue);
         // ЛОГ после изменения DOM
         console.log('[DEBUG] После изменения DOM', $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').html());
-        if(dayValue === "Я" && (!dayHours || dayHours == 0)){
+        if(dayValue === "Я" && (!hoursNum || hoursNum == 0)){
             $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": YaFnt, "font-weight": "bold"});
         }else{
             $('#'+Number(cell['row']+1)+'-'+Number(cell['col']+1)+'-day-dv').css({"color": selectedFnt, "font-weight": "normal"});
@@ -1240,7 +1383,8 @@ function setCells(value, isComment=false, isFullClear=false){
         let col = Number(cell['col'])+1;
         let $cell = $('#'+no+'-'+col+'-day-dv');
         $cell.removeClass('cell-attendance-missing-hours');
-        if (col < Number(TODAY)+1) {
+        let todayIndexForHighlighting = getTodayIndexForHighlighting();
+        if (col <= Number(todayIndexForHighlighting)+1) {
             let val = TABEL[id][day]['vt'];
             let hours = TABEL[id][day]['hours'];
             if ((!val || val === "") && (!hours || hours == 0)) {
@@ -1365,77 +1509,7 @@ function calcDays(){
         }
     }
 
-    // --- Новая функция подсчёта, как в тултипе ---
-    function tooltipStats(workersArr) {
-        let todayIndex = TODAY;
-        let countY = 0;
-        let countB = 0;
-        let countEmpty = 0;
-        let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
-        let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
-        let countK = 0;
-        let countPCH = 0;
-        let countSO = 0;
-        let totalWorkers = 0;
-        for(let i=0;i<workersArr.length;i++){
-            let worker = workersArr[i];
-            if (
-                !worker ||
-                !worker.uid ||
-                !worker.fio ||
-                typeof worker.fio !== 'string' ||
-                worker.fio.trim().startsWith('‹')
-            ) {
-                // Невалидный сотрудник — пропускаем
-                continue;
-            }
-            totalWorkers++;
-            if (
-                !worker.days ||
-                !Array.isArray(worker.days) ||
-                worker.days.length <= todayIndex ||
-                !worker.days[todayIndex] ||
-                typeof worker.days[todayIndex] !== 'object'
-            ) {
-                countEmpty++;
-                continue;
-            }
-            let dayObj = worker.days[todayIndex];
-            let vt = (dayObj && 'vt' in dayObj) ? String(dayObj.vt).toUpperCase() : '';
-            let hours = (dayObj && 'hours' in dayObj) ? Number(dayObj.hours) : 0;
-            if (
-                (!('vt' in dayObj) && !('hours' in dayObj)) ||
-                (vt === '' && hours === 0)
-            ) {
-                countEmpty++;
-                continue;
-            }
-            if (vt === 'Я') {
-                countY++;
-            } else if (vt === 'Б') {
-                countB++;
-            } else if (vt === 'К') {
-                countK++;
-            } else if (vt === 'ПЧ') {
-                countPCH++;
-            } else if (vt === 'СО') {
-                countSO++;
-            } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
-                detailedNotPresentCounts[vt]++;
-            } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
-                detailedAbsentCounts[vt]++;
-            } else if (vt === '') {
-                countEmpty++;
-            }
-        }
-        let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
-        let sumAbsent = 0;
-        for (const code in detailedAbsentCounts) {
-            sumAbsent += detailedAbsentCounts[code];
-        }
-        let onObject = totalWorkers - sumAbsent;
-        return {countEmpty, onObject, sumAbsent, countK, countPCH, countSO, detailedNotPresentCounts, detailedAbsentCounts, countY, countB, sumNotPresent, totalWorkers};
-    }
+
     // Мастера
     for(let id in masterMap){
         let stats = tooltipStats(masterMap[id]);
@@ -2948,14 +3022,36 @@ function getStatsDayIndex() {
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
     
-    // Получаем дату из URL или из текущей даты
-    let urlParams = new URLSearchParams(window.location.search);
-    let dateParam = urlParams.get('date');
-    let viewDate = dateParam ? new Date(dateParam) : new Date();
+    // Получаем дату из глобальной переменной curDate
+    let viewDate = typeof curDate !== 'undefined' ? curDate : new Date();
     let viewMonth = viewDate.getMonth();
     let viewYear = viewDate.getFullYear();
     
     // Определяем индекс дня для статистики
+    let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
+    
+    // Если просматриваем предыдущий месяц, используем последний день этого месяца
+    if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
+        let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
+        todayIndex = lastDay - 1; // -1 потому что индексация с 0
+    }
+    
+    return todayIndex;
+}
+
+// Функция для определения правильного индекса "сегодняшнего" дня
+function getTodayIndexForHighlighting() {
+    // Проверяем, является ли текущий месяц предыдущим
+    let currentDate = new Date();
+    let currentMonth = currentDate.getMonth();
+    let currentYear = currentDate.getFullYear();
+    
+    // Получаем дату из глобальной переменной curDate
+    let viewDate = typeof curDate !== 'undefined' ? curDate : new Date();
+    let viewMonth = viewDate.getMonth();
+    let viewYear = viewDate.getFullYear();
+    
+    // Определяем индекс дня для подсветки
     let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
     
     // Если просматриваем предыдущий месяц, используем последний день этого месяца
@@ -3011,23 +3107,8 @@ function initTooltips() {
             let savedData = window.SAVED_DATA;
             let todayIndex = getStatsDayIndex();
             
-            // Проверяем, является ли текущий месяц предыдущим
-            let currentDate = new Date();
-            let currentMonth = currentDate.getMonth();
-            let currentYear = currentDate.getFullYear();
-            
-            // Получаем дату из URL или из текущей даты
-            let urlParams = new URLSearchParams(window.location.search);
-            let dateParam = urlParams.get('date');
-            let viewDate = dateParam ? new Date(dateParam) : new Date();
-            let viewMonth = viewDate.getMonth();
-            let viewYear = viewDate.getFullYear();
-            
-            // Если просматриваем предыдущий месяц, используем последний день этого месяца
-            if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
-                let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
-                todayIndex = lastDay - 1; // -1 потому что индексация с 0
-            }
+            // Используем функцию getStatsDayIndex для определения правильного индекса
+            todayIndex = getStatsDayIndex();
             
             // Собираем работников для тултипа
             if (elementType === 'master' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && typeof masterIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
@@ -3072,125 +3153,15 @@ function initTooltips() {
             }
             
             // Формируем тултип аналогично tooltipStats
-            let countY = 0, countB = 0, countEmpty = 0;
-            let detailedNotPresentCounts = {'НН': 0, 'НВ': 0, 'Г': 0, 'МО': 0, 'В': 0};
-            let detailedAbsentCounts = {'ОТ': 0, 'ОД': 0, 'У': 0, 'ОБ': 0, 'ПК': 0, 'Д': 0, 'УВ': 0, 'Р': 0, 'ОЖ': 0, 'ДО': 0};
-            let countK = 0;
-            let countPCH = 0;
-            let countSO = 0;
-            let totalWorkers = 0;
-            for(let w_idx in workersForTooltip){
-                let worker = workersForTooltip[w_idx];
-                let vt = '';
-                if (!worker.days || !Array.isArray(worker.days) || worker.days.length <= todayIndex || !worker.days[todayIndex] || typeof worker.days[todayIndex] !== 'object') {
-                    countEmpty++;
-                    totalWorkers++;
-                    continue;
-                }
-                vt = ('vt' in worker.days[todayIndex]) ? String(worker.days[todayIndex].vt) : '[NO VT FIELD]';
-                let hours = ('hours' in worker.days[todayIndex]) ? Number(worker.days[todayIndex].hours) : 0;
-                totalWorkers++;
-                if (
-                    (!('vt' in worker.days[todayIndex]) || String(worker.days[todayIndex].vt).trim() === '') && hours === 0
-                ) {
-                    countEmpty++;
-                    continue;
-                }
-                if (vt === '' && hours === 0) {
-                    countEmpty++;
-                    continue;
-                }
-                vt = String(worker.days[todayIndex].vt).toUpperCase();
-                if (vt === 'Я') {
-                    countY++;
-                } else if (vt === 'Б') {
-                    countB++;
-                } else if (vt === 'К') {
-                    countK++;
-                } else if (vt === 'ПЧ') {
-                    countPCH++;
-                } else if (vt === 'СО') {
-                    countSO++;
-                } else if (detailedNotPresentCounts.hasOwnProperty(vt)) {
-                    detailedNotPresentCounts[vt]++;
-                } else if (detailedAbsentCounts.hasOwnProperty(vt)) {
-                    detailedAbsentCounts[vt]++;
-                } else if (vt === '') {
-                    countEmpty++;
-                }
-            }
+            let stats = tooltipStats(workersForTooltip);
+            let statsHtml = generateTooltipHtml(stats);
             
-            let sumNotPresent = countB + detailedNotPresentCounts['НВ'] + detailedNotPresentCounts['Г'] + detailedNotPresentCounts['МО'] + detailedNotPresentCounts['В'];
-            let sumAbsent = 0;
-            for (const code in detailedAbsentCounts) {
-                sumAbsent += detailedAbsentCounts[code];
-            }
-            
-            let statsTableHtml = `
-            <div class="master-tooltip-content">
-                <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                    <tr>
-                         <td style="padding: 2px;font-weight: bold; font-size: 13px;">На объекте</td>
-                         <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${totalWorkers - sumAbsent}</td>
-                    </tr>
-                </table>
-                <table style="width:100%; border-collapse: collapse; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                    <tr>
-                         <td style="padding: 2px;font-weight: bold; font-size: 13px;">Явка</td>
-                         <td style="padding: 2px; text-align:right; font-weight: bold; font-size: 13px;">${countY}</td>
-                    </tr>
-                </table>
-                <div style="display: flex; justify-content: space-between; margin-top: 5px; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 5px;">
-                    <div style="width: 48%;">
-                        <table style="width:100%; border-collapse: collapse;">
-                            <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Не выход</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px"> ${sumNotPresent}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Б</td><td style="padding: 1px 2px; text-align:right;">${countB}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">НВ</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['НВ']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Г</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['Г']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">МО</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['МО']}</td></tr>
-                            <tr><td style="padding: 1px 2px;">В</td><td style="padding: 1px 2px; text-align:right;">${detailedNotPresentCounts['В']}</td></tr>
-                        </table>
-                    </div>
-                    <div style="width: 48%;">
-                        <table style="width:100%; border-collapse: collapse;">
-                            <tr><td style="padding: 1px 2px; font-weight: bold; font-size: 13px;">Отсутствуют</td><td style="padding: 1px 2px; text-align:right; font-weight: bold;font-size: 13px">${sumAbsent}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОТ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОТ']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОД</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОД']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">У</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['У']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ОБ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОБ']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ПК</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ПК']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Д</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Д']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">УВ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['УВ']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">Р</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['Р']}</td></tr>
-                            <tr><td style="padding: 1px 2px;">ОЖ</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ОЖ']}</td></tr>
-                            <tr style="border-bottom: 1px dotted #eee;"><td style="padding: 1px 2px;">ДО</td><td style="padding: 1px 2px; text-align:right;">${detailedAbsentCounts['ДО']}</td></tr>
-                        </table>
-                    </div>
-                </div>
-                <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
-                <table style='width:100%; border-collapse: collapse; margin-bottom: 2px;'>
-                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>К</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countK}</td></tr>
-                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>СО</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countSO}</td></tr>
-                    <tr><td style='padding: 1px 2px; font-weight: bold; font-size: 13px;'>ПЧ</td><td style='padding: 1px 2px; text-align:right; font-weight: bold; font-size: 13px;'>${countPCH}</td></tr>
-                </table>
-                <div style='margin: 6px 0 2px 0; border-bottom: 1px solid #eee;'></div>
-                <table style="width: 100%; margin-top: 5px; border-collapse: collapse;">
-                     <tr>
-                        <td style="padding: 1px 2px; width: 20%; font-weight: bold; font-size: 13px;">НН</td>
-                        <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${detailedNotPresentCounts['НН']}</td>
-                        <td style="padding: 1px 2px; width: 20%; padding-left: 10px; font-weight: bold; font-size: 13px;">Пусто</td>
-                        <td style="padding: 1px 2px; text-align:right; width: 28%; font-weight: bold; font-size: 13px;">${countEmpty}</td>
-                    </tr>
-                </table>
-            </div>
-            `;
-            
-            if (!statsTableHtml) {
+            if (!statsHtml) {
                 tooltip.hide();
                 return;
             }
             
-            tooltip.html(statsTableHtml);
+            tooltip.html(statsHtml);
             // Позиционирование тултипа относительно строки "Пустых"
             let $anchor = $hoveredElement;
             let offset = $anchor.offset();
@@ -3240,6 +3211,34 @@ function initTooltips() {
         }
     }).on('mouseleave', function() {
         tooltip.stop(true, true).fadeOut(100);
+    });
+
+    // Тултип по наведению на фамилию мастера (весь табель)
+    $(document).on('mouseenter.masterTooltip', '#master-head', function(e){
+        const tooltip = $('#master-tooltip');
+        let workersForTooltip = [];
+        if (window.SAVED_DATA) {
+            window.SAVED_DATA.forEach(location => {
+                location.chiefs.forEach(chief => {
+                    chief.masters.forEach(master => {
+                        if (master.workers) {
+                            workersForTooltip.push(...master.workers);
+                        }
+                    });
+                });
+            });
+        }
+        let stats = tooltipStats(workersForTooltip);
+        let statsHtml = generateTooltipHtml(stats);
+        tooltip.html(statsHtml);
+        tooltip.css({
+            left: e.pageX + 10,
+            top: e.pageY + 10,
+            display: 'block'
+        });
+    });
+    $(document).on('mouseleave.masterTooltip', '#master-head', function(e){
+        $('#master-tooltip').hide();
     });
 }
 
@@ -4851,7 +4850,7 @@ function changeMaster(worker_id){
                             changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
                              TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
                              // Обновляем отображение ячейки
-                             let cellSelector = '#' + (workerIndex + 1) + '-' + (selectedDayIndex + 1) + '-day-dv';
+                             let cellSelector = '#' + (workerIndex+1) + '-' + (selectedDayIndex+1) + '-day-dv';
                              console.log('[move-worker-modal] Обновление DOM ячейки:', cellSelector);
                              let currentDayData = TABEL[tabId][selectedDayIndex];
                              let htmlValue = '';
@@ -5075,9 +5074,10 @@ function isCellLocked(row, col, value) {
 
     // Проверяем, что это текущий месяц и день в будущем
     let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
+    let todayIndexForHighlighting = getTodayIndexForHighlighting();
     if (
         isCurrentMonth &&
-        Number(col) > TODAY &&
+        Number(col) > todayIndexForHighlighting &&
         typeof value === "string" &&
         allowedFutureCodes.includes(value.trim().toUpperCase())
     ) {
