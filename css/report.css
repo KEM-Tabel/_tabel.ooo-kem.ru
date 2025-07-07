@@ -1526,4 +1526,19 @@ body {
     display: none !important;
 }
 
+/* Серый стиль для заблокированных ячеек */
+.cell-locked {
+    background: #e0e0e0 !important;
+    color: #888 !important;
+    cursor: not-allowed !important;
+    pointer-events: auto !important;
+}
+
+/* Дополнительные стили для заблокированных ячеек */
+[id$="-day-dv"].cell-locked {
+    background: #e0e0e0 !important;
+    color: #888 !important;
+    cursor: not-allowed !important;
+}
+
 

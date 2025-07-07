@@ -69,6 +69,9 @@ var SID			= getCookie("SID");
 var UID			= getCookie("UID");
 var LABEL		= getCookie("LABEL");
 
+// Устанавливаем глобальную переменную для доступа из JavaScript
+window.UID = UID;
+
 if(!SID || !UID){
 	document.location.href = "/auth.htm";
 }
@@ -303,6 +306,7 @@ function dShow(){
 		<ul id="context-menu">
 			<li onmousedown="contextAction('comment')">Комментарий</li>
 			<li onmousedown="contextAction('history')">История изменений</li>
+			<li onmousedown="contextAction('editSOHours')" style="display:none;" id="edit-so-hours-menu-item">Редактировать часы СО</li>
 			<li onmousedown="contextAction('clear')">Очистить</li>
 		</ul>
 		
