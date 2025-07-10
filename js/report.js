@@ -596,7 +596,11 @@ $(document).ready(function() {
     $(window).on('scroll.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
             console.log('[DEBUG] scroll.hideCommentDv: Прокрутка, скрываем окно комментариев');
-            setComment(true);
+            setTimeout(() => {
+                if ($('#add-comment-dv').hasClass('show')) {
+                    setComment(true);
+                }
+            }, 100);
         }
     });
     
@@ -604,7 +608,11 @@ $(document).ready(function() {
     $(window).on('resize.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
             console.log('[DEBUG] resize.hideCommentDv: Изменение размера окна, скрываем окно комментариев');
-            setComment(true);
+            setTimeout(() => {
+                if ($('#add-comment-dv').hasClass('show')) {
+                    setComment(true);
+                }
+            }, 100);
         }
     });
 });
@@ -1739,8 +1747,13 @@ function selectCell(indexRow, indexCol, event) {
     
     // === ДОБАВЛЕНО: Скрытие окна комментариев при клике на ячейки ===
     if (settingComment && $('#add-comment-dv').hasClass('show')) {
-        console.log('[DEBUG] selectCell: клик на ячейку при открытом окне комментариев, скрываем окно');
-        setComment(true);
+        // Добавляем небольшую задержку, чтобы не закрывать окно сразу после открытия
+        setTimeout(() => {
+            if (settingComment && $('#add-comment-dv').hasClass('show')) {
+                console.log('[DEBUG] selectCell: клик на ячейку при открытом окне комментариев, скрываем окно');
+                setComment(true);
+            }
+        }, 100);
     }
     
     // Если уже выделена эта ячейка и выделено больше одной — не сбрасываем выделение
@@ -2097,6 +2110,12 @@ function contextAction(act){
                 $('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
                 $('#add-comment-in').focus();
                 settingComment = true;
+                
+                // Добавляем небольшую задержку перед фокусом, чтобы окно успело отобразиться
+                setTimeout(() => {
+                    $('#add-comment-in').focus();
+                }, 50);
+                
                 console.log('[DEBUG] contextAction: окно комментариев открыто', {left, top, settingComment});
                 break;
 		case "clear":
@@ -2626,21 +2645,26 @@ function setMouseUpState(e) {
     
     // === ИСПРАВЛЕНО: Добавляем логику скрытия окна комментариев при клике вне его ===
 if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
-    // Проверяем, не кликнули ли по пункту меню "Комментарий"
+    // Проверяем, не кликнули ли по пункту меню "Комментарий" или контекстному меню
     let isCommentMenuClick = $(e.target).closest('li').length > 0 &&
                              $(e.target).closest('li').text().includes('Комментарий');
-    if (!isCommentMenuClick) {
+    let isContextMenuClick = $(e.target).closest('#context-menu').length > 0;
+    let isContextMenuButton = $(e.target).closest('li[onClick*="comment"]').length > 0;
+    
+    if (!isCommentMenuClick && !isContextMenuClick && !isContextMenuButton) {
         console.log('[DEBUG] setMouseUpState: Клик вне окна комментариев, скрываем окно', {
             target: e.target,
             isAddCommentDv: $(e.target).closest("#add-comment-dv").length > 0,
             settingComment: settingComment,
-            isCommentMenuClick: isCommentMenuClick
+            isCommentMenuClick: isCommentMenuClick,
+            isContextMenuClick: isContextMenuClick,
+            isContextMenuButton: isContextMenuButton
         });
         setTimeout(() => {
             setComment(true);
-        }, 150); // Можно чуть увеличить задержку
+        }, 300); // Увеличиваем задержку для корректной обработки кликов по меню
     } else {
-        console.log('[DEBUG] setMouseUpState: Клик по пункту меню \"Комментарий\", не скрываем окно');
+        console.log('[DEBUG] setMouseUpState: Клик по меню, не скрываем окно комментариев');
     }
 }
     
@@ -3682,7 +3706,11 @@ $(document).ready(function() {
     $(window).on('scroll.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
             console.log('[DEBUG] scroll.hideCommentDv: Прокрутка, скрываем окно комментариев');
-            setComment(true);
+            setTimeout(() => {
+                if ($('#add-comment-dv').hasClass('show')) {
+                    setComment(true);
+                }
+            }, 100);
         }
     });
     
@@ -3690,7 +3718,11 @@ $(document).ready(function() {
     $(window).on('resize.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
             console.log('[DEBUG] resize.hideCommentDv: Изменение размера окна, скрываем окно комментариев');
-            setComment(true);
+            setTimeout(() => {
+                if ($('#add-comment-dv').hasClass('show')) {
+                    setComment(true);
+                }
+            }, 100);
         }
     });
 });
