@@ -1733,6 +1733,7 @@ function unselectCells(){
 let curRow = -1;
 let curCol = -1;
 function selectCell(indexRow, indexCol, event) {
+    $('#fio-filter-in').blur();
     lastColSelectionByHeader = false;
     if (event === null) {
         console.trace('[TRACE] selectCell вызван с null');
@@ -1834,6 +1835,9 @@ function selectCell(indexRow, indexCol, event) {
 let startRow = -1;
 let startCol = -1;
 function startSelect(indexRow, indexCol, event){
+    if (!event || (!event.ctrlKey && !event.shiftKey && !event.metaKey)) {
+        unselectCells();
+    }
     console.log('[DEBUG] startSelect: начало функции', {indexRow, indexCol, event});
     lastColSelectionByHeader = false;
     let $objectsModal = $('#worker-objects-modal');
@@ -1992,6 +1996,7 @@ function endSelect(indexRow, indexCol){
 }
 
 function selectRow(indexRow){
+    $('#fio-filter-in').blur();
     unselectCells();
     let hasVisible = false;
     for(let j in DAYS){    
@@ -2022,6 +2027,7 @@ function selectRow(indexRow){
 let lastColSelectionByHeader = false;
 
 function selectCol(indexCol){
+    $('#fio-filter-in').blur();
     lastColSelectionByHeader = true; // Флаг для отслеживания выделения по заголовку
 	unselectCells();
 	let hasVisible = false;
@@ -2069,6 +2075,7 @@ function outCell(worker_no, indexRow, indexCol){
 }
 
 let settingComment = false;
+let suppressNextCommentClose = false;
 function contextAction(act){
 	let X, Y; // Объявляем переменные один раз в начале функции
 	switch(act){
@@ -2086,7 +2093,10 @@ function contextAction(act){
 			getDataHistory(UID, worker_uid, historyDate.format("yyyymmdd"));
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
+
+            
             case "comment":
+                suppressNextCommentClose = true;
                 console.log('[DEBUG] contextAction: открытие окна комментариев', {selectedCells, startRow, startCol});
                 if (selectedCells.length > 0) {
                     lastSelectedCellForComment = JSON.parse(JSON.stringify(selectedCells));
@@ -2189,6 +2199,53 @@ function contextAction(act){
 				}
 			}
 			break;
+
+            case "editLockedHours":
+                // Редактирование часов в заблокированных ячейках (cell-fixed/data-fixed), кроме СО
+                if (selectedCells.length !== 1) return;
+                let cellLocked = selectedCells[0];
+                let $cellLocked = $('#' + Number(cellLocked.row+1) + '-' + Number(cellLocked.col+1) + '-day-dv');
+                let uidLocked = WORKERS[cellLocked.row]['uid'];
+                let noLocked = cellLocked.row + 1;
+                let idLocked = noLocked + '_' + uidLocked;
+                let vtLocked = TABEL[idLocked] && TABEL[idLocked][cellLocked.col] ? TABEL[idLocked][cellLocked.col]['vt'] : '';
+                if ((vtLocked === 'СО') || (!$cellLocked.hasClass('cell-fixed') && $cellLocked.attr('data-fixed') != '1')) return;
+                let currentHoursLocked = TABEL[idLocked][cellLocked.col] && TABEL[idLocked][cellLocked.col]['hours'] ? TABEL[idLocked][cellLocked.col]['hours'] : 0;
+            
+                // Показываем диалог для ввода часов
+                let hoursLocked = prompt('Введите количество часов (0-20):', currentHoursLocked);
+                if(hoursLocked !== null){
+                    let hoursNumLocked = Number(hoursLocked);
+                    if(!isNaN(hoursNumLocked) && hoursNumLocked >= 0 && hoursNumLocked <= 20){
+                        // Обновляем данные
+                        TABEL[idLocked][cellLocked.col]['hours'] = hoursNumLocked;
+                        if (!changedCells[idLocked]) changedCells[idLocked] = {};
+                        changedCells[idLocked][cellLocked.col] = TABEL[idLocked][cellLocked.col];
+                        TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                        sendDataTabel(false);
+
+                        
+                        // Обновляем DOM
+                        let htmlValueLocked = '';
+                        let codeLocked = TABEL[idLocked][cellLocked.col]['vt'];
+                        if (codeLocked && (!hoursNumLocked || hoursNumLocked == 0)) {
+                            htmlValueLocked = `<span class="cell-code-big">${codeLocked}</span>`;
+                        } else if (codeLocked && hoursNumLocked) {
+                            htmlValueLocked = `<span class="cell-code-small">${codeLocked}</span><span class="cell-hours-big">${hoursNumLocked}</span>`;
+                        } else if (hoursNumLocked) {
+                            htmlValueLocked = `<span class="cell-hours-big">${hoursNumLocked}</span>`;
+                        } else {
+                            htmlValueLocked = '';
+                        }
+                        htmlValueLocked += `<div id="${cellLocked.row+1}-${cellLocked.col+1}-day-comment" class="days-comment" title="${TABEL[idLocked][cellLocked.col]['comment']||''}"></div>`;
+                        $cellLocked.html(htmlValueLocked).css({"color": selectedFnt, "font-weight": "normal"});
+                        sendDataTabel(false);
+                        calcDays();
+                    } else {
+                        alert('Введите корректное количество часов (0-20)!');
+                    }
+                }
+                break;
 	}
 	 $("#context-menu").hide(50);
 }
@@ -2645,26 +2702,34 @@ function setMouseUpState(e) {
     
     // === ИСПРАВЛЕНО: Добавляем логику скрытия окна комментариев при клике вне его ===
 if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
+    if (suppressNextCommentClose) {
+        console.log('[DEBUG] setMouseUpState: подавлено закрытие окна комментариев после клика по меню');
+        suppressNextCommentClose = false;
+        return;
+    }
     // Проверяем, не кликнули ли по пункту меню "Комментарий" или контекстному меню
-    let isCommentMenuClick = $(e.target).closest('li').length > 0 &&
-                             $(e.target).closest('li').text().includes('Комментарий');
+    let isCommentMenuClick = $(e.target).closest('.menu-comment').length > 0;
     let isContextMenuClick = $(e.target).closest('#context-menu').length > 0;
     let isContextMenuButton = $(e.target).closest('li[onClick*="comment"]').length > 0;
     
+    console.log('[DEBUG] setMouseUpState: анализируем причину закрытия', {
+        target: e.target,
+        targetTag: e.target.tagName,
+        targetClasses: e.target.className,
+        isAddCommentDv: $(e.target).closest("#add-comment-dv").length > 0,
+        settingComment: settingComment,
+        isCommentMenuClick: isCommentMenuClick,
+        isContextMenuClick: isContextMenuClick,
+        isContextMenuButton: isContextMenuButton
+    });
+    
     if (!isCommentMenuClick && !isContextMenuClick && !isContextMenuButton) {
-        console.log('[DEBUG] setMouseUpState: Клик вне окна комментариев, скрываем окно', {
-            target: e.target,
-            isAddCommentDv: $(e.target).closest("#add-comment-dv").length > 0,
-            settingComment: settingComment,
-            isCommentMenuClick: isCommentMenuClick,
-            isContextMenuClick: isContextMenuClick,
-            isContextMenuButton: isContextMenuButton
-        });
+        console.log('[DEBUG] setMouseUpState: Клик вне окна комментариев, закрываем окно');
         setTimeout(() => {
             setComment(true);
         }, 300); // Увеличиваем задержку для корректной обработки кликов по меню
     } else {
-        console.log('[DEBUG] setMouseUpState: Клик по меню, не скрываем окно комментариев');
+        console.log('[DEBUG] setMouseUpState: Клик по меню, не закрываем окно комментариев');
     }
 }
     
@@ -3108,6 +3173,11 @@ function onRightClick(){
             startRow = parseInt(match[1], 10) - 1;
             startCol = parseInt(match[2], 10) - 1;
         }
+        if ($target.hasClass('cell-fixed') || $target.attr('data-fixed') == '1') {
+            selectedCells = [{row: startRow, col: startCol}];
+        } else if(selectedCells.length === 0) {
+            selectCell(startRow, startCol, null);
+        }
     }
     
     // Выделяем ячейку под курсором, если она не выделена
@@ -3158,29 +3228,78 @@ function onDoubleClick(){
     let no = cell.row + 1;
     let id = no + '_' + uid;
     let currentHours = 0;
+    let vt = '';
     if (TABEL[id] && TABEL[id][cell.col]) {
-        let vt = TABEL[id][cell.col]['vt'];
+        vt = TABEL[id][cell.col]['vt'];
         if (vt === 'СО') {
             isSOCell = true;
+            currentHours = TABEL[id][cell.col]['hours'] || 0;
+        } else {
             currentHours = TABEL[id][cell.col]['hours'] || 0;
         }
     }
     if (!isSOCell && $cell.text().includes('СО')) {
         isSOCell = true;
-        let match = $cell.text().match(/СО\\s*(\\d{1,2})?/);
+        let match = $cell.text().match(/СО\s*(\d{1,2})?/);
         if (match && match[1]) currentHours = Number(match[1]);
     }
+
+    // --- Новый блок: разрешаем инлайн-редактирование часов для заблокированных ячеек (cell-fixed/data-fixed), кроме СО ---
+    if (!isSOCell && ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1')) {
+        if ($cell.find('input.inline-locked-hours').length > 0) return;
+        let oldHtml = $cell.html();
+        $cell.html('<input type="number" min="0" max="20" class="inline-locked-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
+        let $input = $cell.find('input.inline-locked-hours');
+        $input.focus().select();
+        $input.on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                let val = Number($input.val());
+                if (isNaN(val) || val < 0 || val > 20) {
+                    $input.addClass('input-error');
+                    return;
+                }
+                // Обновляем только часы, код не трогаем
+                TABEL[id][cell.col]['hours'] = val;
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][cell.col] = TABEL[id][cell.col];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                // Обновляем отображение
+                let htmlValue = '';
+                let code = TABEL[id][cell.col]['vt'];
+                if (code && (!val || val == 0)) {
+                    htmlValue = `<span class=\"cell-code-big\">${code}</span>`;
+                } else if (code && val) {
+                    htmlValue = `<span class=\"cell-code-small\">${code}</span><span class=\"cell-hours-big\">${val}</span>`;
+                } else if (val) {
+                    htmlValue = `<span class=\"cell-hours-big\">${val}</span>`;
+                } else {
+                    htmlValue = '';
+                }
+                htmlValue += `<div id=\"${cell.row+1}-${cell.col+1}-day-comment\" class=\"days-comment\" title=\"${TABEL[id][cell.col]['comment']||''}\"></div>`;
+                $cell.html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                sendDataTabel(false);
+                calcDays();
+            } else if (e.key === 'Escape') {
+                $cell.html(oldHtml);
+            }
+        });
+        $input.on('blur', function() {
+            $cell.html(oldHtml);
+        });
+        return;
+    }
+    // --- Конец нового блока ---
 
     if(isSOCell) {
         if ($cell.find('input.inline-so-hours').length > 0) return;
         let oldHtml = $cell.html();
-        $cell.html('<input type="number" min="0" max="25" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
+        $cell.html('<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
         let $input = $cell.find('input.inline-so-hours');
         $input.focus().select();
         $input.on('keydown', function(e) {
             if (e.key === 'Enter') {
                 let val = Number($input.val());
-                if (isNaN(val) || val < 0 || val > 25) {
+                if (isNaN(val) || val < 0 || val > 20) {
                     $input.addClass('input-error');
                     return;
                 }
@@ -3383,7 +3502,7 @@ function createHistory(data){
     $('#history-menu').empty().hide();
     // Больше не фильтруем по vt/hours, показываем все записи
     if(!data || data.length === 0) {
-        $('#history-menu').html('<li style="color:#888;">Нет изменений</li>').show();
+        $('#history-menu').hide().empty();
         return;
     }
     let html = '';
@@ -3955,7 +4074,9 @@ $(document).ready(function () {
 
 });
 
-
+$(document).off('mousedown.unselectByFio').on('mousedown.unselectByFio', '.worker_lb, .number-row', function(e) {
+    unselectCells();
+});
 
 // === Режим только для чтения ===
 let IS_READONLY = getCookie("READONLY") === "1";

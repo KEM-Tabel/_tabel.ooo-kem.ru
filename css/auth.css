@@ -11,8 +11,9 @@ body {
 	font-size: 12px;
 	border: 0;
 	color: #444;
-	background-color:#9;
-	min-width: 1260px;
+	background: linear-gradient(135deg, #e0e7ff 0%, #f8fafc 100%);
+	min-width: 100vw;
+	min-height: 100vh;
 }
 
 #wrap {
@@ -67,179 +68,132 @@ body {
 	background:  url('/images/loader.gif') -150px -100px no-repeat;				
 }
 
-#auth{
-	margin: auto;
-	width: 450px;
-	height: 396px;
+/* --- Блок авторизации --- */
+#auth {
+    margin: auto;
+    width: 350px;
+    min-height: 340px;
+    background: #fff;
+    box-shadow: 0 8px 32px 0 rgba(40, 54, 170, 0.25);
+    border-radius: 18px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 32px 24px 24px 24px;
+    transition: box-shadow 0.3s;
+}
+#auth:hover {
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.22);
 }
 
-#auth input[type=text], input[type=password] {
-    text-align: center;
-	width: 250px;
-	padding: 2px 12px;
-	margin: 130px 0 0 100px;
-	border: 2px solid rgb(160, 160, 160);
-	box-sizing: border-box;
-	font-family: Arial, Helvetica, sans-serif;
-	font-size: 36px;
-	border-radius: 7px;
+#auth input[type=text], #auth input[type=password] {
+    width: 100%;
+    max-width: 260px;
+    padding: 14px 16px;
+    margin: 18px 0 0 0;
+    background: #fff;
+    color: #111;
+    border: 2px solid #2836aa;
+    font-size: 20px;
+    font-weight: 500;
+    border-radius: 8px;
+    outline: none;
+    transition: border 0.2s, box-shadow 0.2s;
+    box-shadow: 0 1px 2px rgba(31,38,135,0.04);
+}
+#auth input[type=text]:focus, #auth input[type=password]:focus {
+    border: 1.5px solid #6c7ae0;
+    box-shadow: 0 0 0 2px #e0e7ff;
+    background: #fff;
+}
+#auth input[type=text]::placeholder, #auth input[type=password]::placeholder {
+    color: #888;
+    opacity: 1;
 }
 
 #auth .button {
-	text-align: center;
-	width: 250px;
-	background: #2836aa url('/images/auth/enter.png') 80px 14px no-repeat;
-	color: rgb(255, 255, 255);
-	padding: 14px 21px;
-	margin: 10px auto;
-	box-sizing: border-box;
-	border: 2px solid #2836aa;
-	cursor: pointer;
-	border-radius: 7px;
-	font-size: 18px;
+    width: 100%;
+    max-width: 260px;
+    background: #2836aa;
+    color: #fff;
+    padding: 14px 0;
+    margin: 24px 0 0 0;
+    border: none;
+    border-radius: 8px;
+    font-size: 22px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px 0 rgba(40, 54, 170, 0.15);
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+    background-image: url('/images/auth/enter.png');
+    background-repeat: no-repeat;
+    background-position: 90% 50%;
+    background-size: 28px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-shadow: none;
 }
-
-#auth .button:hover { 
-	background: #6976de url('/images/auth/enter.png') 80px 14px no-repeat;
-	cursor: pointer;
+#auth .button:hover {
+    background: #1a2366;
+    box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.16);
+    transform: translateY(-2px) scale(1.03);
+    background-image: url('/images/auth/enter.png');
+    background-repeat: no-repeat;
+    background-position: 90% 50%;
+    background-size: 28px 28px;
 }
 #auth .button:active {
-	background: #404887 url('/images/auth/enter.png') 80px 14px no-repeat;
+    background: linear-gradient(90deg, #3a4a9e 0%, #4f8cff 100%);
+    transform: scale(0.98);
+    background-image: url('/images/auth/enter.png');
+    background-repeat: no-repeat;
+    background-position: 90% 50%;
+    background-size: 28px 28px;
 }
 
-#auth #desc-auth{
-	text-align: center;
-	width: 250px;
-	margin: auto;
-	padding: 10px 0;
-	box-sizing: border-box;
-	text-align: center;
+#auth #desc-auth {
+    width: 100%;
+    max-width: 260px;
+    margin: 18px auto 0 auto;
+    padding: 8px 0 0 0;
+    color: #2836aa;
+    font-size: 16px;
+    text-align: center;
+    font-weight: 600;
 }
 
-/* MOBILE */
+#auth .forgot {
+    width: 100%;
+    max-width: 260px;
+    margin: 10px auto 0 auto;
+    color: #2836aa;
+    font-size: 14px;
+    text-align: right;
+    cursor: pointer;
+    transition: color 0.2s;
+    font-weight: 500;
+}
+#auth .forgot:hover {
+    color: #6c7ae0;
+}
 
-@media screen and (max-device-width:980px), screen and (max-width:980px) {
-	
-    html { 
-	
-	}
-	
-	body {
-		min-width:800px;
-		-webkit-touch-callout: none; /* iOS Safari */
-		-webkit-user-select: none; /* Safari */
-		-khtml-user-select: none; /* Konqueror HTML */
-		-moz-user-select: none; /* Old versions of Firefox */
-        -ms-user-select: none; /* Internet Explorer/Edge */
-        user-select: none;
-	}
-
-	#wrap {
-		width: 100%;
-		height: 100%;
-		display: block;		
-	}
-	
-	#warning{
-		display: none;
-	}
-	
-	#content{
-		width: 100%;
-		height: 100%;
-		position: fixed;
-		top: 0;
-		left: 0;
-		display: flex;
-		align-items: center;
-		align-content: center; 
-		justify-content: center; 
-		overflow: auto;	
-		overflow-x: hidden;	
-		min-width:800px;	
-	}
-	
-	#loader{
-		display: none;
-		position: fixed;
-		margin: none;
-		width: 100%;
-		height: 100%;
-		background: #fff;
-		border: none;
-		transition: box-shadow 0.2s 0s; 
-		-webkit-box-shadow: none;
-		-moz-box-shadow: none;
-		box-shadow: none;
-		z-index:2; 
-	}
-	
-	#loader_dv{
-		position: relative; 
-		top: 50%; 
-		left: 50%; 
-		transform: translate(-50%, -50%);
-		width: 496px;
-		height: 396px; 
-		background:  url('/images/loader.gif') -150px -100px no-repeat;				
-	}
-	
-	#auth{
-		width: 250px;
-		height: 150px;	
-
-	}
-	
-	#auth input[type=text], input[type=password] {
-		text-align: center;
-		width: 250px;
-		padding: 2px 12px;
-		margin: 10px auto;
-		border: 2px solid rgb(160, 160, 160);
-		box-sizing: border-box;
-		font-family: Arial, Helvetica, sans-serif;
-		font-size: 36px;
-		border-radius: 7px;
-		
-	}
-
-	#auth .button {
-		text-align: center;
-		width: 250px;
-		background: #2836aa url('/images/auth/enter.png') 80px 14px no-repeat;
-		color: rgb(255, 255, 255);
-		padding: 14px 21px;
-	    margin: auto;
-		box-sizing: border-box;
-		border: 2px solid #2836aa;
-		cursor: pointer;
-		border-radius: 7px;
-		font-size: 18px;
-	}
-	
-	#auth .button:hover { 
-		background: #6976de url('/images/auth/enter.png') 80px 14px no-repeat;
-		cursor: pointer;
-	}
-	#auth .button:active {
-		background: #404887 url('/images/auth/enter.png') 80px 14px no-repeat;
-	}
-	
-	#auth .forgot {
-		text-align: center;
-		margin: auto;
-		padding: 10px 0;
-	    box-sizing: border-box;
-		cursor: pointer;
-	}
-	
-	#auth #desc-auth{
-		text-align: center;
-		width: 250px;
-		margin: auto;
-		padding: 10px 0;
-	    box-sizing: border-box;
-		text-align: center;
-	}
-
+/* --- Мобильная адаптация --- */
+@media screen and (max-device-width: 980px), screen and (max-width: 980px) {
+    #auth {
+        width: 95vw;
+        min-width: unset;
+        min-height: 220px;
+        padding: 18px 8px 18px 8px;
+        border-radius: 14px;
+    }
+    #auth input[type=text], #auth input[type=password], #auth .button, #auth #desc-auth, #auth .forgot {
+        max-width: 98vw;
+        font-size: 18px;
+    }
+    #auth .button {
+        background-size: 22px 22px;
+    }
 }

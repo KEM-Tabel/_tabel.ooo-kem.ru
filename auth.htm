@@ -37,10 +37,11 @@ $(document).ready(function(){
 		<div id="loader"><div id="loader_dv"></div></div>
 		
 		<div id="auth">
-			<input id="login_in" name="login" type="text" value="kem" hidden="hidden" />							
-			<input id="pass_in" name="pass" type="password" value="" onKeyPress="authEnter(event)" />							
+			<h2 style="text-align:center; color:#2836aa; margin-bottom:18px; font-size:28px; font-weight:700; letter-spacing:1px;">Вход</h2>
+			<input id="login_in" name="login" type="hidden" value="kem" />
+			<input id="pass_in" name="pass" type="password" placeholder="Пароль" onKeyPress="authEnter(event)" />
 			<div class="button" onClick="Login()">Вход</div>
-			<div class="forgot" ></div>
+			<div class="forgot"></div>
 			<div id="desc-auth"></div>
 		</div>
 		

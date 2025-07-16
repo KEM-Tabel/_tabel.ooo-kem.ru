@@ -304,10 +304,11 @@ function dShow(){
 		</div>
 		
 		<ul id="context-menu">
-			<li onmousedown="contextAction('comment')">Комментарий</li>
+			<li class="menu-comment" onmousedown="contextAction('comment')">Комментарий</li>
 			<li onmousedown="contextAction('history')">История изменений</li>
 			<li onmousedown="contextAction('editSOHours')" style="display:none;" id="edit-so-hours-menu-item">Редактировать часы СО</li>
 			<li onmousedown="contextAction('clear')">Очистить</li>
+			<li class="menu-edit-locked-hours" onmousedown="contextAction('editLockedHours')">Редактировать часы</li>
 		</ul>
 		
 		<ul id="cell-menu">
