@@ -9,6 +9,12 @@ function editSOHours(row, col, hours) {
     // Любой пользователь может редактировать часы в ячейках СО
     // Проверяем только, что ячейка содержит код СО
     
+    // Проверяем, что WORKERS[row] существует и имеет uid
+    if (!WORKERS[row] || !WORKERS[row]['uid']) {
+        console.warn('[editSOHours] WORKERS[row] не найден или не имеет uid:', row);
+        return false;
+    }
+    
     let uid = WORKERS[row]['uid'];
     let no = row + 1;
     let id = no + '_' + uid;
@@ -200,6 +206,37 @@ function formatDate(date, format) {
     };
 
     return format.replace(/yyyy|mm|dd|HH|MM|ss/g, match => replacements[match]);
+}
+
+// Функция для нормализации ФИО в формат "Фамилия Имя Отчество"
+function normalizeFIO(fio) {
+    if (!fio || typeof fio !== 'string') {
+        return '';
+    }
+    
+    // Убираем лишние пробелы и приводим к верхнему регистру
+    let normalized = fio.trim().toUpperCase();
+    
+    // Разбиваем на части по пробелам
+    let parts = normalized.split(/\s+/).filter(part => part.length > 0);
+    
+    // Если частей меньше 3, возвращаем как есть
+    if (parts.length < 3) {
+        return normalized;
+    }
+    
+    // Берем первые три части как Фамилию, Имя, Отчество
+    let lastName = parts[0];
+    let firstName = parts[1];
+    let middleName = parts[2];
+    
+    // Применяем правило: первая буква заглавная, остальные строчные
+    const capitalize = (str) => {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
+    };
+    
+    return `${capitalize(lastName)} ${capitalize(firstName)} ${capitalize(middleName)}`;
 }
 
 let TODAY			= -1;
@@ -1093,7 +1130,7 @@ function createTabel(){
                             }
                         }
                         
-                        htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+extraClass+'" '+docAttr+' '+(hasFixStateFromTabel ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';'+extraStyle+'" title="'+day['comment']+'" onMouseDown="console.log(\'[LOG] onmousedown\', this);startSelect('+(worker_no-1)+','+Number(d)+', event)" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick()">'+htmlCell+'</div>';
+                        htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+extraClass+'" '+docAttr+' '+(hasFixStateFromTabel ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';'+extraStyle+'" title="'+day['comment']+'" onMouseDown="console.log(\'[LOG] onmousedown\', this);startSelect('+(worker_no-1)+','+Number(d)+', event)" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick(event)">'+htmlCell+'</div>';
                     }
                     htmlDays += '</div>';
                     htmlSumDays += '<div id="'+worker_id+'-days-dv" class="row-sum-days-dv"></div>';
@@ -1382,7 +1419,17 @@ function setCells(value, isComment=false, isFullClear=false){
         let id = no+'_'+uid;
         
         // === ДОБАВЛЕНО: Проверка блокировки ячейки ===
-        if (isCellLocked(Number(cell['row']), day)) {
+        // Получаем значение ячейки для проверки блокировки
+        let cellValue6 = null;
+        if (TABEL && WORKERS && Number(cell['row']) >= 0 && day >= 0) {
+            let uid = WORKERS[Number(cell['row'])]['uid'];
+            let no = Number(cell['row']) + 1;
+            let id = no + '_' + uid;
+            if (TABEL[id] && TABEL[id][day]) {
+                cellValue6 = TABEL[id][day]['vt'];
+            }
+        }
+        if (isCellLocked(Number(cell['row']), day, cellValue6)) {
             console.log('[DEBUG] setCells: ячейка заблокирована, пропускаем', {row: cell['row'], col: day});
             continue;
         }
@@ -1880,7 +1927,39 @@ function startSelect(indexRow, indexCol, event){
         }
     }
     
-    let isLocked = isCellLocked(indexRow, indexCol);
+    // Получаем текущее значение ячейки для корректной проверки блокировки
+    let cellValue = null;
+    if (TABEL && WORKERS && indexRow >= 0 && indexCol >= 0) {
+        let uid = WORKERS[indexRow]['uid'];
+        let no = indexRow + 1;
+        let id = no + '_' + uid;
+        if (TABEL[id] && TABEL[id][indexCol]) {
+            cellValue = TABEL[id][indexCol]['vt'];
+        }
+    }
+    console.log('[DEBUG] startSelect: вызываем isCellLocked с параметрами:', {
+        indexRow, indexCol, cellValue, uid: WORKERS[indexRow] ? WORKERS[indexRow].uid : 'unknown'
+    });
+    let isLocked = isCellLocked(indexRow, indexCol, cellValue);
+    
+    // === ДОБАВЛЕНО: Детальное логирование условий блокировки ===
+    let hasCellFixed = $cell.hasClass('cell-fixed');
+    let hasDataFixed = $cell.attr('data-fixed') == '1';
+    let hasBeforeIn = $cell.hasClass('cell-before-in');
+    let canEditSOFlag = canEditSO();
+    
+    console.log('[DEBUG] startSelect: проверка условий блокировки:', {
+        indexRow, indexCol,
+        hasCellFixed,
+        hasDataFixed,
+        hasBeforeIn,
+        canEditSOFlag,
+        isSOCell,
+        isLocked,
+        condition1: (hasCellFixed || hasDataFixed) && !canEditSOFlag && !isSOCell,
+        condition2: hasBeforeIn,
+        condition3: isLocked
+    });
     
     if (
         (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
@@ -1910,8 +1989,19 @@ function startSelect(indexRow, indexCol, event){
                     }
                 }
                 
+                // Получаем значение ячейки для проверки блокировки
+                let cellValue2 = null;
+                if (TABEL && WORKERS && row >= 0 && col >= 0) {
+                    let uid = WORKERS[row]['uid'];
+                    let no = row + 1;
+                    let id = no + '_' + uid;
+                    if (TABEL[id] && TABEL[id][col]) {
+                        cellValue2 = TABEL[id][col]['vt'];
+                    }
+                }
+                
                 if (
-                    isCellLocked(row, col) ||
+                    isCellLocked(row, col, cellValue2) ||
                     (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell2) ||
                     $cell2.hasClass('cell-before-in')
                 ) return;
@@ -1953,8 +2043,19 @@ function endSelect(indexRow, indexCol){
                 }
             }
             
+            // Получаем значение ячейки для проверки блокировки
+            let cellValue3 = null;
+            if (TABEL && WORKERS && row >= 0 && col >= 0) {
+                let uid = WORKERS[row]['uid'];
+                let no = row + 1;
+                let id = no + '_' + uid;
+                if (TABEL[id] && TABEL[id][col]) {
+                    cellValue3 = TABEL[id][col]['vt'];
+                }
+            }
+            
             if (
-                isCellLocked(row, col) ||
+                isCellLocked(row, col, cellValue3) ||
                 (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell3) ||
                 $cell2.hasClass('cell-before-in')
             ) return;
@@ -2013,7 +2114,17 @@ function selectRow(indexRow){
         let col_no = Number(j)+1;
         let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
         if (!$cell.is(':visible')) continue;
-        if (isCellLocked(indexRow, Number(j))) continue; // Запрет выделения lock-ячейки
+        // Получаем значение ячейки для проверки блокировки
+        let cellValue4 = null;
+        if (TABEL && WORKERS && indexRow >= 0 && Number(j) >= 0) {
+            let uid = WORKERS[indexRow]['uid'];
+            let no = indexRow + 1;
+            let id = no + '_' + uid;
+            if (TABEL[id] && TABEL[id][Number(j)]) {
+                cellValue4 = TABEL[id][Number(j)]['vt'];
+            }
+        }
+        if (isCellLocked(indexRow, Number(j), cellValue4)) continue; // Запрет выделения lock-ячейки
         let cell  = {};
         cell['row'] = indexRow;
         cell['col'] = Number(j);
@@ -2046,7 +2157,17 @@ function selectCol(indexCol){
 		let $cell = $('#'+row_no+'-'+Number(indexCol+1)+'-day-dv');
 		if (!$cell.is(':visible')) continue;
 		// === ДОБАВЛЕНО: Проверка блокировки ячейки ===
-		if (isCellLocked(Number(i), indexCol)) continue;
+		// Получаем значение ячейки для проверки блокировки
+		let cellValue5 = null;
+		if (TABEL && WORKERS && Number(i) >= 0 && indexCol >= 0) {
+			let uid = WORKERS[Number(i)]['uid'];
+			let no = Number(i) + 1;
+			let id = no + '_' + uid;
+			if (TABEL[id] && TABEL[id][indexCol]) {
+				cellValue5 = TABEL[id][indexCol]['vt'];
+			}
+		}
+		if (isCellLocked(Number(i), indexCol, cellValue5)) continue;
 		let cell  = {};
 		cell['row'] = Number(i);
 		cell['col'] = indexCol;
@@ -2545,7 +2666,7 @@ function showHideInfo(element, id){
 				// Добавляем обработчик копирования
 				$('.copy-fio-btn').off('click').on('click', function(e) {
 					e.stopPropagation();
-					const fio = worker['fio'].toUpperCase();
+					const fio = normalizeFIO(worker['fio']);
 					navigator.clipboard.writeText(fio).then(() => {
 						const $btn = $(this);
 						$btn.addClass('copied');
@@ -3217,13 +3338,135 @@ function onRightClick(){
     $("#context-menu").css({top: Y + "px", left:  X + "px"});
 }
 
-function onDoubleClick(){
+function onDoubleClick(event){
     if (window.IS_FULL_READONLY) return;
-    let cell = selectedCells.length > 0 ? selectedCells[0] : {row: startRow, col: startCol};
+    
+    let cell = null;
+    
+    // Пытаемся получить координаты из выбранных ячеек
+    if (selectedCells.length > 0) {
+        cell = selectedCells[0];
+    }
+    // Если нет выбранных ячеек, пытаемся получить координаты из startRow/startCol
+    else if (startRow !== -1 && startCol !== -1) {
+        cell = {row: startRow, col: startCol};
+    }
+    // Если и это не работает, пытаемся определить координаты из события
+    else if (event && event.target) {
+        let $target = $(event.target);
+        
+        // Ищем родительский элемент ячейки (с id вида "X-Y-day-dv")
+        let $cellElement = $target.closest('[id$="-day-dv"]');
+        
+        // Если не нашли элемент с -day-dv, попробуем найти по другим признакам
+        if ($cellElement.length === 0) {
+            // Ищем элемент с классом, который может быть ячейкой
+            $cellElement = $target.closest('.cell-code-big, .cell-code-small, .cell-hours-big').parent();
+        }
+        
+        // Если все еще не нашли, ищем любой элемент с id
+        if ($cellElement.length === 0) {
+            $cellElement = $target.closest('[id]');
+        }
+        
+        if ($cellElement.length > 0) {
+            let cellId = $cellElement.attr('id');
+            console.log('[onDoubleClick] Найден элемент с id:', cellId, 'для target:', event.target.tagName, event.target.className);
+            
+            if (cellId && cellId.match(/^(\d+)-(\d+)-day-dv$/)) {
+                let matches = cellId.match(/^(\d+)-(\d+)-day-dv$/);
+                let row = parseInt(matches[1], 10) - 1;
+                let col = parseInt(matches[2], 10) - 1;
+                cell = {row: row, col: col};
+                console.log('[onDoubleClick] Определили координаты из события:', cell);
+            } else {
+                console.log('[onDoubleClick] ID элемента не соответствует формату ячейки:', cellId);
+            }
+        } else {
+            console.log('[onDoubleClick] Не удалось найти родительский элемент ячейки для:', event.target);
+        }
+    }
+    
+    // Если не удалось определить координаты
+    if (!cell || cell.row < 0 || cell.col < 0) {
+        console.warn('[onDoubleClick] Не удалось определить координаты ячейки:', {
+            selectedCells, 
+            startRow, 
+            startCol, 
+            event: event ? {
+                target: event.target,
+                targetId: event.target ? event.target.id : null,
+                targetClassName: event.target ? event.target.className : null,
+                targetTagName: event.target ? event.target.tagName : null
+            } : null
+        });
+        return;
+    }
+    
+    console.log('[onDoubleClick] Работаем с ячейкой:', cell, 'selectedCells:', selectedCells);
+    
+    // Проверяем, что элемент ячейки существует
     let $cell = $('#' + Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
+    if ($cell.length === 0) {
+        console.warn('[onDoubleClick] Элемент ячейки не найден:', Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
+        return;
+    }
+    
+    // Получаем текущее значение ячейки для корректной проверки блокировки
+    let cellValue = null;
+    if (TABEL && WORKERS && cell.row >= 0 && cell.col >= 0) {
+        let uid = WORKERS[cell.row]['uid'];
+        let no = cell.row + 1;
+        let id = no + '_' + uid;
+        if (TABEL[id] && TABEL[id][cell.col]) {
+            cellValue = TABEL[id][cell.col]['vt'];
+        }
+    }
+    console.log('[DEBUG] onDoubleClick: вызываем isCellLocked с параметрами:', {
+        row: cell.row, col: cell.col, cellValue, uid: WORKERS[cell.row] ? WORKERS[cell.row].uid : 'unknown'
+    });
+    let isLocked = isCellLocked(cell.row, cell.col, cellValue);
+    console.log('[onDoubleClick] Статус блокировки ячейки:', isLocked);
+    
+    // === ДОБАВЛЕНО: Детальное логирование причин блокировки ===
+    if (isLocked) {
+        let lockReasons = [];
+        
+        // Проверяем TABEL блокировку
+        if (TABEL) {
+            let tabId = (cell.row + 1) + '_' + WORKERS[cell.row].uid;
+            if (TABEL[tabId] && TABEL[tabId][cell.col]) {
+                let dayData = TABEL[tabId][cell.col];
+                if (dayData.lock) lockReasons.push('lock в TABEL');
+                if (dayData.doc && dayData.doc.trim() !== "" && dayData.doc.trim() !== ",") lockReasons.push('doc в TABEL');
+                if (dayData.fixState) lockReasons.push('fixState в TABEL');
+            }
+        }
+        
+        // Проверяем блокировку по дате устройства
+        let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
+        if (isCurrentMonth && WORKERS[cell.row] && WORKERS[cell.row]['days'] && WORKERS[cell.row]['days'][cell.col] && WORKERS[cell.row]['days'][cell.col]['enable'] === false) {
+            lockReasons.push('день до устройства сотрудника');
+        }
+        
+        // Проверяем блокировку будущих дней
+        let todayIndexForHighlighting = getTodayIndexForHighlighting();
+        if (isCurrentMonth && Number(cell.col) > todayIndexForHighlighting) {
+            lockReasons.push('будущий день');
+        }
+        
+        console.log('[onDoubleClick] Причины блокировки ячейки:', lockReasons);
+    }
 
     // Проверяем, является ли ячейка с кодом СО (по данным или DOM)
     let isSOCell = false;
+    
+    // Проверяем, что WORKERS[cell.row] существует и имеет uid
+    if (!WORKERS[cell.row] || !WORKERS[cell.row]['uid']) {
+        console.warn('[onDoubleClick] WORKERS[cell.row] не найден или не имеет uid:', cell.row);
+        return;
+    }
+    
     let uid = WORKERS[cell.row]['uid'];
     let no = cell.row + 1;
     let id = no + '_' + uid;
@@ -3244,8 +3487,35 @@ function onDoubleClick(){
         if (match && match[1]) currentHours = Number(match[1]);
     }
 
-    // --- Новый блок: разрешаем инлайн-редактирование часов для заблокированных ячеек (cell-fixed/data-fixed), кроме СО ---
-    if (!isSOCell && ($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1')) {
+    // === ДОБАВЛЕНО: Проверка CSS классов и атрибутов блокировки ===
+    let hasCellFixed = $cell.hasClass('cell-fixed');
+    let hasDataFixed = $cell.attr('data-fixed') == '1';
+    let hasBeforeIn = $cell.hasClass('cell-before-in');
+    let canEditSOFlag = canEditSO();
+    
+    console.log('[DEBUG] onDoubleClick: проверка условий блокировки:', {
+        row: cell.row, col: cell.col,
+        hasCellFixed,
+        hasDataFixed,
+        hasBeforeIn,
+        canEditSOFlag,
+        isSOCell,
+        isLocked,
+        condition1: (hasCellFixed || hasDataFixed) && !canEditSOFlag && !isSOCell,
+        condition2: hasBeforeIn,
+        condition3: isLocked
+    });
+    
+    // Обновляем статус блокировки с учетом CSS классов
+    let isActuallyLocked = isLocked || 
+                          (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
+                          $cell.hasClass('cell-before-in');
+    
+    console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
+    
+    // --- Новый блок: разрешаем инлайн-редактирование часов для заблокированных ячеек, кроме СО ---
+    if (!isSOCell && isActuallyLocked) {
+        console.log('[onDoubleClick] Активируем инлайн-редактирование для заблокированной ячейки:', cell);
         if ($cell.find('input.inline-locked-hours').length > 0) return;
         let oldHtml = $cell.html();
         $cell.html('<input type="number" min="0" max="20" class="inline-locked-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
@@ -3258,6 +3528,14 @@ function onDoubleClick(){
                     $input.addClass('input-error');
                     return;
                 }
+                // Проверяем, что TABEL[id] и TABEL[id][cell.col] существуют
+                if (!TABEL[id]) {
+                    TABEL[id] = {};
+                }
+                if (!TABEL[id][cell.col]) {
+                    TABEL[id][cell.col] = {};
+                }
+                
                 // Обновляем только часы, код не трогаем
                 TABEL[id][cell.col]['hours'] = val;
                 if (!changedCells[id]) changedCells[id] = {};
@@ -3275,7 +3553,7 @@ function onDoubleClick(){
                 } else {
                     htmlValue = '';
                 }
-                htmlValue += `<div id=\"${cell.row+1}-${cell.col+1}-day-comment\" class=\"days-comment\" title=\"${TABEL[id][cell.col]['comment']||''}\"></div>`;
+                htmlValue += `<div id=\"${cell.row+1}-${cell.col+1}-day-comment\" class=\"days-comment\" title=\"${TABEL[id][cell.col]['comment'] || ''}\"></div>`;
                 $cell.html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
                 sendDataTabel(false);
                 calcDays();
@@ -3316,17 +3594,36 @@ function onDoubleClick(){
         return;
     }
 
-    // --- СТАРАЯ ЛОГИКА ---
-    if (selectedCells.length > 1) {
-        // только показываем меню
+    // --- СТАРАЯ ЛОГИКА (только для незаблокированных ячеек) ---
+    if (!isActuallyLocked) {
+        if (selectedCells.length > 1) {
+            // только показываем меню
+        } else {
+            // Убеждаемся, что ячейка выбрана, но не вызываем selectCell повторно
+            // так как это может привести к конфликтам
+            let value = getCellValue(cell.row, cell.col);
+            
+            // Проверяем, выбрана ли уже эта ячейка
+            let isAlreadySelected = false;
+            for (let selectedCell of selectedCells) {
+                if (selectedCell.row === cell.row && selectedCell.col === cell.col) {
+                    isAlreadySelected = true;
+                    break;
+                }
+            }
+            
+            // Если ячейка не выбрана, выбираем её
+            if (!isAlreadySelected) {
+                selectCell(cell.row, cell.col, null);
+            }
+        }
+        let $menu = $("#cell-menu");
+        $menu.show();
+        showMenuNearCell($cell, $menu, 1);
+        $menu.finish().fadeIn(50);
     } else {
-        let value = getCellValue(startRow, startCol);
-        selectCell(startRow, startCol,null);
+        console.log('[onDoubleClick] Заблокированная ячейка - инлайн-редактирование уже активировано выше');
     }
-    let $menu = $("#cell-menu");
-    $menu.show();
-    showMenuNearCell($cell, $menu, 1);
-    $menu.finish().fadeIn(50);
 }
 
 function scrollDocument(e){
@@ -5635,6 +5932,16 @@ function changeChief(worker_id){
 // === Проверка lock для ячеек ===
 // --- PATCH: isCellLocked ---
 function isCellLocked(row, col, value) {
+    // === ДОБАВЛЕНО: Общее логирование для всех вызовов ===
+    console.log('[DEBUG] isCellLocked вызвана:', {
+        row: row + 1,
+        col: col + 1,
+        value: value,
+        workerUid: WORKERS[row] ? WORKERS[row].uid : 'unknown',
+        workerFio: WORKERS[row] ? WORKERS[row].fio : 'unknown',
+        stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
+    });
+    
     // === ДОБАВЛЕНО: Специальные логи для строк 186-195 ===
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked для строки 186-195:', {
@@ -5673,6 +5980,17 @@ function isCellLocked(row, col, value) {
                         fixState: dayData.fixState
                     });
                 }
+                
+                // === ДОБАВЛЕНО: Общее логирование результата ===
+                console.log('[DEBUG] isCellLocked результат:', {
+                    row: row + 1,
+                    col: col + 1,
+                    value: value,
+                    result: true,
+                    reason: 'TABEL lock/doc/fixState',
+                    stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
+                });
+                
                 return true;
             }
         } else {
@@ -5695,6 +6013,26 @@ function isCellLocked(row, col, value) {
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
     let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
     let todayIndexForHighlighting = getTodayIndexForHighlighting();
+    
+    // === ДОБАВЛЕНО: Проверка блокировки по дате устройства сотрудника ===
+    if (isCurrentMonth && WORKERS[row] && WORKERS[row]['days'] && WORKERS[row]['days'][col] && WORKERS[row]['days'][col]['enable'] === false) {
+        if (row >= 185 && row <= 194) {
+            console.log('[DEBUG] isCellLocked: заблокирована как день до устройства сотрудника для строки', row + 1);
+        }
+        
+        // === ДОБАВЛЕНО: Общее логирование результата ===
+        console.log('[DEBUG] isCellLocked результат:', {
+            row: row + 1,
+            col: col + 1,
+            value: value,
+            result: true,
+            reason: 'день до устройства сотрудника',
+            stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
+        });
+        
+        return true;
+    }
+    
     if (
         isCurrentMonth &&
         Number(col) > todayIndexForHighlighting &&
@@ -5704,12 +6042,33 @@ function isCellLocked(row, col, value) {
         if (row >= 185 && row <= 194) {
             console.log('[DEBUG] isCellLocked: заблокирована как будущий день для строки', row + 1);
         }
+        
+        // === ДОБАВЛЕНО: Общее логирование результата ===
+        console.log('[DEBUG] isCellLocked результат:', {
+            row: row + 1,
+            col: col + 1,
+            value: value,
+            result: true,
+            reason: 'будущий день',
+            stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
+        });
+        
         return true;
     }
     
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked: ячейка не заблокирована для строки', row + 1);
     }
+    
+    // === ДОБАВЛЕНО: Общее логирование результата ===
+    console.log('[DEBUG] isCellLocked результат:', {
+        row: row + 1,
+        col: col + 1,
+        value: value,
+        result: false,
+        stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
+    });
+    
     return false;
 }
 
