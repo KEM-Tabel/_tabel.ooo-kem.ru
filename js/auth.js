@@ -4,7 +4,18 @@
 
 async function Login(){
 	
-	$('#desc').html("");
+	$('#desc-auth').html("");
+	
+	// Проверяем, что пароль введен
+	var pass = $("#pass_in").val();
+	if (!pass || pass.trim() === '') {
+		$('#desc-auth').html("Введите пароль");
+		$('#desc-auth').show();
+		return;
+	}
+	
+	// Начинаем анимацию загрузки в кнопке
+	startLoginAnimation();
 			
 	var userData 			= {};
 	userData['browser']		= window.navigator.userAgent;
@@ -15,17 +26,12 @@ async function Login(){
 	/*	
 	$.getJSON('https://json.geoiplookup.io/?callback=?', function(data) {
 		userData['provider'] = data;
-	});
-	*/	
-	
-	$("#loader").show();
-	
-	var pass = $("#pass_in").val();
+	});	
+	*/
 
 	console.log('Отправляю авторизацию:', {pass, userData});
 
 	var data = await getData(true, false, "Авторизация", [pass, userData]);
-
 
 	if(data){
 		
@@ -41,21 +47,50 @@ async function Login(){
 			if ('readAll' in data.result) {
 				setreadAllCookie(data.result.readAll === true);
 			}
-			document.location.href="/report.htm";
+			
+			// Плавный переход к основному лоадеру
+			transitionToMainLoader();
+			
 		}else{
-			 $('#loader').hide();
-			 
+			// Ошибка авторизации - возвращаем кнопку в исходное состояние
+			stopLoginAnimation();
 			$('#desc-auth').html(data.des);
 			$('#desc-auth').show();
 		}
 			
 	}else{
-		$('#loader').hide();
-		 
+		// Ошибка сервера - возвращаем кнопку в исходное состояние
+		stopLoginAnimation();
 		$('#desc-auth').html("Ошибка сервера.");
 		$('#desc-auth').show();		
 	}
 	
+}
+
+// Функция для запуска анимации загрузки в кнопке
+function startLoginAnimation() {
+	$('#login-button').addClass('loading');
+	$('#auth-loader').fadeIn(300);
+	$('#pass_in').prop('disabled', true);
+}
+
+// Функция для остановки анимации загрузки в кнопке
+function stopLoginAnimation() {
+	$('#login-button').removeClass('loading');
+	$('#auth-loader').fadeOut(300);
+	$('#pass_in').prop('disabled', false);
+}
+
+// Функция для плавного перехода к основному лоадеру
+function transitionToMainLoader() {
+	// Добавляем класс для плавного исчезновения формы
+	$('#auth').addClass('fade-out');
+	
+	// Через 500ms показываем основной лоадер и перенаправляем
+	setTimeout(() => {
+		$("#loader").show();
+		document.location.href="/report.htm";
+	}, 500);
 }
 
 // --- Глобальная функция для установки куки readAll ---

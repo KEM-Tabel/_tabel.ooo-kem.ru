@@ -166,6 +166,9 @@ $(document).ready(function () {
 	
 	getDataTabel(true, false, UID, curDate.format("yyyymmddHHMMss"), false);
 
+	// Инициализация уведомления о блокировке по времени
+	updateTimeLockNotification();
+
 	const searchWorkers = debounce(() => {changeFilter('fio');}, 300);
 	const inputField = document.getElementById('fio-filter-in');
 	inputField.addEventListener('input', searchWorkers);
@@ -243,6 +246,10 @@ function dShow(){
 			</div>
 		</div>
 		
+		<div id="time-lock-notification" style="display:none; background:linear-gradient(135deg, #ff6b6b 0%, #ee5a52 100%); color:white; text-align:center; padding:12px 16px; font-size:14px; font-weight:600; box-shadow:0 4px 16px rgba(255,107,107,0.3); border-radius:8px; margin:8px 16px;">
+			<i class="fa fa-clock" style="margin-right:8px;"></i> Редактирование заблокировано до 18:00
+		</div>
+		
 		<div id="sticky">
 			
 			<div id="head">	
@@ -306,9 +313,7 @@ function dShow(){
 		<ul id="context-menu">
 			<li class="menu-comment" onmousedown="contextAction('comment')">Комментарий</li>
 			<li onmousedown="contextAction('history')">История изменений</li>
-			<li onmousedown="contextAction('editSOHours')" style="display:none;" id="edit-so-hours-menu-item">Редактировать часы СО</li>
 			<li onmousedown="contextAction('clear')">Очистить</li>
-			<li class="menu-edit-locked-hours" onmousedown="contextAction('editLockedHours')">Редактировать часы</li>
 		</ul>
 		
 		<ul id="cell-menu">
