@@ -577,7 +577,7 @@ $(document).ready(function() {
           <div id="reports-modal-content" style="background:#fff;padding:32px 36px 24px 36px;border-radius:12px;box-shadow:0 4px 24px #0002;min-width:320px;max-width:96vw;max-height:90vh;position:relative;">
             <div style="font-size:22px;font-weight:bold;margin-bottom:18px;">Выберите отчет</div>
             <div style="margin-bottom:18px;">
-              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="firms"> Табель с группировкой по организациям</label>
+              <label style="display:block;margin-bottom:8px;"><input type="radio" name="report-groupby" value="firms" checked> Табель с группировкой по организациям</label>
               <label style="display:block;"><input type="radio" name="report-groupby" value="locations"> Табель с группировкой по объектам</label>
             </div>
             <div style="margin-bottom:18px;">
@@ -633,6 +633,8 @@ $(document).ready(function() {
     }
 
     $('#menu-reports').off('click.reportsModal').on('click.reportsModal', function(e) {
+      // Явно выбираем radio-кнопку 'firms' при каждом открытии
+      $("input[name='report-groupby'][value='firms']").prop('checked', true);
       $('#reports-modal').fadeIn(120);
       logUserAction('openReportsModal');
     });
