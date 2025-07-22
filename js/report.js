@@ -6325,11 +6325,31 @@ if (typeof curDate !== 'undefined' && curDate instanceof Date) {
     }
     const workerRowOffset = $workerRow.offset();
     const workerRowHeight = $workerRow.outerHeight();
+    const modalWidth = $workerRow.outerWidth();
+    // --- Улучшенное позиционирование с учетом скролла ---
+    // Сначала временно добавим модалку невидимо, чтобы узнать её высоту
+    $('#worker-objects-modal').css({visibility: 'hidden', display: 'block', top: 0, left: 0, width: modalWidth + 'px'});
+    const modalHeight = $('#worker-objects-modal').outerHeight();
+    $('#worker-objects-modal').css({visibility: '', display: 'none'});
+    const windowHeight = $(window).height();
+    const scrollTop = $(window).scrollTop();
+    let topPos = workerRowOffset.top + workerRowHeight;
+    // Если не влезает снизу — показываем сверху
+    if (topPos + modalHeight > windowHeight + scrollTop - 10) {
+        topPos = workerRowOffset.top - modalHeight-37;   
+        if (topPos < scrollTop + 10) topPos = scrollTop + 10;
+    }
+    // Если всё равно не влезает (очень большое окно) — прижимаем к низу экрана
+    if (topPos + modalHeight > windowHeight + scrollTop - 10) {
+        topPos = windowHeight + scrollTop - modalHeight - 10;
+        if (topPos < scrollTop + 10) topPos = scrollTop + 10;
+    }
     $('#worker-objects-modal').css({
-        top: workerRowOffset.top + workerRowHeight + 'px',
+        top: topPos + 'px',
         left: workerRowOffset.left + 'px',
-        width: $workerRow.outerWidth() + 'px'
-    }).show();
+        width: modalWidth + 'px',
+        display: 'block'
+    });
 
     // === ДОБАВЛЕНО: Выделяем строку сотрудника для чтения ===
     const rowIndex = WORKERS.findIndex(worker => worker.uid === workerId);
