@@ -1613,7 +1613,8 @@ function setCells(value, isComment=false, isFullClear=false){
                 cellValue6 = TABEL[id][day]['vt'];
             }
         }
-        if (isCellLocked(Number(cell['row']), day, cellValue6)) {
+        // --- Изменено: разрешаем комментарии даже в заблокированные ячейки ---
+        if (!isComment && isCellLocked(Number(cell['row']), day, cellValue6)) {
             console.log('[DEBUG] setCells: ячейка заблокирована, пропускаем', {row: cell['row'], col: day});
             continue;
         }
