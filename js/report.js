@@ -6076,14 +6076,32 @@ function changeChief(worker_id){
                     }
                     if (selectedDayIndex !== -1) {
                         if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                            console.log('[changeChief] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
-                            TABEL[tabId][selectedDayIndex]['hours'] = 0;
+                            // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
+                            // Помечаем ячейку как измененную
                             if (!changedCells[tabId]) changedCells[tabId] = {};
                             changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
                             TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                            // Обновляем отображение ячейки
                             let cellSelector = '#' + (workerIndex+1) + '-' + (selectedDayIndex+1) + '-day-dv';
-                            let htmlValue = `<span class="cell-code-big">СО</span>`;
-                            htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${TABEL[tabId][selectedDayIndex]['comment']||''}"></div>`;
+                            console.log('[changeChief] Обновление DOM ячейки:', cellSelector);
+                            let currentDayData = TABEL[tabId][selectedDayIndex];
+                            let htmlValue = '';
+                            let hoursNum = Number(currentDayData['hours']); // Используем существующие часы
+                            let dayValue = currentDayData['vt'];
+
+                            if(dayValue && !hoursNum){
+                                // Только буквенный код, без часов
+                                htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                            } else if(dayValue && hoursNum) {
+                                // Есть и код, и часы
+                                htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                            } else { // Случай без кода и без часов
+                                htmlValue = '';
+                            }
+                            htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${currentDayData['comment']||''}"></div>`;
+
                             $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
                         }
                     }
