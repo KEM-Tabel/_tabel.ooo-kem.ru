@@ -2133,6 +2133,137 @@ function startSelect(indexRow, indexCol, event){
     let hasBeforeIn = $cell.hasClass('cell-before-in');
     let canEditSOFlag = canEditSO();
     
+    // === ДОБАВЛЕНО: Fixstate редактирование для ячеек СО (ПЕРЕМЕЩЕНО ВЫШЕ) ===
+    console.log('[DEBUG] startSelect: ДОСТИГНУТА ЛОГИКА FIXSTATE РЕДАКТИРОВАНИЯ СО');
+    
+    // Проверяем, есть ли уже активное инлайн редактирование в этой ячейке
+    let $existingInput = $cell.find('input.inline-so-hours');
+    if ($existingInput.length > 0) {
+        console.log('[DEBUG] startSelect: инлайн редактирование уже активно в этой ячейке, фокусируемся на существующий input');
+        $existingInput.focus().select();
+        return;
+    }
+    
+    // Проверяем, есть ли уже активное инлайн редактирование в любой ячейке
+    let $anyExistingInput = $('input.inline-so-hours');
+    if ($anyExistingInput.length > 0) {
+        console.log('[DEBUG] startSelect: инлайн редактирование уже активно в другой ячейке, фокусируемся на существующий input');
+        $anyExistingInput.focus().select();
+        return;
+    }
+    
+    let condition = isSOCell && (isLocked || hasCellFixed || hasDataFixed || hasBeforeIn);
+    
+    console.log('[DEBUG] startSelect: проверка условий для fixstate редактирования СО', {
+        isSOCell, 
+        isLocked, 
+        hasCellFixed, 
+        hasDataFixed, 
+        hasBeforeIn,
+        condition,
+        conditionParts: {
+            isSOCell,
+            isLocked,
+            hasCellFixed,
+            hasDataFixed,
+            hasBeforeIn,
+            anyLocked: isLocked || hasCellFixed || hasDataFixed || hasBeforeIn
+        }
+    });
+    if (condition) {
+        console.log('[DEBUG] startSelect: активируем fixstate редактирование для ячейки СО', {indexRow, indexCol});
+        
+        // Сначала выбираем ячейку (только если еще не выбрана)
+        if (!selectedCells.some(cell => cell.row === indexRow && cell.col === indexCol)) {
+            selectCell(indexRow, indexCol, event);
+        }
+        startRow = indexRow;
+        startCol = indexCol;
+        
+        // Активируем инлайн редактирование
+        let uid = WORKERS[indexRow]['uid'];
+        let no = indexRow + 1;
+        let id = no + '_' + uid;
+        let currentHours = 0;
+        
+        if (TABEL[id] && TABEL[id][indexCol]) {
+            currentHours = TABEL[id][indexCol]['hours'] || 0;
+        }
+        
+        if ($cell.find('input.inline-so-hours').length > 0) {
+            console.log('[DEBUG] startSelect: инлайн редактирование уже активно, выход');
+            return;
+        }
+        let oldHtml = $cell.html();
+        console.log('[DEBUG] startSelect: заменяем содержимое ячейки на инлайн input', {
+            oldHtml,
+            newHtml: '<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />'
+        });
+        $cell.html('<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
+        let $input = $cell.find('input.inline-so-hours');
+        console.log('[DEBUG] startSelect: input создан', {
+            inputLength: $input.length,
+            inputValue: $input.val(),
+            cellHtml: $cell.html()
+        });
+        $input.focus().select();
+        console.log('[DEBUG] startSelect: input сфокусирован и выделен');
+        $input.on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                let val = Number($input.val());
+                if (isNaN(val) || val < 0 || val > 20) {
+                    $input.addClass('input-error');
+                    return;
+                }
+                // Для СО: если вдруг TABEL[id][indexCol] не существует, тоже копируем свойства
+                if (!TABEL[id]) {
+                    TABEL[id] = {};
+                }
+                if (!TABEL[id][indexCol]) {
+                    let src = (WORKERS[indexRow] && WORKERS[indexRow].days && WORKERS[indexRow].days[indexCol])
+                        ? {...WORKERS[indexRow].days[indexCol]}
+                        : {};
+                    TABEL[id][indexCol] = src;
+                }
+                // Обновляем только часы, код СО оставляем без изменений
+                TABEL[id][indexCol]['hours'] = val;
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][indexCol] = TABEL[id][indexCol];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                // Обновляем отображение
+                renderCell(indexRow, indexCol);
+                sendDataTabel(false);
+                calcDays();
+            } else if (e.key === 'Escape') {
+                console.log('[DEBUG] startSelect: нажата Escape, восстанавливаем старое содержимое');
+                $cell.html(oldHtml);
+            }
+        });
+        $input.on('blur', function() {
+            console.log('[DEBUG] startSelect: input потерял фокус, добавляем задержку перед восстановлением');
+            // Добавляем небольшую задержку, чтобы предотвратить мгновенное восстановление при клике
+            setTimeout(function() {
+                if ($cell.find('input.inline-so-hours').length === 0) {
+                    console.log('[DEBUG] startSelect: input больше нет, восстанавливаем старое содержимое');
+                    $cell.html(oldHtml);
+                } else {
+                    console.log('[DEBUG] startSelect: input все еще есть, не восстанавливаем содержимое');
+                }
+            }, 50);
+        });
+        
+        // Добавляем отладочный лог через небольшую задержку, чтобы увидеть, что происходит с ячейкой
+        setTimeout(function() {
+            console.log('[DEBUG] startSelect: проверка состояния ячейки через 100мс', {
+                cellHtml: $cell.html(),
+                hasInput: $cell.find('input.inline-so-hours').length > 0,
+                inputValue: $cell.find('input.inline-so-hours').val()
+            });
+        }, 100);
+        
+        return;
+    }
+    
     console.log('[DEBUG] startSelect: проверка условий блокировки:', {
         indexRow, indexCol,
         hasCellFixed,
@@ -2146,6 +2277,7 @@ function startSelect(indexRow, indexCol, event){
         condition3: isLocked
     });
     
+    // === Обычная проверка блокировки для остальных ячеек ===
     if (
         (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
         $cell.hasClass('cell-before-in') ||
@@ -3700,53 +3832,14 @@ function onDoubleClick(event){
     
     console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
     
-    // --- Новый блок: разрешаем инлайн-редактирование часов для заблокированных ячеек, кроме СО ---
-    if (!isSOCell && isActuallyLocked) {
-        console.log('[onDoubleClick] Активируем инлайн-редактирование для заблокированной ячейки:', cell);
-        if ($cell.find('input.inline-locked-hours').length > 0) return;
-        let oldHtml = $cell.html();
-        $cell.html('<input type="number" min="0" max="20" class="inline-locked-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
-        let $input = $cell.find('input.inline-locked-hours');
-        $input.focus().select();
-        $input.on('keydown', function(e) {
-            if (e.key === 'Enter') {
-                let val = Number($input.val());
-                if (isNaN(val) || val < 0 || val > 20) {
-                    $input.addClass('input-error');
-                    return;
-                }
-                // Проверяем, что TABEL[id] и TABEL[id][cell.col] существуют
-                if (!TABEL[id]) {
-                    TABEL[id] = {};
-                }
-                if (!TABEL[id][cell.col]) {
-                    // Копируем все свойства из исходных данных, чтобы не терять lock/fixState/doc
-                    let src = (WORKERS[cell.row] && WORKERS[cell.row].days && WORKERS[cell.row].days[cell.col])
-                        ? {...WORKERS[cell.row].days[cell.col]}
-                        : {};
-                    TABEL[id][cell.col] = src;
-                }
-                // Обновляем только часы, код не трогаем
-                TABEL[id][cell.col]['hours'] = val;
-                if (!changedCells[id]) changedCells[id] = {};
-                changedCells[id][cell.col] = TABEL[id][cell.col];
-                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-                // Обновляем отображение
-                renderCell(cell.row, cell.col);
-                sendDataTabel(false);
-                calcDays();
-            } else if (e.key === 'Escape') {
-                $cell.html(oldHtml);
-            }
-        });
-        $input.on('blur', function() {
-            $cell.html(oldHtml);
-        });
-        return;
-    }
-    // --- Конец нового блока ---
-
-    if(isSOCell) {
+    // --- Инлайн-редактирование ТОЛЬКО для ячеек с кодом СО ---
+    if (isSOCell) {
+        // Сначала выбираем ячейку СО
+        if (selectedCells.length === 0 || !selectedCells.some(sc => sc.row === cell.row && sc.col === cell.col)) {
+            unselectCells();
+            selectCell(cell.row, cell.col, null);
+        }
+        
         if ($cell.find('input.inline-so-hours').length > 0) return;
         let oldHtml = $cell.html();
         $cell.html('<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
@@ -3769,8 +3862,14 @@ function onDoubleClick(event){
                         : {};
                     TABEL[id][cell.col] = src;
                 }
-                editSOHours(cell.row, cell.col, val);
+                // Обновляем только часы, код СО оставляем без изменений
+                TABEL[id][cell.col]['hours'] = val;
+                if (!changedCells[id]) changedCells[id] = {};
+                changedCells[id][cell.col] = TABEL[id][cell.col];
+                TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                // Обновляем отображение
                 renderCell(cell.row, cell.col);
+                sendDataTabel(false);
                 calcDays();
             } else if (e.key === 'Escape') {
                 $cell.html(oldHtml);
@@ -3781,6 +3880,8 @@ function onDoubleClick(event){
         });
         return;
     }
+
+
 
     // --- СТАРАЯ ЛОГИКА (только для незаблокированных ячеек) ---
     if (!isActuallyLocked) {
