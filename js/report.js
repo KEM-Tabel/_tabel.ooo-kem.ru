@@ -8,54 +8,46 @@ function canEditSO() {
 function editSOHours(row, col, hours) {
     // Любой пользователь может редактировать часы в ячейках СО
     // Проверяем только, что ячейка содержит код СО
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Проверяем, что WORKERS[row] существует и имеет uid
     if (!WORKERS[row] || !WORKERS[row]['uid']) {
         console.warn('[editSOHours] WORKERS[row] не найден или не имеет uid:', row);
         return false;
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     let uid = WORKERS[row]['uid'];
     let no = row + 1;
     let id = no + '_' + uid;
-
+    
     // Проверяем, что ячейка содержит код СО
     if (TABEL[id] && TABEL[id][col] && TABEL[id][col]['vt'] === 'СО') {
         // Обновляем только часы, код СО оставляем без изменений
         TABEL[id][col]['hours'] = Number(hours) || 0;
-
+        
         // Фиксируем изменение для отправки на сервер
         if (!changedCells[id]) changedCells[id] = {};
         changedCells[id][col] = TABEL[id][col];
         TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-
+        
         // Обновляем отображение ячейки
         let htmlValue = '';
         let hoursNum = Number(hours) || 0;
-
+        
         if (hoursNum > 0) {
             htmlValue = `<span class="cell-code-small">СО</span><span class="cell-hours-big">${hoursNum}</span>`;
         } else {
             htmlValue = `<span class="cell-code-big">СО</span>`;
         }
-
+        
         htmlValue += `<div id="${row+1}-${col+1}-day-comment" class="days-comment" title="${TABEL[id][col]['comment']||''}"></div>`;
-
+        
         $('#' + (row+1) + '-' + (col+1) + '-day-dv').html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
-
+        
         // Отправляем изменения на сервер
         sendDataTabel(false);
         return true;
     }
-
+    
     return false;
 }
 
@@ -203,7 +195,7 @@ function getMasterTooltipHtml(workersArr) {
 
 function formatDate(date, format) {
     const pad = (num) => String(num).padStart(2, '0');
-
+    
     const replacements = {
         'yyyy': date.getFullYear(),
         'mm': pad(date.getMonth() + 1),
@@ -221,7 +213,6 @@ function normalizeFIO(fio) {
     if (!fio || typeof fio !== 'string') {
         return '';
     }
-<<<<<<< Updated upstream
     
     // Убираем лишние пробелы и приводим к верхнему регистру
     let normalized = fio.trim().toUpperCase();
@@ -229,43 +220,22 @@ function normalizeFIO(fio) {
     // Разбиваем на части по пробелам
     let parts = normalized.split(/\s+/).filter(part => part.length > 0);
     
-=======
-
-    // Убираем лишние пробелы и приводим к верхнему регистру
-    let normalized = fio.trim().toUpperCase();
-
-    // Разбиваем на части по пробелам
-    let parts = normalized.split(/\s+/).filter(part => part.length > 0);
-
->>>>>>> Stashed changes
     // Если частей меньше 3, возвращаем как есть
     if (parts.length < 3) {
         return normalized;
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Берем первые три части как Фамилию, Имя, Отчество
     let lastName = parts[0];
     let firstName = parts[1];
     let middleName = parts[2];
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Применяем правило: первая буква заглавная, остальные строчные
     const capitalize = (str) => {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     };
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     return `${capitalize(lastName)} ${capitalize(firstName)} ${capitalize(middleName)}`;
 }
 
@@ -380,11 +350,7 @@ function renderCell(row, col) {
         hasFixStateFromTabel = true;
     }
 
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     let cond1 = !!normIn;
     let cond2 = Number(normDay) < Number(normIn);
     let cond = cond1 && cond2; // убираем cond3
@@ -499,13 +465,13 @@ document.addEventListener('mousedown', function(e) {
 
 function setViewMode(isReadonly) {
     console.log('[DEBUG] Установка режима просмотра:', isReadonly);
-
+    
     // Устанавливаем куку
     setFullReadonlyCookie(isReadonly);
-
+    
     // Обновляем глобальную переменную
     window.IS_FULL_READONLY = isReadonly;
-
+    
     // Обновляем текст кнопки
     const viewButton = $('#menu-fullreadonly');
     console.log('[DEBUG] Кнопка найдена:', viewButton.length > 0);
@@ -515,10 +481,10 @@ function setViewMode(isReadonly) {
     } else {
         console.log('[DEBUG] Кнопка не найдена в DOM');
     }
-
+    
     // Сохраняем текущую дату
     const currentDate = getCookie('LAST_DAY_OF_MONTH');
-
+    
     // Перезагружаем данные таблицы
     getDataTabel(
         true,  // loader
@@ -533,7 +499,7 @@ function setViewMode(isReadonly) {
 // Инициализация при загрузке страницы
 $(document).ready(function() {
     console.log('[DEBUG] Инициализация при загрузке страницы');
-
+    
     // Проверяем существование кнопки
     if ($('#menu-fullreadonly').length === 0) {
         console.log('[DEBUG] Создаем кнопку просмотра');
@@ -544,18 +510,18 @@ $(document).ready(function() {
             text: 'Смотреть'
         }).appendTo('#menu-container'); // Замените #menu-container на правильный селектор
     }
-
+    
     // Инициализируем состояние кнопки
     const currentMode = getFullReadonlyCookie();
     console.log('[DEBUG] Текущий режим:', currentMode);
     window.IS_FULL_READONLY = currentMode;
-
+    
     const viewButton = $('#menu-fullreadonly');
     if (viewButton.length > 0) {
         viewButton.text(currentMode ? 'Изменить' : 'Смотреть');
         console.log('[DEBUG] Установлен начальный текст кнопки:', currentMode ? 'Изменить' : 'Смотреть');
     }
-
+    
     // Обработчик клика по кнопке
     $(document).on('click', '#menu-fullreadonly', function() {
         console.log('[DEBUG] Клик по кнопке просмотра');
@@ -849,7 +815,7 @@ $(document).ready(function() {
             }, 100);
         }
     });
-
+    
     // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при изменении размера окна ===
     $(window).on('resize.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
@@ -891,11 +857,11 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     if (fullReadonly === false) {
         fullReadonly = getFullReadonlyCookie();
     }
-
+    
     window.lastTabelRequestArgs = {loader, hideAfter, UID, date, update, fullReadonly};
     window.IS_FULL_READONLY = !!fullReadonly;
     setFullReadonlyCookie(fullReadonly);
-
+    
     if (window.IS_FULL_READONLY) unselectCells();
     console.log('getDataTabel вызван с параметрами:', {loader, hideAfter, UID, date, update, fullReadonly});
     if(!UID) return;
@@ -905,11 +871,11 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     if (lastDayOfMonth) {
         date = lastDayOfMonth;
     }
-
+    
     // Форматируем дату для запроса
     const formattedDate = formatDate(new Date(date), 'YYYYMMDDHHmmss');
     const endOfMonth = formatDate(new Date(date), 'YYYYMMDD') + '235959';
-
+    
     // Параметры запроса
     const params = [
         UID,
@@ -918,7 +884,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
         update,
         fullReadonly  // Используем проверенное значение fullReadonly
     ];
-
+    
     console.log('[getDataTabel] Итоговые параметры запроса:', params);
 
     // 1. Если дата не указана (первая загрузка) — берем текущую дату
@@ -936,7 +902,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
     // Проверяем, является ли выбранный месяц прошлым
     let selectedDate = new Date(date.substring(0, 4), parseInt(date.substring(4, 6)) - 1, date.substring(6, 8));
     let now = new Date();
-    let isPastMonth = selectedDate.getFullYear() < now.getFullYear() ||
+    let isPastMonth = selectedDate.getFullYear() < now.getFullYear() || 
                      (selectedDate.getFullYear() === now.getFullYear() && selectedDate.getMonth() < now.getMonth());
 
     if (isPastMonth) {
@@ -948,7 +914,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             lastDayDate = lastDay.format("yyyymmddHHMMss");
         }
         console.log('[getDataTabel] lastDayDate для прошлого месяца:', lastDayDate);
-
+        
         // Для прошлого месяца используем текущую дату в date
         date = new Date().format("yyyymmddHHMMss");
         args[1] = date;
@@ -964,7 +930,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 
     // Проверяем куку FULL_READONLY только если не передан параметр fullReadonly
     let shouldAddFullReadonly = fullReadonly || window.IS_FULL_READONLY || getFullReadonlyCookie();
-    args.push(shouldAddFullReadonly);
+    args.push(shouldAddFullReadonly); 
 
     console.log('[getDataTabel] Итоговые параметры запроса:', args);
     let data = await getData(loader, hideAfter, "ПолучитьДанныеТабеля", args);
@@ -979,34 +945,22 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             DAYS = data.result.days;
             LOCATIONS = data.result.locations;
             DATA = data.result.data;
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             // Обработка поля today_lock
             if (data.result.today_lock !== undefined) {
                 window.TODAY_LOCK = data.result.today_lock;
                 console.log('[getDataTabel] today_lock:', window.TODAY_LOCK);
-<<<<<<< Updated upstream
                 
                 // Показываем уведомление о блокировке если нужно
                 updateTimeLockNotification();
             }
             
-=======
-
-                // Показываем уведомление о блокировке если нужно
-                updateTimeLockNotification();
-            }
-
->>>>>>> Stashed changes
             // Если пришли данные и это автообновление, обновляем сохраненную дату
             if (update && data.result.data && data.result.data.length > 0) {
                 setCookie('LAST_SUCCESSFUL_DATE', date, 365);
                 console.log('[getDataTabel] Обновлена сохраненная дата:', date);
             }
-
+            
             // Обработка поля readAll
             if ('readAll' in data.result) {
                 $('#menu-fullreadonly').show();
@@ -1015,7 +969,7 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             } else {
                 $('#menu-fullreadonly').hide();
             }
-
+            
             if(!window.organizations && data.result.organizations) {
                 window.organizations = data.result.organizations;
                 renderOrgFilter(window.organizations);
@@ -1059,11 +1013,11 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
 }
 
 function createHead(){
-
+	
 	TODAY = -1;
-
+	
 	$('#head-days').empty();
-
+	
 	let headDays = '';
 	for(let d in DAYS){
 
@@ -1072,21 +1026,21 @@ function createHead(){
 		if(DAYS[d]['today']){
 			suffix = 'today';
 			title = 'title="Сегодня"';
-
+			
 			TODAY = d;
 		}else{
 			suffix = DAYS[d]['weekend'] ? 'weekend' : 'work';
 		}
-
+		
 		headDays += '<div id="0_'+Number(d)+'-day-dv" '+title+' class="head-day-'+suffix+'" onClick="selectCol('+Number(d)+')">';
 		headDays += DAYS[d]['day'];
 		headDays += '<div class="head-wday">'+wShortDays[DAYS[d]['dow']-1]+'</div>';
 		headDays += '</div>';
 
 	}
-
+	
 	$('#head-days').html(headDays);
-
+	
 	$('#menu-head').width($('#head').innerWidth()-10);
 
 }
@@ -1104,18 +1058,18 @@ function createTabel(){
     $('#filter-firms-dv').empty();
     $('#filter-posts-dv').empty();
     $('#filter-locations-dv').empty();
-
+    
     $('#table').empty();
-
+    
     let firm_uid       = [];
     let post_uid       = [];
     let location_uid   = [];
-
+    
     let location_no    = 0;
     let chief_no       = 0;
     let master_no      = 0;
     let worker_no      = 0;
-
+    
     let html = '<div style="width:'+$('#head').innerWidth()+'px;">';
     console.log('[createTabel] DATA:', DATA);
     for(let l in DATA){
@@ -1170,7 +1124,7 @@ function createTabel(){
                 html += '<span id="m_'+master_id+'-short-sp" class="master-text-short">'+master_name+master['name']+'</span>';
                 html += '<span id="m_'+master_id+'-full-sp" class="master-text-full">'+location['name']+' > НАЧАЛЬНИК: '+chief['name']+' > '+master_name+master['name']+'</span>';
                 html += '<div class="master-count-workers"><span id="m_'+master_id+'-empty-sp"></span></div>';
-                html += '</div>';
+                html += '</div>'; 
                 html += '<div id="m_'+master_id+'-canvas" class="workers">';
                 html += '<div class="items">';
                 let htmlDays = '';
@@ -1224,7 +1178,7 @@ function createTabel(){
                         let days_id = worker_no+'-'+(Number(d)+1);
                         let dayHours = "";
                         let dayValue = "";
-                        if(day != undefined && day['vt'] != undefined){
+                        if(day != undefined && day['vt'] != undefined){    
                             dayValue = day['vt'];
                             if(codesDi.includes(String(day['hours']))){
                                 dayHours = day['hours'];
@@ -1247,12 +1201,12 @@ function createTabel(){
                             }
                         }
                         if (isFixed) cellClass += ' cell-fixed';
-
+                        
                         // === ИСПРАВЛЕНО: Используем данные из TABEL для определения блокировки ===
                         let isLockedFromTabel = false;
                         if (TABEL) {
                             let tabId = worker_no + '_' + WORKERS[worker_no-1].uid;
-
+                            
                             // === ДОБАВЛЕНО: Логи для строк 186-195 ===
                             if (worker_no >= 186 && worker_no <= 195) {
                                 console.log('[DEBUG] createTabel: проверяем ячейку для строки', worker_no, {
@@ -1264,19 +1218,19 @@ function createTabel(){
                                     hasCol: TABEL[tabId] ? !!TABEL[tabId][Number(d)] : false
                                 });
                             }
-
+                            
                             if (TABEL[tabId] && TABEL[tabId][Number(d)]) {
                                 let tabDayData = TABEL[tabId][Number(d)];
-
+                                
                                 // === ДОБАВЛЕНО: Логи для строк 186-195 ===
                                 if (worker_no >= 186 && worker_no <= 195) {
                                     console.log('[DEBUG] createTabel: данные дня из TABEL для строки', worker_no, tabDayData);
                                 }
-
+                                
                                 // Блокировка по lock/doc/фикс из TABEL
                                 if (tabDayData.lock || (tabDayData.doc && tabDayData.doc.trim() !== "" && tabDayData.doc.trim() !== ",") || tabDayData.fixState) {
                                     isLockedFromTabel = true;
-
+                                    
                                     // === ДОБАВЛЕНО: Логи для строк 186-195 ===
                                     if (worker_no >= 186 && worker_no <= 195) {
                                         console.log('[DEBUG] createTabel: ячейка заблокирована из TABEL для строки', worker_no, {
@@ -1296,7 +1250,7 @@ function createTabel(){
                                 }
                             }
                         }
-
+                        
                         if (isLockedFromTabel && String(dayValue).toUpperCase() !== 'СО') {
                             cellClass += ' cell-locked';
                         }
@@ -1359,11 +1313,7 @@ function createTabel(){
                                 hasFixStateFromTabel = true;
                             }
                         }
-<<<<<<< Updated upstream
                         
-=======
-
->>>>>>> Stashed changes
                         htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+extraClass+'" '+docAttr+' '+(hasFixStateFromTabel ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';'+extraStyle+'" title="'+day['comment']+'" onMouseDown="console.log(\'[LOG] onmousedown\', this);startSelect('+(worker_no-1)+','+Number(d)+', event)" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick(event)">'+htmlCell+'</div>';
                     }
                     htmlDays += '</div>';
@@ -1402,7 +1352,7 @@ function createTabel(){
         }
     }
     calcDays();
-
+    
     // Добавляем обработчики событий для ячеек через jQuery
     $(document).off('mousedown', '[id$="-day-dv"]').on('mousedown', '[id$="-day-dv"]', function(e) {
         let id = $(this).attr('id');
@@ -1558,12 +1508,12 @@ async function sendDataTabel(full=true){
 }
 
 async function changeData(...args){
-
+	
 	let full = false;
 	let method = args.shift();
-
+	
 	args.unshift(UID);
-
+	
 	let data = await getData(full, !full, method, args);
     // Проверяем результат для смены мастера
     if (data.result && data.result.successful === false && data.result.des) {
@@ -1575,7 +1525,7 @@ async function changeData(...args){
         return;
     }
 		console.log(data.des);
-
+		
 		$('#loader_dv').hide();
 		$('#loader_des').html('<strong>ЧТО-ТО ПОШЛО НЕ ТАК...</strong></br></br>');
 		$('#loader_des').append(data.des);
@@ -1607,7 +1557,7 @@ function showCustomAlert(message) {
 }
 
 function toPage(chapter=""){
-
+	
 	switch(chapter){
 		default:
 		case "menu":
@@ -1615,16 +1565,16 @@ function toPage(chapter=""){
 			break;
 		case "exit":
 			SID = null;
-			UID = null;
+			UID = null;	
 			LABEL = null;
-
+				
 			delAllCookie();
-
+				
 			document.location.href="/auth.htm";
 
 			break;
 	}
-
+	
 }
 
 let changedCells = {};
@@ -1651,7 +1601,7 @@ function setCells(value, isComment=false, isFullClear=false){
         let day = Number(cell['col']);
         let no = Number(cell['row'])+1;
         let id = no+'_'+uid;
-
+        
         // === ДОБАВЛЕНО: Проверка блокировки ячейки ===
         // Получаем значение ячейки для проверки блокировки
         let cellValue6 = null;
@@ -1706,7 +1656,7 @@ function setCells(value, isComment=false, isFullClear=false){
                 changedCells[id][day] = TABEL[id][day];
                 TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
                 sendDataTabel(false);
-
+            
                 // --- Полное обновление DOM ячейки ---
                 let htmlValue = '';
                 let dayValue = TABEL[id][day]['vt'];
@@ -1839,28 +1789,28 @@ function setCells(value, isComment=false, isFullClear=false){
 }
 
 function getCellValue(indexRow, indexCol){
-
+	
 	for(let key in selectedCells){
 		let cell = selectedCells[key];
-
+		
 		if(indexRow == cell['row'] && indexCol == cell['col']){
-
+			
 			let uid = WORKERS[Number(cell['row'])]['uid'];
 			let day = Number(cell['col']);
 			let no 	= Number(cell['row'])+1;
 			let id 	= no+'_'+uid;
-
+			
 			return TABEL[id][day];
 		}
-
+		
 	}
-
+	
 	return null;
 }
 
 function setComment(clear=false){
     console.log('[DEBUG] setComment вызвана', {clear, selectedCells, settingComment});
-
+    
     if(selectedCells.length === 0 && lastSelectedCellForComment && lastSelectedCellForComment.length > 0) {
         selectedCells = JSON.parse(JSON.stringify(lastSelectedCellForComment));
         console.log('[DEBUG] setComment: восстановлены selectedCells из lastSelectedCellForComment');
@@ -1882,11 +1832,11 @@ function setComment(clear=false){
 		console.log('[DEBUG] setComment: сохранение комментария', commentValue);
 		setCells(commentValue, true);
 	}
-
+	
 	$('#add-comment-in').val("");
 	$('#add-comment-dv').removeClass('show');
 	console.log('[DEBUG] setComment: окно комментариев скрыто');
-
+	
 	settingComment = false;
     lastSelectedCellForComment = null;
 	console.log('[DEBUG] setComment: завершена', {settingComment, lastSelectedCellForComment});
@@ -2002,7 +1952,7 @@ function unselectCells(){
 			}
 		}
 		$(idCell).css("color", unselectedFnt);
-
+		
 	}
 	selectedCells = [];
 	$("#context-menu").hide(50);
@@ -2021,13 +1971,13 @@ function selectCell(indexRow, indexCol, event) {
         console.trace('[TRACE] selectCell вызван с null');
     }
     console.log('[LOG] selectCell вызван', {indexRow, indexCol, event, ctrl: event && event.ctrlKey, shift: event && event.shiftKey, selectedCells: JSON.parse(JSON.stringify(selectedCells))});
-
+    
     // === ДОБАВЛЕНО: Проверка блокировки ячейки ===
     if (isCellLocked(indexRow, indexCol)) {
         console.log('[DEBUG] selectCell: ячейка заблокирована, выход');
         return;
     }
-
+    
     // === ДОБАВЛЕНО: Скрытие окна комментариев при клике на ячейки ===
     if (settingComment && $('#add-comment-dv').hasClass('show')) {
         // Добавляем небольшую задержку, чтобы не закрывать окно сразу после открытия
@@ -2038,7 +1988,7 @@ function selectCell(indexRow, indexCol, event) {
             }
         }, 100);
     }
-
+    
     // Если уже выделена эта ячейка и выделено больше одной — не сбрасываем выделение
     if (!(event && event.shiftKey) && selectedCells.length > 1) {
         for (let cell of selectedCells) {
@@ -2050,7 +2000,7 @@ function selectCell(indexRow, indexCol, event) {
     showHideInfo(null,null);
     curRow = indexRow;
     curCol = indexCol;
-
+    
     // Сброс выделения только при обычном клике мышью (без Ctrl/Shift/Meta)
     if (
         event &&
@@ -2139,7 +2089,7 @@ function startSelect(indexRow, indexCol, event){
         let no = indexRow + 1;
         let id = no + '_' + uid;
         console.log('[DEBUG] startSelect: проверка ячейки СО', {indexRow, indexCol, uid, id, TABEL: TABEL[id], dayData: TABEL[id] ? TABEL[id][indexCol] : null});
-
+        
         // Проверяем данные в TABEL
         if (TABEL[id] && TABEL[id][indexCol]) {
             let vt = TABEL[id][indexCol]['vt'];
@@ -2149,23 +2099,19 @@ function startSelect(indexRow, indexCol, event){
                 console.log('[DEBUG] startSelect: найдена ячейка СО в TABEL', {indexRow, indexCol, vt: TABEL[id][indexCol]['vt']});
             }
         }
-
+        
         // Также проверяем отображение ячейки
         let $cellElement = $('#'+Number(indexRow+1)+'-'+Number(indexCol+1)+'-day-dv');
         let cellText = $cellElement.text();
         console.log('[DEBUG] startSelect: текст ячейки', {indexRow, indexCol, cellText, cellTextLength: cellText.length});
-
+        
         // Если в отображении есть "СО", но в данных его нет, считаем это ячейкой СО
         if (cellText.includes('СО') && !isSOCell) {
             isSOCell = true;
             console.log('[DEBUG] startSelect: найдена ячейка СО в отображении', {indexRow, indexCol, cellText});
         }
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Получаем текущее значение ячейки для корректной проверки блокировки
     let cellValue = null;
     if (TABEL && WORKERS && indexRow >= 0 && indexCol >= 0) {
@@ -2180,27 +2126,16 @@ function startSelect(indexRow, indexCol, event){
         indexRow, indexCol, cellValue, uid: WORKERS[indexRow] ? WORKERS[indexRow].uid : 'unknown'
     });
     let isLocked = isCellLocked(indexRow, indexCol, cellValue);
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Детальное логирование условий блокировки ===
     let hasCellFixed = $cell.hasClass('cell-fixed');
     let hasDataFixed = $cell.attr('data-fixed') == '1';
     let hasBeforeIn = $cell.hasClass('cell-before-in');
     let canEditSOFlag = canEditSO();
-<<<<<<< Updated upstream
     
     // === ДОБАВЛЕНО: Fixstate редактирование для ячеек СО (ПЕРЕМЕЩЕНО ВЫШЕ) ===
     console.log('[DEBUG] startSelect: ДОСТИГНУТА ЛОГИКА FIXSTATE РЕДАКТИРОВАНИЯ СО');
     
-=======
-
-    // === ДОБАВЛЕНО: Fixstate редактирование для ячеек СО (ПЕРЕМЕЩЕНО ВЫШЕ) ===
-    console.log('[DEBUG] startSelect: ДОСТИГНУТА ЛОГИКА FIXSTATE РЕДАКТИРОВАНИЯ СО');
-
->>>>>>> Stashed changes
     // Проверяем, есть ли уже активное инлайн редактирование в этой ячейке
     let $existingInput = $cell.find('input.inline-so-hours');
     if ($existingInput.length > 0) {
@@ -2208,11 +2143,7 @@ function startSelect(indexRow, indexCol, event){
         $existingInput.focus().select();
         return;
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Проверяем, есть ли уже активное инлайн редактирование в любой ячейке
     let $anyExistingInput = $('input.inline-so-hours');
     if ($anyExistingInput.length > 0) {
@@ -2220,7 +2151,6 @@ function startSelect(indexRow, indexCol, event){
         $anyExistingInput.focus().select();
         return;
     }
-<<<<<<< Updated upstream
     
     let condition = isSOCell && (isLocked || hasCellFixed || hasDataFixed || hasBeforeIn);
     
@@ -2229,16 +2159,6 @@ function startSelect(indexRow, indexCol, event){
         isLocked, 
         hasCellFixed, 
         hasDataFixed, 
-=======
-
-    let condition = isSOCell && (isLocked || hasCellFixed || hasDataFixed || hasBeforeIn);
-
-    console.log('[DEBUG] startSelect: проверка условий для fixstate редактирования СО', {
-        isSOCell,
-        isLocked,
-        hasCellFixed,
-        hasDataFixed,
->>>>>>> Stashed changes
         hasBeforeIn,
         condition,
         conditionParts: {
@@ -2252,40 +2172,24 @@ function startSelect(indexRow, indexCol, event){
     });
     if (condition) {
         console.log('[DEBUG] startSelect: активируем fixstate редактирование для ячейки СО', {indexRow, indexCol});
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Сначала выбираем ячейку (только если еще не выбрана)
         if (!selectedCells.some(cell => cell.row === indexRow && cell.col === indexCol)) {
             selectCell(indexRow, indexCol, event);
         }
         startRow = indexRow;
         startCol = indexCol;
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Активируем инлайн редактирование
         let uid = WORKERS[indexRow]['uid'];
         let no = indexRow + 1;
         let id = no + '_' + uid;
         let currentHours = 0;
-<<<<<<< Updated upstream
         
         if (TABEL[id] && TABEL[id][indexCol]) {
             currentHours = TABEL[id][indexCol]['hours'] || 0;
         }
         
-=======
-
-        if (TABEL[id] && TABEL[id][indexCol]) {
-            currentHours = TABEL[id][indexCol]['hours'] || 0;
-        }
-
->>>>>>> Stashed changes
         if ($cell.find('input.inline-so-hours').length > 0) {
             console.log('[DEBUG] startSelect: инлайн редактирование уже активно, выход');
             return;
@@ -2347,11 +2251,7 @@ function startSelect(indexRow, indexCol, event){
                 }
             }, 50);
         });
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Добавляем отладочный лог через небольшую задержку, чтобы увидеть, что происходит с ячейкой
         setTimeout(function() {
             console.log('[DEBUG] startSelect: проверка состояния ячейки через 100мс', {
@@ -2360,17 +2260,10 @@ function startSelect(indexRow, indexCol, event){
                 inputValue: $cell.find('input.inline-so-hours').val()
             });
         }, 100);
-<<<<<<< Updated upstream
         
         return;
     }
     
-=======
-
-        return;
-    }
-
->>>>>>> Stashed changes
     console.log('[DEBUG] startSelect: проверка условий блокировки:', {
         indexRow, indexCol,
         hasCellFixed,
@@ -2383,11 +2276,7 @@ function startSelect(indexRow, indexCol, event){
         condition2: hasBeforeIn,
         condition3: isLocked
     });
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // === Обычная проверка блокировки для остальных ячеек ===
     if (
         (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
@@ -2416,11 +2305,7 @@ function startSelect(indexRow, indexCol, event){
                         isSOCell2 = true;
                     }
                 }
-<<<<<<< Updated upstream
                 
-=======
-
->>>>>>> Stashed changes
                 // Получаем значение ячейки для проверки блокировки
                 let cellValue2 = null;
                 if (TABEL && WORKERS && row >= 0 && col >= 0) {
@@ -2431,11 +2316,7 @@ function startSelect(indexRow, indexCol, event){
                         cellValue2 = TABEL[id][col]['vt'];
                     }
                 }
-<<<<<<< Updated upstream
                 
-=======
-
->>>>>>> Stashed changes
                 if (
                     isCellLocked(row, col, cellValue2) ||
                     (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell2) ||
@@ -2478,11 +2359,7 @@ function endSelect(indexRow, indexCol){
                     isSOCell3 = true;
                 }
             }
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             // Получаем значение ячейки для проверки блокировки
             let cellValue3 = null;
             if (TABEL && WORKERS && row >= 0 && col >= 0) {
@@ -2493,11 +2370,7 @@ function endSelect(indexRow, indexCol){
                     cellValue3 = TABEL[id][col]['vt'];
                 }
             }
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             if (
                 isCellLocked(row, col, cellValue3) ||
                 (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell3) ||
@@ -2544,7 +2417,7 @@ function selectRow(indexRow){
     $('#fio-filter-in').blur();
     unselectCells();
     let hasVisible = false;
-    for(let j in DAYS){
+    for(let j in DAYS){    
         let col_no = Number(j)+1;
         let $cell = $('#'+Number(indexRow+1)+'-'+col_no+'-day-dv');
         if ($cell.is(':visible')) {
@@ -2624,19 +2497,19 @@ function selectCol(indexCol){
 }
 
 function overCell(worker_no, indexRow, indexCol){
-
+	
 	$('#'+worker_no+'number-row').css({opacity: .5});
 	$('#0_'+indexCol+'-day-dv').css({opacity: .5});
 	//$('#'+row_no+'-'+Number(indexCol+1)+'-day-dv').css("color", selectedFnt);
-
+	
 }
 
 function outCell(worker_no, indexRow, indexCol){
-
+	
 	$('#'+worker_no+'number-row').css({opacity: 1});
 	$('#0_'+indexCol+'-day-dv').css({opacity: 1});
 	//$('#'+row_no+'-'+Number(indexCol+1)+'-day-dv').css("color", selectedFnt);
-
+	
 }
 
 let settingComment = false;
@@ -2659,7 +2532,7 @@ function contextAction(act){
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
 
-
+            
             case "comment":
                 suppressNextCommentClose = true;
                 console.log('[DEBUG] contextAction: открытие окна комментариев', {selectedCells, startRow, startCol});
@@ -2685,12 +2558,12 @@ function contextAction(act){
                 $('#add-comment-in').val(cellVal && cellVal['comment'] ? cellVal['comment'] : "");
                 $('#add-comment-in').focus();
                 settingComment = true;
-
+                
                 // Добавляем небольшую задержку перед фокусом, чтобы окно успело отобразиться
                 setTimeout(() => {
                     $('#add-comment-in').focus();
                 }, 50);
-
+                
                 console.log('[DEBUG] contextAction: окно комментариев открыто', {left, top, settingComment});
                 break;
 		case "clear":
@@ -2723,7 +2596,7 @@ function contextAction(act){
 			break;
 		case "editSOHours":
 			// Редактирование часов в ячейках СО (любой пользователь может редактировать часы СО)
-
+			
 			// Проверяем, есть ли ячейки с кодом СО
 			let hasSOCells = false;
 			for(let key in selectedCells){
@@ -2737,12 +2610,12 @@ function contextAction(act){
 					break;
 				}
 			}
-
+			
 			if(!hasSOCells){
 				alert('Выделенные ячейки не содержат код "СО"!');
 				return;
 			}
-
+			
 			// Показываем диалог для ввода часов
 			let hours = prompt('Введите количество часов (0-25):', '0');
 			if(hours !== null){
@@ -2776,7 +2649,7 @@ function contextAction(act){
                 let vtLocked = TABEL[idLocked] && TABEL[idLocked][cellLocked.col] ? TABEL[idLocked][cellLocked.col]['vt'] : '';
                 if ((vtLocked === 'СО') || (!$cellLocked.hasClass('cell-fixed') && $cellLocked.attr('data-fixed') != '1')) return;
                 let currentHoursLocked = TABEL[idLocked][cellLocked.col] && TABEL[idLocked][cellLocked.col]['hours'] ? TABEL[idLocked][cellLocked.col]['hours'] : 0;
-
+            
                 // Показываем диалог для ввода часов
                 let hoursLocked = prompt('Введите количество часов (0-20):', currentHoursLocked);
                 if(hoursLocked !== null){
@@ -2789,7 +2662,7 @@ function contextAction(act){
                         TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
                         sendDataTabel(false);
 
-
+                        
                         // Обновляем DOM
                         let htmlValueLocked = '';
                         let codeLocked = TABEL[idLocked][cellLocked.col]['vt'];
@@ -2817,13 +2690,13 @@ function contextAction(act){
 
 function cellAction(vt){
     console.log('cellAction', selectedCells);
-
+    
     // === ЗАПРЕТ УСТАНОВКИ КОДА "СО" ===
     if(vt === 'СО' && !canEditSO()){
         alert('Нельзя устанавливать код "СО"!');
         return;
     }
-
+    
 	setCells(vt);
 	$("#cell-menu").hide(50);
 	unselectCells();
@@ -2832,57 +2705,57 @@ function cellAction(vt){
 function filterAction(act){
 
 	switch(act){
-		case "apply":
+		case "apply":			
 			break;
 		case "clear":
 			break;
 	}
-
+	
 	$('#filter-dv').hide(50);
-
+	
 	settingFilter = false;
-
+	
 }
 
 let settingFilter = false;
 function showHideFilter(){
-
+	
 	if(settingFilter){
-
+		
 		$('#filter-dv').hide(50);
-
+	
 		settingFilter = false;
-
+		
 	}else{
 		$('#filter-dv').finish().toggle(50);
-
+	
 		settingFilter = true;
 
 	}
-
+	
 }
 
 function changeFilter(type){
-
+	
 	unselectCells();
-
+	
 	if($('#fio-filter-in').val().length > 0){
-
+			
 		for(index in CANVASES){
-
+			
 			let canvas = CANVASES[index];
-
+			
 			$('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/up.png")');
 			$('#'+canvas['id']+'-canvas').show();
 		}
 	}else{
-
+								
 		for(index in CANVASES){
-
+			
 			let canvas = CANVASES[index];
-
+			
 			$('#'+canvas['id']+'-head').show();
-
+			
 			if(canvas['state'] == "show" || CANVASES.length <=3){
 				$('#'+canvas['id']+'-head .toggle-bt').css('background-image', 'url("/images/report/up.png")');
 				$('#'+canvas['id']+'-canvas').show();
@@ -2892,72 +2765,72 @@ function changeFilter(type){
 			}
 		}
 	}
-
+	
 	for(let w in WORKERS){
-
-		let worker = WORKERS[w];
+		
+		let worker = WORKERS[w];			
 		let no = Number(w)+1;
 		let id = no+'_'+worker['uid'];
-
+		
 		let showRow = true;
-
+		
 		if($('#fio-filter-in').val().length > 0){
 			$('#clear-input-bt').show();
 		}else{
 			$('#clear-input-bt').hide();
 		}
-
+		
 		let value = $('#fio-filter-in').val();
 		let regexp = new RegExp(value, 'iu');
 		let match = String(worker['fio']).match(regexp);
-
+		
 		if(match != null){
 			let newFIO = $('#'+id+'-sp').text().replace(match[0], '<span class="worker-white-green">'+match[0]+'</span>');
-
-			$('#'+id+'-sp').html(newFIO);
+			
+			$('#'+id+'-sp').html(newFIO);			
 		}else{
 			$('#'+id+'-sp').html(worker['fio']);
-
+			
 			showRow = false;
 		}
 
 		$('#filter-firms-dv input').each(function(){
-			let firm_uid = $(this).attr("name");
-
+			let firm_uid = $(this).attr("name");	
+				
 			if(firm_uid == worker['firm_uid']){
 				showRow = $(this).is(":checked") && showRow;
-			}
-
+			}	
+			
 		});
-
+		
 		$('#filter-locations-dv input').each(function() {
-			let location_uid = $(this).attr("name");
-
+			let location_uid = $(this).attr("name");	
+			
 			if(location_uid == worker['location_uid']){
 				showRow = $(this).is(":checked") && showRow;
 			}
 		});
-
+		
 		$('#filter-posts-dv input').each(function() {
-			let post_uid = $(this).attr("name");
-
+			let post_uid = $(this).attr("name");	
+			
 			if(post_uid == worker['post_uid']){
 				showRow = $(this).is(":checked") && showRow;
 			}
 		});
-
-		let master_id 	= String($('#'+id+'-row').parent().parent().attr('id')).replace('-canvas', '');
+		
+		let master_id 	= String($('#'+id+'-row').parent().parent().attr('id')).replace('-canvas', '');	
 		let chief_id 	= String($('#'+id+'-row').parent().parent().parent().attr('id')).replace('-canvas', '');
 		let location_id = String($('#'+id+'-row').parent().parent().parent().parent().attr('id')).replace('-canvas', '');
 
 		if(showRow){
-
+			
 			$('#'+id+'-row').show();
 			$('#'+id+'-dv').show();
 			$('#'+id+'-days-dv').show();
 			$('#'+id+'-hours-dv').show();
-
-			if($('#fio-filter-in').val().length > 0){
+			
+			if($('#fio-filter-in').val().length > 0){	
 				$('#'+location_id+'-head').show();
 				$('#'+location_id+'-canvas').show();
 				$('#'+chief_id+'-head').show();
@@ -2966,23 +2839,23 @@ function changeFilter(type){
 				$('#'+master_id+'-canvas').show();
 			}
 		}else{
-
+			
 			$('#'+id+'-row').hide();
 			$('#'+id+'-dv').hide();
 			$('#'+id+'-days-dv').hide();
 			$('#'+id+'-hours-dv').hide();
-
-			if($('#fio-filter-in').val().length > 0){
+			
+			if($('#fio-filter-in').val().length > 0){	
 				if($('#'+master_id+'-canvas').height() == 0){
 					$('#'+master_id+'-head').hide();
 					$('#'+master_id+'-canvas').hide();
 				}
-
+				
 				if($('#'+chief_id+'-canvas').height() == 0){
 					$('#'+chief_id+'-head').hide();
 					$('#'+chief_id+'-canvas').hide();
 				}
-
+				
 				if($('#'+location_id+'-canvas').height() == 0){
 					$('#'+location_id+'-head').hide();
 					$('#'+location_id+'-canvas').hide();
@@ -2990,14 +2863,14 @@ function changeFilter(type){
 			}
 
 		}
-
+		
 	}
-
+	
 }
 
 function clearFio(){
 	$('#fio-filter-in').val("");
-
+	
 	changeFilter('fio');
 }
 
@@ -3049,15 +2922,15 @@ function rollAll(way){
                 $('#'+canvas['id']+'-canvas').hide();
                 delCookie(canvas['id'], "/", null);
             }
-
+           
             scrollTo(0, 0);
             break;
-        case "down":
+        case "down":         
             for(index in CANVASES){
                 let canvas = CANVASES[index];
                 $('#'+canvas['id']+'-canvas').show();
                 setCookie(canvas['id'], "show", "/", null, null);
-            }
+            }           
             break;
     }
 }
@@ -3106,7 +2979,7 @@ function showHideInfo(element, id){
 			if(uid == worker['uid'] && w == no-1){
 				// ... existing code ...
 				$('#info-dv .info-fio-dv').html("<strong>ФИО: </strong>"+worker['fio'].toUpperCase()+' <span class="copy-fio-btn" title="Копировать ФИО"><i class="fa fa-copy"></i></span>');
-
+				
 				// Добавляем обработчик копирования
 				$('.copy-fio-btn').off('click').on('click', function(e) {
 					e.stopPropagation();
@@ -3120,7 +2993,7 @@ function showHideInfo(element, id){
 						}, 1000);
 					});
 				});
-
+				
 				$('#info-dv .info-organization-dv').html("<strong>Организация: </strong>"+worker['firm_name']);
 				$('#info-dv .info-location-dv').html("<strong>Участок: </strong>"+worker['location_name']);
 				let htmlChiefs = '<select id="chiefs-sl" onchange="changeChief(\"'+id+'\")\"'+(window.IS_FULL_READONLY ? ' disabled' : '')+'>';
@@ -3175,7 +3048,7 @@ function showHideInfo(element, id){
 				if(worker['chief_uid'] !== undefined && $('#chiefs-sl').length) {
 					let selectedChiefUid = $('#chiefs-sl').val();
 					let selectedLocationUid = $('#chiefs-sl option:selected').parent().attr('value');
-
+					
 					// Показываем кнопку, если изменился начальник ИЛИ объект
 					if(selectedChiefUid != worker['chief_uid'] || selectedLocationUid != worker['location_uid']) {
 						showSave = true;
@@ -3264,7 +3137,7 @@ function setMouseUpState(e) {
 
     mouseUp     = (flags & 1) === 1;
     mouseDown   = false;
-
+    
     // === ИСПРАВЛЕНО: Добавляем логику скрытия окна комментариев при клике вне его ===
 if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
     if (suppressNextCommentClose) {
@@ -3276,7 +3149,7 @@ if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
     let isCommentMenuClick = $(e.target).closest('.menu-comment').length > 0;
     let isContextMenuClick = $(e.target).closest('#context-menu').length > 0;
     let isContextMenuButton = $(e.target).closest('li[onClick*="comment"]').length > 0;
-
+    
     console.log('[DEBUG] setMouseUpState: анализируем причину закрытия', {
         target: e.target,
         targetTag: e.target.tagName,
@@ -3287,7 +3160,7 @@ if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
         isContextMenuClick: isContextMenuClick,
         isContextMenuButton: isContextMenuButton
     });
-
+    
     if (!isCommentMenuClick && !isContextMenuClick && !isContextMenuButton) {
         console.log('[DEBUG] setMouseUpState: Клик вне окна комментариев, закрываем окно');
         setTimeout(() => {
@@ -3297,22 +3170,22 @@ if(settingComment && !$(e.target).closest("#add-comment-dv").length > 0){
         console.log('[DEBUG] setMouseUpState: Клик по меню, не закрываем окно комментариев');
     }
 }
-
+    
     if(settingFilter && ($(e.target).parents("#workers").length > 0 || $(e.target).parents("#field").length > 0)){
         $('#filter-dv').hide(50);
         settingFilter = false;
     }
-
+    
     TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
 }
 
 function setMouseDownState(e) {
-
+  
 	let flags = e.buttons !== undefined ? e.buttons : e.which;
 
 	mouseUp 	= false;
 	mouseDown 	= (flags & 1) === 1;
-
+	
 	if("which" in e){
 		isLeftMB 	= e.which == 1;
 		isRightMB 	= e.which == 3;
@@ -3320,11 +3193,11 @@ function setMouseDownState(e) {
 		isLeftMB 	= e.button == 1;
 		isRightMB 	= e.button == 2;
 	}
-
+  
 	if(flags > 0 && !$(e.target).parents("#context-menu").length > 0){
-		//$("#context-menu").hide(50);	console.log("down");
+		//$("#context-menu").hide(50);	console.log("down");	
 	}
-
+	
 	TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
 }
 
@@ -3358,7 +3231,7 @@ function setCellVal(e){
     if ($('#move-worker-modal').is(':visible')) {
         return;
     }
-
+    
     if(settingComment){
         return;
     }
@@ -3374,14 +3247,14 @@ function setCellVal(e){
         e.stopImmediatePropagation && e.stopImmediatePropagation();
         return false;
     }
-
+    
     console.log('[DEBUG] setCellVal вызван', {event: e, selectedCells, isReadOnlyRowSelected: typeof isReadOnlyRowSelected !== 'undefined' ? isReadOnlyRowSelected : undefined, tabelIsSaving: window.tabelIsSaving});
-
+	
 	if($(document.activeElement).attr('id') == "fio-filter-in") return;
-
+	
 	let isShift;
 	let keynum;
-
+ 
 	if(window.event){
 		isShift = !!window.event.shiftKey;
 		keynum  = e.keyCode;
@@ -3400,7 +3273,7 @@ function setCellVal(e){
 		startCol = curCol;
 	}
 	wasShift = isShift;
-
+	
 	// Проверяем, есть ли выделенные ячейки с кодом СО
 	let hasSOCells = false;
 	if (selectedCells.length > 0) {
@@ -3416,9 +3289,9 @@ function setCellVal(e){
 			}
 		}
 	}
-
+	
 	if(settingComment){
-
+		
         switch(keynum){
             default:
                 // Блокируем F1-F12 даже если дошли до сюда
@@ -3433,7 +3306,7 @@ function setCellVal(e){
 				setComment(true);
 				break;
 			}
-
+		
 			}else{
 		// === БЛОКИРОВКА ВВОДА ПРИ СОХРАНЕНИИ ===
 		if(window.tabelIsSaving) {
@@ -3448,19 +3321,19 @@ function setCellVal(e){
                 }
 
 				let key = String(e.key).toLowerCase();
-
+				
 				// Если есть ячейки СО, обрабатываем как часы (любой пользователь может редактировать часы СО)
 				if(hasSOCells && symbolsDi.includes(key)){
 					// Редактируем часы в ячейках СО
 					let newCode = code + key.toUpperCase();
 					let hours = Number(newCode);
-
+					
 					// Если это однозначное число или двузначное число до 25
-					if((newCode.length === 1 && hours >= 0 && hours <= 9) ||
+					if((newCode.length === 1 && hours >= 0 && hours <= 9) || 
 					   (newCode.length === 2 && hours >= 10 && hours <= 25)){
 						code = newCode;
 						updateInputIndicator();
-
+						
 						// Если это двузначное число или Enter, применяем изменения
 						if(newCode.length === 2 || e.keyCode === 13){
 							for(let key in selectedCells){
@@ -3486,35 +3359,35 @@ function setCellVal(e){
 						return;
 					}
 				}
-
+				
 				if(symbolsDi.includes(key)){
-
+				
 					if(Number(code+key.toUpperCase()) > 16 || !codesRu.includes(String(code+key.toUpperCase()))){
 						code = key.toUpperCase();
 					}else{
 						code+= key.toUpperCase();
 					}
-
+				
 				}else if(symbolsRu.includes(key)){
-
+					
 					if(!codesRu.includes(String(code+key.toUpperCase()))){
 						code = key.toUpperCase();
 					}else{
 						code+= key.toUpperCase();
 					}
-
+					
 				}else if(symbolsEn.includes(key)){
 					let index = symbolsEn.indexOf(key);
-
+					
 					key = symbolsRu[index];
-
+					
 					if(!codesRu.includes(String(code+String(key).toUpperCase()))){
 						code = String(key).toUpperCase();
 					}else{
 						code+= String(key).toUpperCase();
 					}
-				}
-
+				}	
+				
 				if(code.length > 2) code = code.substring(code.length - 1);
 				updateInputIndicator();
 				setCells(code.trim().toUpperCase());
@@ -3525,7 +3398,7 @@ function setCellVal(e){
 				return;
 				break;
 			case 16: case 17: case 18: //shift ctrl alt
-
+				
 				break;
 			case 9: case 32: //tab space
 				break;
@@ -3550,7 +3423,7 @@ function setCellVal(e){
 						return;
 					}
 				}
-
+				
 				if(code != '' && codesRu.includes(code)) setCells(code);
 				unselectCells();
 				calcDays();
@@ -3582,7 +3455,7 @@ function setCellVal(e){
                     return;
                 }
             }
-
+            
             // Если есть ячейки СО, очищаем часы (любой пользователь может редактировать часы СО)
             if(hasSOCells){
                 for(let key in selectedCells){
@@ -3600,7 +3473,7 @@ function setCellVal(e){
                 updateInputIndicator();
                 return;
             }
-
+            
             showConfirmClearModal(function() {
                 setCells("", false, true); // Сначала очистка!
                 unselectCells();           // Потом снимаем выделение
@@ -3718,15 +3591,15 @@ function setCellVal(e){
 				}
 				break;
 		}
-
+		
 		if([32, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
 			e.preventDefault();
 		}
-
+		
 	}
-
+	
 	TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-
+	
 }
 
 function onRightClick(){
@@ -3746,7 +3619,7 @@ function onRightClick(){
             selectCell(startRow, startCol, null);
         }
     }
-
+    
     // Выделяем ячейку под курсором, если она не выделена
     if(selectedCells.length === 0) {
         selectCell(startRow, startCol, null);
@@ -3767,7 +3640,7 @@ function onRightClick(){
             }
         }
     }
-
+    
     // Показываем/скрываем пункт меню для редактирования часов СО (любой пользователь может редактировать часы СО)
     if(hasSOCells){
         $('#edit-so-hours-menu-item').show();
@@ -3786,15 +3659,9 @@ function onRightClick(){
 
 function onDoubleClick(event){
     if (window.IS_FULL_READONLY) return;
-<<<<<<< Updated upstream
     
     let cell = null;
     
-=======
-
-    let cell = null;
-
->>>>>>> Stashed changes
     // Пытаемся получить координаты из выбранных ячеек
     if (selectedCells.length > 0) {
         cell = selectedCells[0];
@@ -3806,44 +3673,25 @@ function onDoubleClick(event){
     // Если и это не работает, пытаемся определить координаты из события
     else if (event && event.target) {
         let $target = $(event.target);
-<<<<<<< Updated upstream
         
         // Ищем родительский элемент ячейки (с id вида "X-Y-day-dv")
         let $cellElement = $target.closest('[id$="-day-dv"]');
         
-=======
-
-        // Ищем родительский элемент ячейки (с id вида "X-Y-day-dv")
-        let $cellElement = $target.closest('[id$="-day-dv"]');
-
->>>>>>> Stashed changes
         // Если не нашли элемент с -day-dv, попробуем найти по другим признакам
         if ($cellElement.length === 0) {
             // Ищем элемент с классом, который может быть ячейкой
             $cellElement = $target.closest('.cell-code-big, .cell-code-small, .cell-hours-big').parent();
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Если все еще не нашли, ищем любой элемент с id
         if ($cellElement.length === 0) {
             $cellElement = $target.closest('[id]');
         }
-<<<<<<< Updated upstream
         
         if ($cellElement.length > 0) {
             let cellId = $cellElement.attr('id');
             console.log('[onDoubleClick] Найден элемент с id:', cellId, 'для target:', event.target.tagName, event.target.className);
             
-=======
-
-        if ($cellElement.length > 0) {
-            let cellId = $cellElement.attr('id');
-            console.log('[onDoubleClick] Найден элемент с id:', cellId, 'для target:', event.target.tagName, event.target.className);
-
->>>>>>> Stashed changes
             if (cellId && cellId.match(/^(\d+)-(\d+)-day-dv$/)) {
                 let matches = cellId.match(/^(\d+)-(\d+)-day-dv$/);
                 let row = parseInt(matches[1], 10) - 1;
@@ -3857,7 +3705,6 @@ function onDoubleClick(event){
             console.log('[onDoubleClick] Не удалось найти родительский элемент ячейки для:', event.target);
         }
     }
-<<<<<<< Updated upstream
     
     // Если не удалось определить координаты
     if (!cell || cell.row < 0 || cell.col < 0) {
@@ -3865,15 +3712,6 @@ function onDoubleClick(event){
             selectedCells, 
             startRow, 
             startCol, 
-=======
-
-    // Если не удалось определить координаты
-    if (!cell || cell.row < 0 || cell.col < 0) {
-        console.warn('[onDoubleClick] Не удалось определить координаты ячейки:', {
-            selectedCells,
-            startRow,
-            startCol,
->>>>>>> Stashed changes
             event: event ? {
                 target: event.target,
                 targetId: event.target ? event.target.id : null,
@@ -3883,26 +3721,16 @@ function onDoubleClick(event){
         });
         return;
     }
-<<<<<<< Updated upstream
     
     console.log('[onDoubleClick] Работаем с ячейкой:', cell, 'selectedCells:', selectedCells);
     
-=======
-
-    console.log('[onDoubleClick] Работаем с ячейкой:', cell, 'selectedCells:', selectedCells);
-
->>>>>>> Stashed changes
     // Проверяем, что элемент ячейки существует
     let $cell = $('#' + Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
     if ($cell.length === 0) {
         console.warn('[onDoubleClick] Элемент ячейки не найден:', Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
         return;
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Получаем текущее значение ячейки для корректной проверки блокировки
     let cellValue = null;
     if (TABEL && WORKERS && cell.row >= 0 && cell.col >= 0) {
@@ -3918,19 +3746,11 @@ function onDoubleClick(event){
     });
     let isLocked = isCellLocked(cell.row, cell.col, cellValue);
     console.log('[onDoubleClick] Статус блокировки ячейки:', isLocked);
-<<<<<<< Updated upstream
     
     // === ДОБАВЛЕНО: Детальное логирование причин блокировки ===
     if (isLocked) {
         let lockReasons = [];
         
-=======
-
-    // === ДОБАВЛЕНО: Детальное логирование причин блокировки ===
-    if (isLocked) {
-        let lockReasons = [];
-
->>>>>>> Stashed changes
         // Проверяем TABEL блокировку
         if (TABEL) {
             let tabId = (cell.row + 1) + '_' + WORKERS[cell.row].uid;
@@ -3941,51 +3761,31 @@ function onDoubleClick(event){
                 if (dayData.fixState) lockReasons.push('fixState в TABEL');
             }
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Проверяем блокировку по дате устройства
         let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
         if (isCurrentMonth && WORKERS[cell.row] && WORKERS[cell.row]['days'] && WORKERS[cell.row]['days'][cell.col] && WORKERS[cell.row]['days'][cell.col]['enable'] === false) {
             lockReasons.push('день до устройства сотрудника');
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Проверяем блокировку будущих дней
         let todayIndexForHighlighting = getTodayIndexForHighlighting();
         if (isCurrentMonth && Number(cell.col) > todayIndexForHighlighting) {
             lockReasons.push('будущий день');
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         console.log('[onDoubleClick] Причины блокировки ячейки:', lockReasons);
     }
 
     // Проверяем, является ли ячейка с кодом СО (по данным или DOM)
     let isSOCell = false;
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // Проверяем, что WORKERS[cell.row] существует и имеет uid
     if (!WORKERS[cell.row] || !WORKERS[cell.row]['uid']) {
         console.warn('[onDoubleClick] WORKERS[cell.row] не найден или не имеет uid:', cell.row);
         return;
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     let uid = WORKERS[cell.row]['uid'];
     let no = cell.row + 1;
     let id = no + '_' + uid;
@@ -4011,11 +3811,7 @@ function onDoubleClick(event){
     let hasDataFixed = $cell.attr('data-fixed') == '1';
     let hasBeforeIn = $cell.hasClass('cell-before-in');
     let canEditSOFlag = canEditSO();
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     console.log('[DEBUG] onDoubleClick: проверка условий блокировки:', {
         row: cell.row, col: cell.col,
         hasCellFixed,
@@ -4028,7 +3824,6 @@ function onDoubleClick(event){
         condition2: hasBeforeIn,
         condition3: isLocked
     });
-<<<<<<< Updated upstream
     
     // Обновляем статус блокировки с учетом CSS классов
     let isActuallyLocked = isLocked || 
@@ -4037,16 +3832,6 @@ function onDoubleClick(event){
     
     console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
     
-=======
-
-    // Обновляем статус блокировки с учетом CSS классов
-    let isActuallyLocked = isLocked ||
-                          (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
-                          $cell.hasClass('cell-before-in');
-
-    console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
-
->>>>>>> Stashed changes
     // --- Инлайн-редактирование ТОЛЬКО для ячеек с кодом СО ---
     if (isSOCell) {
         // Сначала выбираем ячейку СО
@@ -4054,11 +3839,7 @@ function onDoubleClick(event){
             unselectCells();
             selectCell(cell.row, cell.col, null);
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         if ($cell.find('input.inline-so-hours').length > 0) return;
         let oldHtml = $cell.html();
         $cell.html('<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
@@ -4110,11 +3891,7 @@ function onDoubleClick(event){
             // Убеждаемся, что ячейка выбрана, но не вызываем selectCell повторно
             // так как это может привести к конфликтам
             let value = getCellValue(cell.row, cell.col);
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             // Проверяем, выбрана ли уже эта ячейка
             let isAlreadySelected = false;
             for (let selectedCell of selectedCells) {
@@ -4123,11 +3900,7 @@ function onDoubleClick(event){
                     break;
                 }
             }
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             // Если ячейка не выбрана, выбираем её
             if (!isAlreadySelected) {
                 selectCell(cell.row, cell.col, null);
@@ -4143,17 +3916,17 @@ function onDoubleClick(event){
 }
 
 function scrollDocument(e){
-
+	
 	$("#context-menu").hide();
 	$("#cell-menu").hide();
-
+	
 	TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-
+	
 	var $elems = [].slice.call(document.querySelectorAll('.master-head'));
 
 	$elems.forEach(checkStickyState);
-
-
+	
+	
 }
 
 function checkStickyState($elem) {
@@ -4162,7 +3935,7 @@ function checkStickyState($elem) {
     let isStuck = currentOffset <= stickyOffset;
 
 	let master_id = String($($elem).attr('id')).replace('-head', '');
-
+    
 	if(isStuck){
 		$('#'+master_id+'-short-sp').hide();
 		$('#'+master_id+'-full-sp').show();
@@ -4395,21 +4168,21 @@ function getStatsDayIndex() {
     let currentDate = new Date();
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
-
+    
     // Получаем дату из глобальной переменной curDate
     let viewDate = typeof curDate !== 'undefined' ? curDate : new Date();
     let viewMonth = viewDate.getMonth();
     let viewYear = viewDate.getFullYear();
-
+    
     // Определяем индекс дня для статистики
     let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
-
+    
     // Если просматриваем предыдущий месяц, используем последний день этого месяца
     if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
         let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
         todayIndex = lastDay - 1; // -1 потому что индексация с 0
     }
-
+    
     return todayIndex;
 }
 
@@ -4419,21 +4192,21 @@ function getTodayIndexForHighlighting() {
     let currentDate = new Date();
     let currentMonth = currentDate.getMonth();
     let currentYear = currentDate.getFullYear();
-
+    
     // Получаем дату из глобальной переменной curDate
     let viewDate = typeof curDate !== 'undefined' ? curDate : new Date();
     let viewMonth = viewDate.getMonth();
     let viewYear = viewDate.getFullYear();
-
+    
     // Определяем индекс дня для подсветки
     let todayIndex = typeof TODAY !== 'undefined' ? TODAY : 0;
-
+    
     // Если просматриваем предыдущий месяц, используем последний день этого месяца
     if (viewYear < currentYear || (viewYear === currentYear && viewMonth < currentMonth)) {
         let lastDay = new Date(viewYear, viewMonth + 1, 0).getDate();
         todayIndex = lastDay - 1; // -1 потому что индексация с 0
     }
-
+    
     return todayIndex;
 }
 
@@ -4475,15 +4248,15 @@ function initTooltips() {
         const locationIdx = $head.data('location-idx');
         const chiefIdx = $head.data('chief-idx');
         const masterIdx = $head.data('master-idx');
-
+        
         tooltipTimeoutId = setTimeout(function() {
             let workersForTooltip = [];
             let savedData = window.SAVED_DATA;
             let todayIndex = getStatsDayIndex();
-
+            
             // Используем функцию getStatsDayIndex для определения правильного индекса
             todayIndex = getStatsDayIndex();
-
+            
             // Собираем работников для тултипа
             if (elementType === 'master' && typeof locationIdx !== 'undefined' && typeof chiefIdx !== 'undefined' && typeof masterIdx !== 'undefined' && locationIdx >= 0 && locationIdx < savedData.length) {
                 const location = savedData[locationIdx];
@@ -4525,16 +4298,16 @@ function initTooltips() {
                     }
                 }
             }
-
+            
             // Формируем тултип аналогично tooltipStats
             let stats = tooltipStats(workersForTooltip);
             let statsHtml = generateTooltipHtml(stats);
-
+            
             if (!statsHtml) {
                 tooltip.hide();
                 return;
             }
-
+            
             tooltip.html(statsHtml);
             // Позиционирование тултипа относительно строки "Пустых"
             let $anchor = $hoveredElement;
@@ -4633,7 +4406,7 @@ $(document).ready(function() {
             $('#info-dv').hide();
         }
     });
-
+    
     // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при прокрутке ===
     $(window).on('scroll.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
@@ -4645,7 +4418,7 @@ $(document).ready(function() {
             }, 100);
         }
     });
-
+    
     // === ДОБАВЛЕНО: Обработчик скрытия окна комментариев при изменении размера окна ===
     $(window).on('resize.hideCommentDv', function() {
         if ($('#add-comment-dv').hasClass('show')) {
@@ -4689,7 +4462,7 @@ function showConfirmClearModal(onConfirm) {
 
 // === Фильтр по организациям (overlay) ===
 $(document).ready(function () {
-
+  
 
   // Открытие/закрытие overlay
   $('#open-org-filter').on('click', function() {
@@ -5176,63 +4949,11 @@ function initReadOnlyHandlers() {
         return false;
     });
 
-        // Дабл-клик по фамилии — копируем ФИО в буфер обмена
+    // Дабл-клик по фамилии — полностью игнорируем
     $(document).off('dblclick.readonlyrow').on('dblclick.readonlyrow', '.worker_lb', function(e) {
         e.stopPropagation();
         e.preventDefault();
-
-        // Находим ФИО сотрудника
-        let $fioSpan = $(this).find('span[id$="-sp"]');
-        if ($fioSpan.length > 0) {
-            let fioText = $fioSpan.text();
-            let normalizedFio = normalizeFIO(fioText);
-
-            // Копируем в буфер обмена
-            navigator.clipboard.writeText(normalizedFio).then(() => {
-                console.log('[copyFio] ФИО скопировано в буфер обмена:', normalizedFio);
-
-                // Показываем визуальную обратную связь
-                let $workerLb = $(this);
-                $workerLb.addClass('fio-copied');
-                setTimeout(() => {
-                    $workerLb.removeClass('fio-copied');
-                }, 1000);
-            }).catch(err => {
-                console.error('[copyFio] Ошибка при копировании ФИО:', err);
-            });
-        }
-
         return false;
-    });
-
-    // Глобальный обработчик двойного клика для копирования ФИО (для всех строк)
-    $(document).off('dblclick.copyFio').on('dblclick.copyFio', '.worker_lb', function(e) {
-        // Проверяем, что это не read-only строка (чтобы избежать дублирования)
-        if (!$(this).hasClass('readonly-row-selected')) {
-            e.stopPropagation();
-            e.preventDefault();
-
-            // Находим ФИО сотрудника
-            let $fioSpan = $(this).find('span[id$="-sp"]');
-            if ($fioSpan.length > 0) {
-                let fioText = $fioSpan.text();
-                let normalizedFio = normalizeFIO(fioText);
-
-                // Копируем в буфер обмена
-                navigator.clipboard.writeText(normalizedFio).then(() => {
-                    console.log('[copyFio] ФИО скопировано в буфер обмена:', normalizedFio);
-
-                    // Показываем визуальную обратную связь
-                    let $workerLb = $(this);
-                    $workerLb.addClass('fio-copied');
-                    setTimeout(() => {
-                        $workerLb.removeClass('fio-copied');
-                    }, 1000);
-                }).catch(err => {
-                    console.error('[copyFio] Ошибка при копировании ФИО:', err);
-                });
-            }
-        }
     });
 
     // Глобальный клик по документу — если не по .worker_lb, сбрасываем read-only выделение и инициируем обычное выделение
@@ -5518,23 +5239,23 @@ function getTodayYMD() {
   let urlParams = new URLSearchParams(window.location.search);
   let dateParam = urlParams.get('date');
   let viewDate = dateParam ? new Date(dateParam) : new Date();
-
+  
   // Учитываем часовой пояс
   let offset = -(viewDate.getTimezoneOffset()) / 60;
   if(offset != 10) {
     viewDate = new Date(viewDate.getTime() + ((10-offset)*60*60*1000));
   }
-
+  
   // Проверяем, является ли просматриваемый месяц прошлым
   let currentDate = new Date();
   let currentMonth = currentDate.getMonth();
   let currentYear = currentDate.getFullYear();
   let viewMonth = viewDate.getMonth();
   let viewYear = viewDate.getFullYear();
-
+  
   // Если месяц в URL отличается от текущего месяца, считаем его прошлым
   let isPastMonth = viewMonth !== currentMonth || viewYear !== currentYear;
-
+  
   let date;
   if (isPastMonth) {
     // Если просматриваем прошлый месяц, используем последний день этого месяца
@@ -5543,7 +5264,7 @@ function getTodayYMD() {
   } else {
     date = viewDate;
   }
-
+  
   const pad = n => n < 10 ? '0'+n : n;
   return date.getFullYear() + pad(date.getMonth()+1) + pad(date.getDate());
 }
@@ -5552,22 +5273,22 @@ function getReportUrl(groupby, type) {
     // SID, UID всегда брать из куков
     let sid = getCookie('SID') || '';
     let uid = getCookie('UID') || '';
-
+    
     // Получаем дату из URL или из текущей даты
     let urlParams = new URLSearchParams(window.location.search);
     let dateParam = urlParams.get('date');
     console.log('[getReportUrl] Исходная дата из URL:', dateParam);
-
+    
     let date;
     if (dateParam) {
       // Разбираем дату из URL (формат YYYYMMDD)
       let year = parseInt(dateParam.substring(0, 4));
       let month = parseInt(dateParam.substring(4, 6)) - 1; // месяцы в JS начинаются с 0
-
+  
       // Проверяем, выбран ли текущий месяц
       let now = new Date();
       let isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
-
+  
       if (isCurrentMonth) {
         // Если выбран текущий месяц — удаляем куку
         delCookie('LAST_DAY_OF_MONTH');
@@ -5597,7 +5318,7 @@ function getReportUrl(groupby, type) {
         console.log('[getReportUrl] Используем текущую дату:', date);
       }
     }
-
+    
     let url = `https://1c.ooo-kem.ru:8443/kem-zup/hs/rc/?sid=${encodeURIComponent(sid)}&user=${encodeURIComponent(uid)}&date=${date}&method=getTable&groupby=${groupby}&type=${type}`;
     console.log('[getReportUrl] Итоговый URL:', url);
     return url;
@@ -5608,16 +5329,16 @@ function getReportFileName(groupby, type) {
     let urlParams = new URLSearchParams(window.location.search);
     let dateParam = urlParams.get('date');
     let dateStr;
-
+  
     if (dateParam) {
       // Разбираем дату из URL (формат YYYYMMDD)
       let year = parseInt(dateParam.substring(0, 4));
       let month = parseInt(dateParam.substring(4, 6)) - 1; // месяцы в JS начинаются с 0
-
+      
       // Проверяем, выбран ли текущий месяц
       let now = new Date();
       let isCurrentMonth = (year === now.getFullYear() && month === now.getMonth());
-
+      
       if (isCurrentMonth) {
         // Если выбран текущий месяц, используем текущую дату
         const today = new Date();
@@ -5654,7 +5375,7 @@ function getReportFileName(groupby, type) {
         dateStr = pad(today.getDate()) + '.' + pad(today.getMonth()+1) + '.' + today.getFullYear();
       }
     }
-
+  
     let base = '';
     if (groupby === 'masters') base = 'Табель с группировкой по мастерам';
     else if (groupby === 'firms') base = 'Табель с группировкой по организациям';
@@ -5744,7 +5465,7 @@ function logUserAction(action, details = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
-  } catch (e) { /* ignore */
+  } catch (e) { /* ignore */ 
 
 
 
@@ -5934,48 +5655,6 @@ function parseDateIn(dateIn) {
     return '';
 }
 
-// --- Функция для проверки, можно ли устанавливать СО при переносе ---
-function canSetSOOnTransfer(worker, selectedDateStr) {
-    // Если у работника нет даты приема, разрешаем устанавливать СО
-    if (!worker.date_in) {
-        return true;
-    }
-
-    // Если дата переноса не указана, разрешаем устанавливать СО
-    if (!selectedDateStr) {
-        return true;
-    }
-
-    // Парсим дату приема
-    let hireDateStr = parseDateIn(worker.date_in);
-    if (!hireDateStr) {
-        return true; // Если не удалось распарсить дату приема, разрешаем
-    }
-
-    // Парсим дату переноса
-    let transferDate = new Date(selectedDateStr);
-    let transferDateStr = transferDate.toISOString().slice(0,10).split('-').join('');
-
-    let canSetSO = Number(transferDateStr) >= Number(hireDateStr);
-
-    console.log('[canSetSOOnTransfer] Проверка дат:', {
-        workerUid: worker.uid,
-        workerFio: worker.fio,
-        hireDate: worker.date_in,
-        hireDateStr: hireDateStr,
-        transferDate: selectedDateStr,
-        transferDateStr: transferDateStr,
-        canSetSO: canSetSO
-    });
-
-    if (!canSetSO) {
-        console.log('[canSetSOOnTransfer] СО НЕ будет установлен: дата переноса (' + transferDateStr + ') < даты приема (' + hireDateStr + ')');
-    }
-
-    // Устанавливаем СО только если дата переноса >= даты приема
-    return canSetSO;
-}
-
 
 let orig_setCells_cellBeforeIn = setCells;
 setCells = function(value, isComment=false, isFullClear=false) {
@@ -6111,7 +5790,7 @@ $(document).on('mouseleave', '[data-fixed="1"]', function() {
         }
     });
 
-
+    
     // --- ЯВНО показываем master-head и chief-head внутри "НЕРАСПРЕДЕЛЕННЫЕ", если есть видимые сотрудники ---
     $('.location-head').each(function() {
         let text = $(this).text().toUpperCase();
@@ -6152,7 +5831,7 @@ function forceShowUnassigned() {
         // Проверяем, является ли текущий месяц выбранным
         const now = new Date();
         const isCurrentMonth = curDate.getFullYear() === now.getFullYear() && curDate.getMonth() === now.getMonth();
-
+        
         $('.location-head').each(function() {
             let text = $(this).text().toUpperCase();
             if (text.includes('НЕРАСПРЕД') || text.includes('НЕСОТРУДНИК')) {
@@ -6291,7 +5970,7 @@ function changeMaster(worker_id){
                  console.log('[move-worker-modal] Дата для отправки (с +1 днем):', dateToSend);
 
                 // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
-                // ТОЛЬКО если это смена объекта И дата переноса >= даты приема
+                // ТОЛЬКО если это смена объекта
                 console.log('[DEBUG СО]', {
                     locationChanged,
                     workerIndex,
@@ -6302,7 +5981,7 @@ function changeMaster(worker_id){
                     TABEL: tabId ? TABEL[tabId] : null
                 });
 
-                if (locationChanged && workerIndex !== -1 && canSetSOOnTransfer(currentWorker, selectedDateStr)) {
+                if (locationChanged && workerIndex !== -1) {
                     let selectedDate = new Date(selectedDateStr);
                     selectedDayIndex = -1;
                     for (let i = 0; i < DAYS.length; i++) {
@@ -6315,10 +5994,10 @@ function changeMaster(worker_id){
                         }
                     }
                     console.log('[move-worker-modal] Найден индекс дня:', { selectedDate, selectedDayIndex });
-
+                
                     if (selectedDayIndex !== -1) {
                         console.log('[move-worker-modal] ID табеля:', tabId);
-
+                
                         if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
                             console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
                             TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
@@ -6484,8 +6163,7 @@ function changeChief(worker_id){
                  console.log('[changeChief] Дата для отправки (с +1 днем):', dateToSend);
 
                 // Применяем "СО" на выбранную дату в локальных данных TABEL ДО отправки sendDataTabel
-                // ТОЛЬКО если дата переноса >= даты приема
-                if (locationChanged && workerIndex !== -1 && canSetSOOnTransfer(currentWorker, selectedDateStr)) {
+                if (locationChanged && workerIndex !== -1) {
                     let selectedDate = new Date(selectedDateStr);
                     selectedDayIndex = -1;
                     for (let i = 0; i < DAYS.length; i++) {
@@ -6570,11 +6248,7 @@ function isCellLocked(row, col, value) {
         workerFio: WORKERS[row] ? WORKERS[row].fio : 'unknown',
         stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
     });
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Специальные логи для строк 186-195 ===
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked для строки 186-195:', {
@@ -6585,18 +6259,18 @@ function isCellLocked(row, col, value) {
             workerFio: WORKERS[row] ? WORKERS[row].fio : 'unknown'
         });
     }
-
+    
     if (TABEL) {
         let tabId = (row + 1) + '_' + WORKERS[row].uid;
-
+        
         if (TABEL[tabId] && TABEL[tabId][col]) {
             let dayData = TABEL[tabId][col];
-
+            
             // === ДОБАВЛЕНО: Логи для строк 186-195 ===
             if (row >= 185 && row <= 194) {
                 console.log('[DEBUG] isCellLocked: данные дня из TABEL для строки', row + 1, dayData);
             }
-
+            
             // Разрешаем только часы СО (даже если есть fixState)
             if (dayData['vt'] === 'СО') {
                 if (row >= 185 && row <= 194) {
@@ -6613,11 +6287,7 @@ function isCellLocked(row, col, value) {
                         fixState: dayData.fixState
                     });
                 }
-<<<<<<< Updated upstream
                 
-=======
-
->>>>>>> Stashed changes
                 // === ДОБАВЛЕНО: Общее логирование результата ===
                 console.log('[DEBUG] isCellLocked результат:', {
                     row: row + 1,
@@ -6627,11 +6297,7 @@ function isCellLocked(row, col, value) {
                     reason: 'TABEL lock/doc/fixState',
                     stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
                 });
-<<<<<<< Updated upstream
                 
-=======
-
->>>>>>> Stashed changes
                 return true;
             }
         } else {
@@ -6649,26 +6315,18 @@ function isCellLocked(row, col, value) {
             console.log('[DEBUG] isCellLocked: TABEL не определен для строки', row + 1);
         }
     }
-
+    
     // Список разрешённых кодов
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
     let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
     let todayIndexForHighlighting = getTodayIndexForHighlighting();
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Проверка блокировки по дате устройства сотрудника ===
     if (isCurrentMonth && WORKERS[row] && WORKERS[row]['days'] && WORKERS[row]['days'][col] && WORKERS[row]['days'][col]['enable'] === false) {
         if (row >= 185 && row <= 194) {
             console.log('[DEBUG] isCellLocked: заблокирована как день до устройства сотрудника для строки', row + 1);
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // === ДОБАВЛЕНО: Общее логирование результата ===
         console.log('[DEBUG] isCellLocked результат:', {
             row: row + 1,
@@ -6678,17 +6336,10 @@ function isCellLocked(row, col, value) {
             reason: 'день до устройства сотрудника',
             stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
         });
-<<<<<<< Updated upstream
         
         return true;
     }
     
-=======
-
-        return true;
-    }
-
->>>>>>> Stashed changes
     if (
         isCurrentMonth &&
         Number(col) > todayIndexForHighlighting &&
@@ -6698,11 +6349,7 @@ function isCellLocked(row, col, value) {
         if (row >= 185 && row <= 194) {
             console.log('[DEBUG] isCellLocked: заблокирована как будущий день для строки', row + 1);
         }
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // === ДОБАВЛЕНО: Общее логирование результата ===
         console.log('[DEBUG] isCellLocked результат:', {
             row: row + 1,
@@ -6712,41 +6359,25 @@ function isCellLocked(row, col, value) {
             reason: 'будущий день',
             stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
         });
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         return true;
     }
-
+    
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked: ячейка не заблокирована для строки', row + 1);
     }
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Проверка блокировки по времени (today_lock) ===
     if (window.TODAY_LOCK === true) {
         let currentTime = new Date();
         let currentHour = currentTime.getHours();
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         // Блокируем редактирование после 18:00
         if (currentHour >= 18) {
             if (row >= 185 && row <= 194) {
                 console.log('[DEBUG] isCellLocked: заблокирована по времени (после 18:00) для строки', row + 1);
             }
-<<<<<<< Updated upstream
             
-=======
-
->>>>>>> Stashed changes
             console.log('[DEBUG] isCellLocked результат:', {
                 row: row + 1,
                 col: col + 1,
@@ -6756,19 +6387,11 @@ function isCellLocked(row, col, value) {
                 currentHour: currentHour,
                 stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
             });
-<<<<<<< Updated upstream
             
             return true;
         }
     }
     
-=======
-
-            return true;
-        }
-    }
-
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Общее логирование результата ===
     console.log('[DEBUG] isCellLocked результат:', {
         row: row + 1,
@@ -6777,11 +6400,7 @@ function isCellLocked(row, col, value) {
         result: false,
         stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
     });
-<<<<<<< Updated upstream
     
-=======
-
->>>>>>> Stashed changes
     return false;
 }
 
@@ -6846,11 +6465,7 @@ if (typeof curDate !== 'undefined' && curDate instanceof Date) {
     let topPos = workerRowOffset.top + workerRowHeight;
     // Если не влезает снизу — показываем сверху
     if (topPos + modalHeight > windowHeight + scrollTop - 10) {
-<<<<<<< Updated upstream
         topPos = workerRowOffset.top - modalHeight-37;   
-=======
-        topPos = workerRowOffset.top - modalHeight-37;
->>>>>>> Stashed changes
         if (topPos < scrollTop + 10) topPos = scrollTop + 10;
     }
     // Если всё равно не влезает (очень большое окно) — прижимаем к низу экрана
@@ -6983,11 +6598,7 @@ function updateTimeLockNotification() {
     if (window.TODAY_LOCK === true) {
         let currentTime = new Date();
         let currentHour = currentTime.getHours();
-<<<<<<< Updated upstream
         
-=======
-
->>>>>>> Stashed changes
         if (currentHour >= 18) {
             $('#time-lock-notification').show();
         } else {

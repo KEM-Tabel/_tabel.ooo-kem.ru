@@ -1,10 +1,10 @@
-﻿html {
+﻿html { 
 	width: 100%;
     height: 100%;
 }
 body {
 	margin: 0 auto;
-	padding: 0;
+	padding: 0;	
 	width: 100%;
 	height: 100%;
 	font-family: Arial, Helvetica, sans-serif;
@@ -22,7 +22,7 @@ body {
 #wrap {
   	min-width: 100%;
 	min-height: 100%;
-
+	
 }
 
 #content{
@@ -189,31 +189,31 @@ body {
 	height: 100%;
 	background: #fff;
 	border: none;
-	transition: box-shadow 0.2s 0s;
+	transition: box-shadow 0.2s 0s; 
 	-webkit-box-shadow: none;
 	-moz-box-shadow: none;
 	box-shadow: none;
-	z-index:2;
+	z-index:2; 
 }
 
 #loader_dv{
-	position: relative;
-	top: 50%;
-	left: 50%;
+	position: relative; 
+	top: 50%; 
+	left: 50%; 
 	transform: translate(-50%, -50%);
 	width: 496px;
-	height: 396px;
-	background:  url('/images/loader.gif') -150px -100px no-repeat;
+	height: 396px; 
+	background:  url('/images/loader.gif') -150px -100px no-repeat;				
 }
 
 #loader_des{
-	position: relative;
-	top: 50%;
-	left: 50%;
+	position: relative; 
+	top: 50%; 
+	left: 50%; 
 	transform: translate(-50%, -50%);
 	width: 496px;
 	height: 396px;
-	display:none;
+	display:none;	
 }
 
 #main{
@@ -223,7 +223,7 @@ body {
 	height: 100%;
 	background: none;
 	border: none;
-	transition: box-shadow 0.2s 0s;
+	transition: box-shadow 0.2s 0s; 
 	-webkit-box-shadow: none;
 	-moz-box-shadow: none;
 	box-shadow: none;
@@ -235,7 +235,7 @@ body {
 	height: 170px;
 	background: #999;
 	border: none;
-	transition: box-shadow 0.2s 0s;
+	transition: box-shadow 0.2s 0s; 
 	-webkit-box-shadow: none;
 	-moz-box-shadow: none;
 	box-shadow: none;
@@ -258,7 +258,7 @@ body {
 	color:#000;
 	font-size: 36px;
 	font-weight: bold;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	white-space: nowrap;
 }
 
@@ -272,7 +272,7 @@ body {
 	padding: 0 10px;
 	color:#2836aa;
 	font-size: 22px;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	text-decoration:underline dotted;
 	text-align:center;
 	white-space: nowrap;
@@ -280,7 +280,7 @@ body {
 	z-index:1;
 }
 
-#datetext-head:hover {
+#datetext-head:hover { 
 	background: #b3b3b3;
 	cursor: pointer;
 	text-decoration: none;
@@ -299,7 +299,7 @@ body {
 	color:#999;
 	font-size: 32px;
 	font-weight: bold;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	white-space: nowrap;
 	text-align: center;
 	left: 0;
@@ -326,7 +326,7 @@ body {
 	left:0;
 	color:#2836aa;
 	font-size: 14px;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	white-space: nowrap;
 	padding: 0 16px 0 16px;
 }
@@ -341,7 +341,7 @@ body {
 	left:122px;
 	color:#2836aa;
 	font-size: 14px;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	white-space: nowrap;
 	padding: 0 16px 0 16px;
 }
@@ -369,7 +369,7 @@ body {
 .menu-button{
 	color:#fff;
 	font-size: 22px;
-	text-overflow: ellipsis;
+	text-overflow: ellipsis; 
 	white-space: nowrap;
 	display: inline-block;
 	padding: 0 16px 0 16px;
@@ -391,7 +391,7 @@ body {
 	z-index:1;
 }
 
-#link-back:hover {
+#link-back:hover { 
 	background: #b3b3b3 url('/images/back.png') 50% 30px no-repeat;
 	cursor: pointer;
 }
@@ -409,7 +409,7 @@ body {
 	z-index:1;
 }
 
-#link-send:hover {
+#link-send:hover { 
 	background: #6976de url('/images/send.png') 50% 30px no-repeat;
 	cursor: pointer;
 }
@@ -417,7 +417,7 @@ body {
 	background: #404887 url('/images/send.png') 50% 30px no-repeat;
 }
 
-#sticky {
+#sticky {	
 	top: 170px;
 	left:0;
 	width:100%;
@@ -786,7 +786,7 @@ body {
 }
 
 #filter-dv .filter-sort-desc-bt {
-	float:left;
+	float:left;	
 	border: 1px solid #CCC;
     border-radius: 5px;
 	background: #ddd url('/images/report/sort_desc.png') 6px 3px no-repeat;
@@ -805,9 +805,9 @@ body {
 }
 
 #filter-dv #filter-firms-dv{
-	width:312px;
-	height:60px;
-	overflow:auto;
+	width:312px; 
+	height:60px; 
+	overflow:auto; 
 	border: 1px solid #666;
     border-radius: 5px;
 	margin: 4px 0 4px 4px;
@@ -818,9 +818,9 @@ body {
 }
 
 #filter-dv #filter-locations-dv{
-	width:312px;
-	height:60px;
-	overflow:auto;
+	width:312px; 
+	height:60px; 
+	overflow:auto; 
 	border: 1px solid #666;
     border-radius: 5px;
 	margin: 4px 0 4px 4px;
@@ -831,9 +831,9 @@ body {
 }
 
 #filter-dv #filter-posts-dv{
-	width:312px;
-	height:100px;
-	overflow:auto;
+	width:312px; 
+	height:100px; 
+	overflow:auto; 
 	border: 1px solid #666;
     border-radius: 5px;
 	margin: 4px 0 4px 4px;
@@ -943,7 +943,7 @@ body {
 #field{
 	display: flex;
 	flex-direction: column;
-	gap: 1px;
+	gap: 1px;	
 }
 
 #days-dv {
@@ -1278,9 +1278,9 @@ body {
   display: flex; justify-content: space-between; align-items: center;
   font-size: 20px; font-weight: bold; margin-bottom: 24px;
 }
-.close-bt {
-    cursor: pointer;
-    font-size: 32px;
+.close-bt { 
+    cursor: pointer; 
+    font-size: 32px; 
     position: absolute; /* Позиционируем абсолютно */
     top: 10px; /* Отступ сверху */
     right: 15px; /* Отступ справа */
@@ -1367,7 +1367,7 @@ body {
     opacity: 1 !important;
     box-shadow: none !important;
     font-weight: normal !important;
-}
+}	
 
 .show-info-plus {
     font-weight: bold;
@@ -1539,33 +1539,6 @@ body {
     background: #e0e0e0 !important;
     color: #888 !important;
     cursor: not-allowed !important;
-}
-
-/* Стили для визуальной обратной связи при копировании ФИО */
-.worker_lb.fio-copied {
-    background-color: #4CAF50 !important;
-    color: white !important;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
-}
-
-/* Стили для кнопки копирования ФИО в info панели */
-.copy-fio-btn {
-    cursor: pointer;
-    margin-left: 8px;
-    padding: 2px 6px;
-    border-radius: 3px;
-    background-color: #f0f0f0;
-    transition: all 0.2s ease;
-}
-
-.copy-fio-btn:hover {
-    background-color: #e0e0e0;
-}
-
-.copy-fio-btn.copied {
-    background-color: #4CAF50 !important;
-    color: white !important;
 }
 
 
