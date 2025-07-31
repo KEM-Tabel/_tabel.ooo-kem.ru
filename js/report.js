@@ -8,21 +8,13 @@ function canEditSO() {
 function editSOHours(row, col, hours) {
     // Любой пользователь может редактировать часы в ячейках СО
     // Проверяем только, что ячейка содержит код СО
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Проверяем, что WORKERS[row] существует и имеет uid
     if (!WORKERS[row] || !WORKERS[row]['uid']) {
         console.warn('[editSOHours] WORKERS[row] не найден или не имеет uid:', row);
         return false;
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     let uid = WORKERS[row]['uid'];
     let no = row + 1;
     let id = no + '_' + uid;
@@ -221,15 +213,6 @@ function normalizeFIO(fio) {
     if (!fio || typeof fio !== 'string') {
         return '';
     }
-<<<<<<< Updated upstream
-    
-    // Убираем лишние пробелы и приводим к верхнему регистру
-    let normalized = fio.trim().toUpperCase();
-    
-    // Разбиваем на части по пробелам
-    let parts = normalized.split(/\s+/).filter(part => part.length > 0);
-    
-=======
 
     // Убираем лишние пробелы и приводим к верхнему регистру
     let normalized = fio.trim().toUpperCase();
@@ -237,35 +220,22 @@ function normalizeFIO(fio) {
     // Разбиваем на части по пробелам
     let parts = normalized.split(/\s+/).filter(part => part.length > 0);
 
->>>>>>> Stashed changes
     // Если частей меньше 3, возвращаем как есть
     if (parts.length < 3) {
         return normalized;
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Берем первые три части как Фамилию, Имя, Отчество
     let lastName = parts[0];
     let firstName = parts[1];
     let middleName = parts[2];
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Применяем правило: первая буква заглавная, остальные строчные
     const capitalize = (str) => {
         if (!str) return '';
         return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase();
     };
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     return `${capitalize(lastName)} ${capitalize(firstName)} ${capitalize(middleName)}`;
 }
 
@@ -380,11 +350,7 @@ function renderCell(row, col) {
         hasFixStateFromTabel = true;
     }
 
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     let cond1 = !!normIn;
     let cond2 = Number(normDay) < Number(normIn);
     let cond = cond1 && cond2; // убираем cond3
@@ -979,28 +945,16 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             DAYS = data.result.days;
             LOCATIONS = data.result.locations;
             DATA = data.result.data;
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             // Обработка поля today_lock
             if (data.result.today_lock !== undefined) {
                 window.TODAY_LOCK = data.result.today_lock;
                 console.log('[getDataTabel] today_lock:', window.TODAY_LOCK);
-<<<<<<< Updated upstream
-                
-                // Показываем уведомление о блокировке если нужно
-                updateTimeLockNotification();
-            }
-            
-=======
 
                 // Показываем уведомление о блокировке если нужно
                 updateTimeLockNotification();
             }
 
->>>>>>> Stashed changes
             // Если пришли данные и это автообновление, обновляем сохраненную дату
             if (update && data.result.data && data.result.data.length > 0) {
                 setCookie('LAST_SUCCESSFUL_DATE', date, 365);
@@ -1359,11 +1313,7 @@ function createTabel(){
                                 hasFixStateFromTabel = true;
                             }
                         }
-<<<<<<< Updated upstream
-                        
-=======
 
->>>>>>> Stashed changes
                         htmlDays += '<div id="'+days_id+'-day-dv" class="'+cellClass+extraClass+'" '+docAttr+' '+(hasFixStateFromTabel ? ' data-fixed="1"' : '')+' style="opacity:'+opacity+';'+extraStyle+'" title="'+day['comment']+'" onMouseDown="console.log(\'[LOG] onmousedown\', this);startSelect('+(worker_no-1)+','+Number(d)+', event)" onMouseMove="endSelect('+(worker_no-1)+','+Number(d)+')" onMouseOver="overCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onMouseOut="outCell(\''+worker_no+'\','+Number(w)+','+Number(d)+')" onContextMenu="onRightClick()" ondblclick="onDoubleClick(event)">'+htmlCell+'</div>';
                     }
                     htmlDays += '</div>';
@@ -2161,11 +2111,7 @@ function startSelect(indexRow, indexCol, event){
             console.log('[DEBUG] startSelect: найдена ячейка СО в отображении', {indexRow, indexCol, cellText});
         }
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Получаем текущее значение ячейки для корректной проверки блокировки
     let cellValue = null;
     if (TABEL && WORKERS && indexRow >= 0 && indexCol >= 0) {
@@ -2180,27 +2126,16 @@ function startSelect(indexRow, indexCol, event){
         indexRow, indexCol, cellValue, uid: WORKERS[indexRow] ? WORKERS[indexRow].uid : 'unknown'
     });
     let isLocked = isCellLocked(indexRow, indexCol, cellValue);
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Детальное логирование условий блокировки ===
     let hasCellFixed = $cell.hasClass('cell-fixed');
     let hasDataFixed = $cell.attr('data-fixed') == '1';
     let hasBeforeIn = $cell.hasClass('cell-before-in');
     let canEditSOFlag = canEditSO();
-<<<<<<< Updated upstream
-    
-    // === ДОБАВЛЕНО: Fixstate редактирование для ячеек СО (ПЕРЕМЕЩЕНО ВЫШЕ) ===
-    console.log('[DEBUG] startSelect: ДОСТИГНУТА ЛОГИКА FIXSTATE РЕДАКТИРОВАНИЯ СО');
-    
-=======
 
     // === ДОБАВЛЕНО: Fixstate редактирование для ячеек СО (ПЕРЕМЕЩЕНО ВЫШЕ) ===
     console.log('[DEBUG] startSelect: ДОСТИГНУТА ЛОГИКА FIXSTATE РЕДАКТИРОВАНИЯ СО');
 
->>>>>>> Stashed changes
     // Проверяем, есть ли уже активное инлайн редактирование в этой ячейке
     let $existingInput = $cell.find('input.inline-so-hours');
     if ($existingInput.length > 0) {
@@ -2208,11 +2143,7 @@ function startSelect(indexRow, indexCol, event){
         $existingInput.focus().select();
         return;
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Проверяем, есть ли уже активное инлайн редактирование в любой ячейке
     let $anyExistingInput = $('input.inline-so-hours');
     if ($anyExistingInput.length > 0) {
@@ -2220,16 +2151,6 @@ function startSelect(indexRow, indexCol, event){
         $anyExistingInput.focus().select();
         return;
     }
-<<<<<<< Updated upstream
-    
-    let condition = isSOCell && (isLocked || hasCellFixed || hasDataFixed || hasBeforeIn);
-    
-    console.log('[DEBUG] startSelect: проверка условий для fixstate редактирования СО', {
-        isSOCell, 
-        isLocked, 
-        hasCellFixed, 
-        hasDataFixed, 
-=======
 
     let condition = isSOCell && (isLocked || hasCellFixed || hasDataFixed || hasBeforeIn);
 
@@ -2238,7 +2159,6 @@ function startSelect(indexRow, indexCol, event){
         isLocked,
         hasCellFixed,
         hasDataFixed,
->>>>>>> Stashed changes
         hasBeforeIn,
         condition,
         conditionParts: {
@@ -2252,40 +2172,24 @@ function startSelect(indexRow, indexCol, event){
     });
     if (condition) {
         console.log('[DEBUG] startSelect: активируем fixstate редактирование для ячейки СО', {indexRow, indexCol});
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Сначала выбираем ячейку (только если еще не выбрана)
         if (!selectedCells.some(cell => cell.row === indexRow && cell.col === indexCol)) {
             selectCell(indexRow, indexCol, event);
         }
         startRow = indexRow;
         startCol = indexCol;
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Активируем инлайн редактирование
         let uid = WORKERS[indexRow]['uid'];
         let no = indexRow + 1;
         let id = no + '_' + uid;
         let currentHours = 0;
-<<<<<<< Updated upstream
-        
-        if (TABEL[id] && TABEL[id][indexCol]) {
-            currentHours = TABEL[id][indexCol]['hours'] || 0;
-        }
-        
-=======
 
         if (TABEL[id] && TABEL[id][indexCol]) {
             currentHours = TABEL[id][indexCol]['hours'] || 0;
         }
 
->>>>>>> Stashed changes
         if ($cell.find('input.inline-so-hours').length > 0) {
             console.log('[DEBUG] startSelect: инлайн редактирование уже активно, выход');
             return;
@@ -2347,11 +2251,7 @@ function startSelect(indexRow, indexCol, event){
                 }
             }, 50);
         });
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Добавляем отладочный лог через небольшую задержку, чтобы увидеть, что происходит с ячейкой
         setTimeout(function() {
             console.log('[DEBUG] startSelect: проверка состояния ячейки через 100мс', {
@@ -2360,17 +2260,10 @@ function startSelect(indexRow, indexCol, event){
                 inputValue: $cell.find('input.inline-so-hours').val()
             });
         }, 100);
-<<<<<<< Updated upstream
-        
-        return;
-    }
-    
-=======
 
         return;
     }
 
->>>>>>> Stashed changes
     console.log('[DEBUG] startSelect: проверка условий блокировки:', {
         indexRow, indexCol,
         hasCellFixed,
@@ -2383,11 +2276,7 @@ function startSelect(indexRow, indexCol, event){
         condition2: hasBeforeIn,
         condition3: isLocked
     });
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // === Обычная проверка блокировки для остальных ячеек ===
     if (
         (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
@@ -2416,11 +2305,7 @@ function startSelect(indexRow, indexCol, event){
                         isSOCell2 = true;
                     }
                 }
-<<<<<<< Updated upstream
-                
-=======
 
->>>>>>> Stashed changes
                 // Получаем значение ячейки для проверки блокировки
                 let cellValue2 = null;
                 if (TABEL && WORKERS && row >= 0 && col >= 0) {
@@ -2431,11 +2316,7 @@ function startSelect(indexRow, indexCol, event){
                         cellValue2 = TABEL[id][col]['vt'];
                     }
                 }
-<<<<<<< Updated upstream
-                
-=======
 
->>>>>>> Stashed changes
                 if (
                     isCellLocked(row, col, cellValue2) ||
                     (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell2) ||
@@ -2478,11 +2359,7 @@ function endSelect(indexRow, indexCol){
                     isSOCell3 = true;
                 }
             }
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             // Получаем значение ячейки для проверки блокировки
             let cellValue3 = null;
             if (TABEL && WORKERS && row >= 0 && col >= 0) {
@@ -2493,11 +2370,7 @@ function endSelect(indexRow, indexCol){
                     cellValue3 = TABEL[id][col]['vt'];
                 }
             }
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             if (
                 isCellLocked(row, col, cellValue3) ||
                 (($cell2.hasClass('cell-fixed') || $cell2.attr('data-fixed') == '1') && !canEditSO() && !isSOCell3) ||
@@ -3786,15 +3659,9 @@ function onRightClick(){
 
 function onDoubleClick(event){
     if (window.IS_FULL_READONLY) return;
-<<<<<<< Updated upstream
-    
-    let cell = null;
-    
-=======
 
     let cell = null;
 
->>>>>>> Stashed changes
     // Пытаемся получить координаты из выбранных ячеек
     if (selectedCells.length > 0) {
         cell = selectedCells[0];
@@ -3806,44 +3673,25 @@ function onDoubleClick(event){
     // Если и это не работает, пытаемся определить координаты из события
     else if (event && event.target) {
         let $target = $(event.target);
-<<<<<<< Updated upstream
-        
-        // Ищем родительский элемент ячейки (с id вида "X-Y-day-dv")
-        let $cellElement = $target.closest('[id$="-day-dv"]');
-        
-=======
 
         // Ищем родительский элемент ячейки (с id вида "X-Y-day-dv")
         let $cellElement = $target.closest('[id$="-day-dv"]');
 
->>>>>>> Stashed changes
         // Если не нашли элемент с -day-dv, попробуем найти по другим признакам
         if ($cellElement.length === 0) {
             // Ищем элемент с классом, который может быть ячейкой
             $cellElement = $target.closest('.cell-code-big, .cell-code-small, .cell-hours-big').parent();
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Если все еще не нашли, ищем любой элемент с id
         if ($cellElement.length === 0) {
             $cellElement = $target.closest('[id]');
         }
-<<<<<<< Updated upstream
-        
-        if ($cellElement.length > 0) {
-            let cellId = $cellElement.attr('id');
-            console.log('[onDoubleClick] Найден элемент с id:', cellId, 'для target:', event.target.tagName, event.target.className);
-            
-=======
 
         if ($cellElement.length > 0) {
             let cellId = $cellElement.attr('id');
             console.log('[onDoubleClick] Найден элемент с id:', cellId, 'для target:', event.target.tagName, event.target.className);
 
->>>>>>> Stashed changes
             if (cellId && cellId.match(/^(\d+)-(\d+)-day-dv$/)) {
                 let matches = cellId.match(/^(\d+)-(\d+)-day-dv$/);
                 let row = parseInt(matches[1], 10) - 1;
@@ -3857,15 +3705,6 @@ function onDoubleClick(event){
             console.log('[onDoubleClick] Не удалось найти родительский элемент ячейки для:', event.target);
         }
     }
-<<<<<<< Updated upstream
-    
-    // Если не удалось определить координаты
-    if (!cell || cell.row < 0 || cell.col < 0) {
-        console.warn('[onDoubleClick] Не удалось определить координаты ячейки:', {
-            selectedCells, 
-            startRow, 
-            startCol, 
-=======
 
     // Если не удалось определить координаты
     if (!cell || cell.row < 0 || cell.col < 0) {
@@ -3873,7 +3712,6 @@ function onDoubleClick(event){
             selectedCells,
             startRow,
             startCol,
->>>>>>> Stashed changes
             event: event ? {
                 target: event.target,
                 targetId: event.target ? event.target.id : null,
@@ -3883,26 +3721,16 @@ function onDoubleClick(event){
         });
         return;
     }
-<<<<<<< Updated upstream
-    
-    console.log('[onDoubleClick] Работаем с ячейкой:', cell, 'selectedCells:', selectedCells);
-    
-=======
 
     console.log('[onDoubleClick] Работаем с ячейкой:', cell, 'selectedCells:', selectedCells);
 
->>>>>>> Stashed changes
     // Проверяем, что элемент ячейки существует
     let $cell = $('#' + Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
     if ($cell.length === 0) {
         console.warn('[onDoubleClick] Элемент ячейки не найден:', Number(cell.row+1) + '-' + Number(cell.col+1) + '-day-dv');
         return;
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Получаем текущее значение ячейки для корректной проверки блокировки
     let cellValue = null;
     if (TABEL && WORKERS && cell.row >= 0 && cell.col >= 0) {
@@ -3918,19 +3746,11 @@ function onDoubleClick(event){
     });
     let isLocked = isCellLocked(cell.row, cell.col, cellValue);
     console.log('[onDoubleClick] Статус блокировки ячейки:', isLocked);
-<<<<<<< Updated upstream
-    
-    // === ДОБАВЛЕНО: Детальное логирование причин блокировки ===
-    if (isLocked) {
-        let lockReasons = [];
-        
-=======
 
     // === ДОБАВЛЕНО: Детальное логирование причин блокировки ===
     if (isLocked) {
         let lockReasons = [];
 
->>>>>>> Stashed changes
         // Проверяем TABEL блокировку
         if (TABEL) {
             let tabId = (cell.row + 1) + '_' + WORKERS[cell.row].uid;
@@ -3941,51 +3761,31 @@ function onDoubleClick(event){
                 if (dayData.fixState) lockReasons.push('fixState в TABEL');
             }
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Проверяем блокировку по дате устройства
         let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
         if (isCurrentMonth && WORKERS[cell.row] && WORKERS[cell.row]['days'] && WORKERS[cell.row]['days'][cell.col] && WORKERS[cell.row]['days'][cell.col]['enable'] === false) {
             lockReasons.push('день до устройства сотрудника');
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Проверяем блокировку будущих дней
         let todayIndexForHighlighting = getTodayIndexForHighlighting();
         if (isCurrentMonth && Number(cell.col) > todayIndexForHighlighting) {
             lockReasons.push('будущий день');
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         console.log('[onDoubleClick] Причины блокировки ячейки:', lockReasons);
     }
 
     // Проверяем, является ли ячейка с кодом СО (по данным или DOM)
     let isSOCell = false;
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // Проверяем, что WORKERS[cell.row] существует и имеет uid
     if (!WORKERS[cell.row] || !WORKERS[cell.row]['uid']) {
         console.warn('[onDoubleClick] WORKERS[cell.row] не найден или не имеет uid:', cell.row);
         return;
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     let uid = WORKERS[cell.row]['uid'];
     let no = cell.row + 1;
     let id = no + '_' + uid;
@@ -4011,11 +3811,7 @@ function onDoubleClick(event){
     let hasDataFixed = $cell.attr('data-fixed') == '1';
     let hasBeforeIn = $cell.hasClass('cell-before-in');
     let canEditSOFlag = canEditSO();
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     console.log('[DEBUG] onDoubleClick: проверка условий блокировки:', {
         row: cell.row, col: cell.col,
         hasCellFixed,
@@ -4028,16 +3824,6 @@ function onDoubleClick(event){
         condition2: hasBeforeIn,
         condition3: isLocked
     });
-<<<<<<< Updated upstream
-    
-    // Обновляем статус блокировки с учетом CSS классов
-    let isActuallyLocked = isLocked || 
-                          (($cell.hasClass('cell-fixed') || $cell.attr('data-fixed') == '1') && !canEditSO() && !isSOCell) ||
-                          $cell.hasClass('cell-before-in');
-    
-    console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
-    
-=======
 
     // Обновляем статус блокировки с учетом CSS классов
     let isActuallyLocked = isLocked ||
@@ -4046,7 +3832,6 @@ function onDoubleClick(event){
 
     console.log('[onDoubleClick] Финальный статус блокировки:', isActuallyLocked);
 
->>>>>>> Stashed changes
     // --- Инлайн-редактирование ТОЛЬКО для ячеек с кодом СО ---
     if (isSOCell) {
         // Сначала выбираем ячейку СО
@@ -4054,11 +3839,7 @@ function onDoubleClick(event){
             unselectCells();
             selectCell(cell.row, cell.col, null);
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         if ($cell.find('input.inline-so-hours').length > 0) return;
         let oldHtml = $cell.html();
         $cell.html('<input type="number" min="0" max="20" class="inline-so-hours" style="width:40px; font-size:15px; text-align:center;" value="'+currentHours+'" />');
@@ -4110,11 +3891,7 @@ function onDoubleClick(event){
             // Убеждаемся, что ячейка выбрана, но не вызываем selectCell повторно
             // так как это может привести к конфликтам
             let value = getCellValue(cell.row, cell.col);
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             // Проверяем, выбрана ли уже эта ячейка
             let isAlreadySelected = false;
             for (let selectedCell of selectedCells) {
@@ -4123,11 +3900,7 @@ function onDoubleClick(event){
                     break;
                 }
             }
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             // Если ячейка не выбрана, выбираем её
             if (!isAlreadySelected) {
                 selectCell(cell.row, cell.col, null);
@@ -6570,11 +6343,7 @@ function isCellLocked(row, col, value) {
         workerFio: WORKERS[row] ? WORKERS[row].fio : 'unknown',
         stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
     });
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Специальные логи для строк 186-195 ===
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked для строки 186-195:', {
@@ -6613,11 +6382,7 @@ function isCellLocked(row, col, value) {
                         fixState: dayData.fixState
                     });
                 }
-<<<<<<< Updated upstream
-                
-=======
 
->>>>>>> Stashed changes
                 // === ДОБАВЛЕНО: Общее логирование результата ===
                 console.log('[DEBUG] isCellLocked результат:', {
                     row: row + 1,
@@ -6627,11 +6392,7 @@ function isCellLocked(row, col, value) {
                     reason: 'TABEL lock/doc/fixState',
                     stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
                 });
-<<<<<<< Updated upstream
-                
-=======
 
->>>>>>> Stashed changes
                 return true;
             }
         } else {
@@ -6654,21 +6415,13 @@ function isCellLocked(row, col, value) {
     const allowedFutureCodes = ["Б", "ОТ", "ОД", "У", "Р", "ОЖ", "ОБ", "ПК", "ДО", "УВ"];
     let isCurrentMonth = curDate.getFullYear() === new Date().getFullYear() && curDate.getMonth() === new Date().getMonth();
     let todayIndexForHighlighting = getTodayIndexForHighlighting();
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Проверка блокировки по дате устройства сотрудника ===
     if (isCurrentMonth && WORKERS[row] && WORKERS[row]['days'] && WORKERS[row]['days'][col] && WORKERS[row]['days'][col]['enable'] === false) {
         if (row >= 185 && row <= 194) {
             console.log('[DEBUG] isCellLocked: заблокирована как день до устройства сотрудника для строки', row + 1);
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // === ДОБАВЛЕНО: Общее логирование результата ===
         console.log('[DEBUG] isCellLocked результат:', {
             row: row + 1,
@@ -6678,17 +6431,10 @@ function isCellLocked(row, col, value) {
             reason: 'день до устройства сотрудника',
             stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
         });
-<<<<<<< Updated upstream
-        
-        return true;
-    }
-    
-=======
 
         return true;
     }
 
->>>>>>> Stashed changes
     if (
         isCurrentMonth &&
         Number(col) > todayIndexForHighlighting &&
@@ -6698,11 +6444,7 @@ function isCellLocked(row, col, value) {
         if (row >= 185 && row <= 194) {
             console.log('[DEBUG] isCellLocked: заблокирована как будущий день для строки', row + 1);
         }
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // === ДОБАВЛЕНО: Общее логирование результата ===
         console.log('[DEBUG] isCellLocked результат:', {
             row: row + 1,
@@ -6712,41 +6454,25 @@ function isCellLocked(row, col, value) {
             reason: 'будущий день',
             stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
         });
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         return true;
     }
 
     if (row >= 185 && row <= 194) {
         console.log('[DEBUG] isCellLocked: ячейка не заблокирована для строки', row + 1);
     }
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Проверка блокировки по времени (today_lock) ===
     if (window.TODAY_LOCK === true) {
         let currentTime = new Date();
         let currentHour = currentTime.getHours();
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         // Блокируем редактирование после 18:00
         if (currentHour >= 18) {
             if (row >= 185 && row <= 194) {
                 console.log('[DEBUG] isCellLocked: заблокирована по времени (после 18:00) для строки', row + 1);
             }
-<<<<<<< Updated upstream
-            
-=======
 
->>>>>>> Stashed changes
             console.log('[DEBUG] isCellLocked результат:', {
                 row: row + 1,
                 col: col + 1,
@@ -6756,19 +6482,11 @@ function isCellLocked(row, col, value) {
                 currentHour: currentHour,
                 stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
             });
-<<<<<<< Updated upstream
-            
-            return true;
-        }
-    }
-    
-=======
 
             return true;
         }
     }
 
->>>>>>> Stashed changes
     // === ДОБАВЛЕНО: Общее логирование результата ===
     console.log('[DEBUG] isCellLocked результат:', {
         row: row + 1,
@@ -6777,11 +6495,7 @@ function isCellLocked(row, col, value) {
         result: false,
         stack: new Error().stack.split('\n').slice(1, 4).join(' -> ')
     });
-<<<<<<< Updated upstream
-    
-=======
 
->>>>>>> Stashed changes
     return false;
 }
 
@@ -6846,11 +6560,7 @@ if (typeof curDate !== 'undefined' && curDate instanceof Date) {
     let topPos = workerRowOffset.top + workerRowHeight;
     // Если не влезает снизу — показываем сверху
     if (topPos + modalHeight > windowHeight + scrollTop - 10) {
-<<<<<<< Updated upstream
-        topPos = workerRowOffset.top - modalHeight-37;   
-=======
         topPos = workerRowOffset.top - modalHeight-37;
->>>>>>> Stashed changes
         if (topPos < scrollTop + 10) topPos = scrollTop + 10;
     }
     // Если всё равно не влезает (очень большое окно) — прижимаем к низу экрана
@@ -6983,11 +6693,7 @@ function updateTimeLockNotification() {
     if (window.TODAY_LOCK === true) {
         let currentTime = new Date();
         let currentHour = currentTime.getHours();
-<<<<<<< Updated upstream
-        
-=======
 
->>>>>>> Stashed changes
         if (currentHour >= 18) {
             $('#time-lock-notification').show();
         } else {
