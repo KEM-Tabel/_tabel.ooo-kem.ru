@@ -553,7 +553,14 @@ function getFullReadonlyCookie() {
 
 function getReadAllCookie() {
     const match = document.cookie.match(/readAll=([^;]+)/);
-    return match ? match[1] === 'true' : false;
+    const result = match ? match[1] === 'true' : false;
+    console.log('[DEBUG] getReadAllCookie:', {
+        allCookies: document.cookie,
+        match: match,
+        value: match ? match[1] : 'не найдено',
+        result: result
+    });
+    return result;
 }
 // === Глобальная функция для установки куки readAll ===
 function setReadAllCookie(value) {
@@ -962,11 +969,19 @@ async function getDataTabel(loader=true, hideAfter=false, UID, date, update=fals
             }
             
             // Обработка поля readAll
+            console.log('[DEBUG] Проверка readAll:', {
+                'readAll в ответе': 'readAll' in data.result,
+                'readAll value': data.result.readAll,
+                'readAll cookie': getReadAllCookie()
+            });
             if ('readAll' in data.result) {
+                console.log('[DEBUG] Показываем кнопку readAll из ответа сервера');
                 $('#menu-fullreadonly').show();
             } else if (getReadAllCookie()) {
+                console.log('[DEBUG] Показываем кнопку readAll из cookie');
                 $('#menu-fullreadonly').show();
             } else {
+                console.log('[DEBUG] Скрываем кнопку readAll');
                 $('#menu-fullreadonly').hide();
             }
             
@@ -2514,12 +2529,21 @@ function outCell(worker_no, indexRow, indexCol){
 
 let settingComment = false;
 let suppressNextCommentClose = false;
-function contextAction(act){
+
+// Обертка для HTML обработчиков событий
+function contextActionWrapper(act) {
+	contextAction(act).catch(error => {
+		console.error('Ошибка в contextAction:', error);
+	});
+}
+
+async function contextAction(act){
 	let X, Y; // Объявляем переменные один раз в начале функции
 	switch(act){
 		default:
 			break;
 		case "history":
+			console.log('[DEBUG] Вызов contextAction("history")', {selectedCells, UID});
 			let worker_uid = null;
 			let historyDay = -1;
 			for(let key in selectedCells){
@@ -2528,7 +2552,8 @@ function contextAction(act){
 				historyDay = Number(cell['col']);
 			}
 			let historyDate = new Date(curDate.getFullYear(), curDate.getMonth(), historyDay+1);
-			getDataHistory(UID, worker_uid, historyDate.format("yyyymmdd"));
+			console.log('[DEBUG] Параметры запроса истории:', {worker_uid, historyDay, historyDate: historyDate.format("yyyymmdd")});
+			await getDataHistory(UID, worker_uid, historyDate.format("yyyymmdd"));
 			// УБРАТЬ отсюда позиционирование и показ меню!
 			break;
 
@@ -4059,8 +4084,14 @@ function showMenuNearCell($cell, $menu, offsetCol = 1) {
 
 // Глобальные функции для истории ячейки
 async function getDataHistory(UID, worker_uid, date){
-    if(!UID || !worker_uid || !date) return;
+    console.log('[DEBUG] getDataHistory вызван с параметрами:', {UID, worker_uid, date});
+    if(!UID || !worker_uid || !date) {
+        console.log('[DEBUG] getDataHistory: Отсутствуют обязательные параметры');
+        return;
+    }
+    console.log('[DEBUG] getDataHistory: Отправка запроса на сервер...');
     let data = await getData(false, false, "ПолучитьИсториюДанных", [worker_uid, date]);
+    console.log('[DEBUG] getDataHistory: Получен ответ от сервера:', data);
     if(data){
         if(!data.error && data.valid){
             createHistory(data.result);
@@ -5128,7 +5159,7 @@ setComment = function() { if (isReadOnlyRowSelected) return; return orig_setComm
 let orig_cellAction = cellAction;
 cellAction = function() { if (isReadOnlyRowSelected) return; return orig_cellAction.apply(this, arguments); };
 let orig_contextAction = contextAction;
-contextAction = function() { if (isReadOnlyRowSelected) return; return orig_contextAction.apply(this, arguments); };
+contextAction = async function() { if (isReadOnlyRowSelected) return; return await orig_contextAction.apply(this, arguments); };
 
 // Вызов обработчиков после построения таблицы и автообновления
 document.addEventListener('DOMContentLoaded', initReadOnlyHandlers);
@@ -5224,13 +5255,13 @@ cellAction = function() {
   return orig_cellAction2.apply(this, arguments);
 };
 let orig_contextAction2 = contextAction;
-contextAction = function() {
+contextAction = async function() {
   if (isReadOnlyRowSelected) return;
   if (window.tabelIsSaving) {
     showSavingAlert();
     return;
   }
-  return orig_contextAction2.apply(this, arguments);
+  return await orig_contextAction2.apply(this, arguments);
 };
 
 
@@ -5522,7 +5553,7 @@ cellAction = function(vt) {
 
 // 3. Контекстное меню (contextAction)
 let orig_contextAction_log = contextAction;
-contextAction = function(act) {
+contextAction = async function(act) {
   let cell = selectedCells[0] || {};
   let worker = WORKERS[cell.row] || {};
   // logUserAction('contextAction', {
@@ -5532,7 +5563,7 @@ contextAction = function(act) {
   //   col: cell.col,
   //   act
   // });
-  return orig_contextAction_log.apply(this, arguments);
+  return await orig_contextAction_log.apply(this, arguments);
 };
 
 // 4. Фильтры (changeFilter)

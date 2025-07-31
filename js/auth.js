@@ -45,7 +45,8 @@ async function Login(){
 			setCookie("LABEL", LABEL, "/", null, null);
 			setCookie("READONLY", readonly, "/", null, null);
 			if ('readAll' in data.result) {
-				setreadAllCookie(data.result.readAll === true);
+				console.log('[DEBUG] Установка readAll cookie:', data.result.readAll);
+				setReadAllCookie(data.result.readAll === true);
 			}
 			
 			// Плавный переход к основному лоадеру
@@ -94,8 +95,10 @@ function transitionToMainLoader() {
 }
 
 // --- Глобальная функция для установки куки readAll ---
-function setreadAllCookie(value) {
+function setReadAllCookie(value) {
+	console.log('[DEBUG] Устанавливаем readAll cookie =', value);
 	document.cookie = `readAll=${value}; path=/;`;
+	console.log('[DEBUG] Cookie установлен. Все cookies:', document.cookie);
 }
 
 // EVENTS ===========================
