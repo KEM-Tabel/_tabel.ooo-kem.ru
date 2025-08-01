@@ -6375,6 +6375,7 @@ function isCellLocked(row, col, value) {
         isCurrentMonth &&
         Number(col) > todayIndexForHighlighting &&
         typeof value === "string" &&
+        value.trim() !== "" &&
         !allowedFutureCodes.includes(value ? value.trim().toUpperCase() : "")
     ) {
         if (row >= 185 && row <= 194) {
