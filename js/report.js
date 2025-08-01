@@ -4,6 +4,41 @@ function canEditSO() {
     return window.UID === '060ee166-4496-11ef-8079-f6fa8412bde0';
 }
 
+// Функция для копирования текста в буфер обмена
+function copyToClipboard(text) {
+    if (navigator.clipboard && window.isSecureContext) {
+        // Используем современный API для HTTPS
+        navigator.clipboard.writeText(text).then(() => {
+            console.log('ФИО скопировано в буфер обмена:', text);
+        }).catch(err => {
+            console.error('Ошибка при копировании:', err);
+            fallbackCopyTextToClipboard(text);
+        });
+    } else {
+        // Fallback для HTTP или старых браузеров
+        fallbackCopyTextToClipboard(text);
+    }
+}
+
+// Fallback функция для копирования в буфер обмена
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        document.execCommand('copy');
+        console.log('ФИО скопировано в буфер обмена (fallback):', text);
+    } catch (err) {
+        console.error('Ошибка при копировании (fallback):', err);
+    }
+    document.body.removeChild(textArea);
+}
+
 // Функция для редактирования часов в ячейках СО
 function editSOHours(row, col, hours) {
     // Любой пользователь может редактировать часы в ячейках СО
@@ -1173,7 +1208,7 @@ function createTabel(){
                     // --- ИЗМЕНЕНО: Проверяем наличие кода "СО" перед блоком ФИО, но добавляем кнопку ВНУТРИ блока ФИО ---
                     let hasDO = worker.days.some(day => day && day.vt === 'СО');
                     // --- ИЗМЕНЕНО: Добавлен атрибут data-uid к worker_lb ---
-                    html += '<div id="'+worker_id+'" data-uid="'+worker['uid']+'" onClick="selectRow('+(worker_no-1)+')" class="worker_lb">';
+                                         html += '<div id="'+worker_id+'" data-uid="'+worker['uid']+'" onClick="selectRow('+(worker_no-1)+')" ondblclick="copyToClipboard(\''+worker['fio']+'\')" class="worker_lb">';
                     if (hasDO) {
                         // --- ИЗМЕНЕНО: Передаем worker['uid'] в showWorkerObjectsTabel ---
                         html += '<span class="show-info-plus" onclick="showWorkerObjectsTabel(\''+worker['uid']+'\', event)">+</span>';
@@ -6029,35 +6064,89 @@ function changeMaster(worker_id){
                     if (selectedDayIndex !== -1) {
                         console.log('[move-worker-modal] ID табеля:', tabId);
                 
-                        if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
-                            console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
-                            TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
-                             // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
-                             // Помечаем ячейку как измененную
-                            if (!changedCells[tabId]) changedCells[tabId] = {};
-                            changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
-                             TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
-                             // Обновляем отображение ячейки
-                             let cellSelector = '#' + (workerIndex+1) + '-' + (selectedDayIndex+1) + '-day-dv';
-                             console.log('[move-worker-modal] Обновление DOM ячейки:', cellSelector);
-                             let currentDayData = TABEL[tabId][selectedDayIndex];
-                             let htmlValue = '';
-                             let hoursNum = Number(currentDayData['hours']); // Используем существующие часы
-                             let dayValue = currentDayData['vt'];
+                        // === ПРОВЕРКА ДАТЫ УСТРОЙСТВА СОТРУДНИКА ===
+                        let worker = WORKERS[workerIndex];
+                        let dateIn = worker['date_in'];
+                        let normIn = '';
+                        if (dateIn) {
+                            normIn = parseDateIn(dateIn);
+                        }
+                        
+                        // Проверяем, не пытаемся ли мы установить СО до даты устройства
+                        if (normIn && selectedDateStr) {
+                            let selectedDateYMD = selectedDateStr.split('-').join('');
+                            if (selectedDateYMD < normIn) {
+                                console.log('[move-worker-modal] Пропускаем установку СО: дата до устройства сотрудника', {
+                                    selectedDate: selectedDateYMD,
+                                    dateIn: normIn,
+                                    worker: worker.fio
+                                });
+                                // Не устанавливаем СО, но продолжаем выполнение операции переноса
+                            } else {
+                                // Дата после устройства - устанавливаем СО
+                                if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                                    console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
+                                    TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
+                                     // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
+                                     // Помечаем ячейку как измененную
+                                    if (!changedCells[tabId]) changedCells[tabId] = {};
+                                    changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
+                                     TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                                     // Обновляем отображение ячейки
+                                     let cellSelector = '#' + (workerIndex+1) + '-' + (selectedDayIndex+1) + '-day-dv';
+                                     console.log('[move-worker-modal] Обновление DOM ячейки:', cellSelector);
+                                     let currentDayData = TABEL[tabId][selectedDayIndex];
+                                     let htmlValue = '';
+                                     let hoursNum = Number(currentDayData['hours']); // Используем существующие часы
+                                     let dayValue = currentDayData['vt'];
 
-                             if(dayValue && !hoursNum){
-                                 // Только буквенный код, без часов
-                                 htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
-                             } else if(dayValue && hoursNum) {
-                                 // Есть и код, и часы
-                                 htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
-                             } else { // Случай без кода и без часов
-                                 htmlValue = '';
-                             }
-                             htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${currentDayData['comment']||''}"></div>`;
+                                     if(dayValue && !hoursNum){
+                                         // Только буквенный код, без часов
+                                         htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                                     } else if(dayValue && hoursNum) {
+                                         // Есть и код, и часы
+                                         htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                                     } else { // Случай без кода и без часов
+                                         htmlValue = '';
+                                     }
+                                     htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${currentDayData['comment']||''}"></div>`;
 
-                              $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
-                            // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
+                                      $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                                    // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
+                                }
+                            }
+                        } else {
+                            // Если нет даты устройства или нет выбранной даты, устанавливаем СО как обычно
+                            if (TABEL[tabId] && TABEL[tabId][selectedDayIndex]) {
+                                console.log('[move-worker-modal] Обновление локальных данных TABEL: установка VT="СО"', { old: TABEL[tabId][selectedDayIndex], newVt: 'СО' });
+                                TABEL[tabId][selectedDayIndex]['vt'] = 'СО';
+                                 // Часы НЕ ТРОГАЕМ: TABEL[tabId][selectedDayIndex]['hours'] = 0; // УДАЛИТЬ/ЗАКОММЕНТИРОВАТЬ эту строку
+                                 // Помечаем ячейку как измененную
+                                if (!changedCells[tabId]) changedCells[tabId] = {};
+                                changedCells[tabId][selectedDayIndex] = TABEL[tabId][selectedDayIndex];
+                                 TIMESTAMP_ACTIVITY = Math.floor(Date.now() / 1000);
+                                 // Обновляем отображение ячейки
+                                 let cellSelector = '#' + (workerIndex+1) + '-' + (selectedDayIndex+1) + '-day-dv';
+                                 console.log('[move-worker-modal] Обновление DOM ячейки:', cellSelector);
+                                 let currentDayData = TABEL[tabId][selectedDayIndex];
+                                 let htmlValue = '';
+                                 let hoursNum = Number(currentDayData['hours']); // Используем существующие часы
+                                 let dayValue = currentDayData['vt'];
+
+                                 if(dayValue && !hoursNum){
+                                     // Только буквенный код, без часов
+                                     htmlValue = `<span class="cell-code-big">${dayValue}</span>`;
+                                 } else if(dayValue && hoursNum) {
+                                     // Есть и код, и часы
+                                     htmlValue = `<span class="cell-code-small">${dayValue}</span><span class="cell-hours-big">${hoursNum}</span>`;
+                                 } else { // Случай без кода и без часов
+                                     htmlValue = '';
+                                 }
+                                 htmlValue += `<div id="${workerIndex+1}-${selectedDayIndex+1}-day-comment" class="days-comment" title="${currentDayData['comment']||''}"></div>`;
+
+                                  $(cellSelector).html(htmlValue).css({"color": selectedFnt, "font-weight": "normal"});
+                                // calcDays(); // Пересчитываем итоги - будет вызвано после getDataTabel
+                            }
                         }
                         // Лог только тут!
                         console.log('[DEBUG СО] Ставим СО:', {tabId, selectedDayIndex, TABEL: TABEL[tabId]});
