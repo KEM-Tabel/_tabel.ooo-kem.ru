@@ -63,6 +63,16 @@ body {
 	background:  url('/images/loader.gif') -150px -100px no-repeat;				
 }
 
+.loader-message {
+	position: absolute;
+	top: calc(50% + 200px);
+	left: 50%;
+	transform: translateX(-50%);
+	color: #666;
+	font-size: 14px;
+	text-align: center;
+}
+
 #desc-main{
 	position:fixed;
 	bottom:0px;

@@ -331,7 +331,7 @@ function renderCell(row, col) {
             isLockedFromTabel = true;
         }
     }
-    if (isLockedFromTabel && String(dayValue).toUpperCase() !== 'СО') {
+    if (isLockedFromTabel) {
         cellClass += ' cell-locked';
     }
     if (String(dayValue).toUpperCase() === 'ПЧ') cellClass += ' cell-pch';
@@ -472,7 +472,7 @@ let unselectedNoBgd	= '#e7e77e';
 let todayBgd		= '#ff0000';
 let weekendBgd		= 'repeating-linear-gradient(-45deg, #d7db00 0px, #d7db00 2px, #ddd 2px, #ddd 5px)';
 let lastSelectedCellForComment = null;
-let VER 			= "24";
+let VER 			= "30";
 
 
 let TIMESTAMP_SESSION	= Math.floor(Date.now() / 1000);
@@ -1663,8 +1663,8 @@ function setCells(value, isComment=false, isFullClear=false){
                 cellValue6 = TABEL[id][day]['vt'];
             }
         }
-        // --- Изменено: разрешаем комментарии даже в заблокированные ячейки ---
-        if (!isComment && isCellLocked(Number(cell['row']), day, cellValue6)) {
+        // --- Изменено: разрешаем комментарии даже в заблокированные ячейки, кроме СО ---
+        if (!isComment && isCellLocked(Number(cell['row']), day, cellValue6) && cellValue6 !== 'СО') {
             console.log('[DEBUG] setCells: ячейка заблокирована, пропускаем', {row: cell['row'], col: day});
             continue;
         }
@@ -6047,7 +6047,7 @@ function changeMaster(worker_id){
                     TABEL: tabId ? TABEL[tabId] : null
                 });
 
-                if (locationChanged && workerIndex !== -1) {
+                if (workerIndex !== -1) {
                     let selectedDate = new Date(selectedDateStr);
                     selectedDayIndex = -1;
                     for (let i = 0; i < DAYS.length; i++) {
@@ -6391,12 +6391,15 @@ function isCellLocked(row, col, value) {
                 console.log('[DEBUG] isCellLocked: данные дня из TABEL для строки', row + 1, dayData);
             }
             
-            // Разрешаем только часы СО (даже если есть fixState)
+            // Ячейки с "СО" должны быть заблокированы для обычного редактирования,
+            // но для них может быть доступно специальное редактирование часов.
+            // Поэтому возвращаем true, чтобы заблокировать, а специальное редактирование
+            // будет обрабатываться в другом месте.
             if (dayData['vt'] === 'СО') {
                 if (row >= 185 && row <= 194) {
-                    console.log('[DEBUG] isCellLocked: ячейка СО, разрешена для строки', row + 1);
+                    console.log('[DEBUG] isCellLocked: ячейка СО, блокируем для обычного редактирования', row + 1);
                 }
-                return false;
+                return true;
             }
             // Блокировка по lock/doc/фикс
             if (dayData.lock || (dayData.doc && dayData.doc.trim() !== "" && dayData.doc.trim() !== ",") || dayData.fixState) {

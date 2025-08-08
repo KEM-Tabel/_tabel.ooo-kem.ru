@@ -61,6 +61,16 @@ body {
 	display:none;	
 }
 
+.loader-message {
+	position: absolute;
+	top: calc(50% + 200px);
+	left: 50%;
+	transform: translateX(-50%);
+	color: #666;
+	font-size: 14px;
+	text-align: center;
+}
+
 #main{
 	display: block;
 	margin: none;
